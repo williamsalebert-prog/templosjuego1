@@ -14,9 +14,8 @@ class F5 extends Pieza {
         let destinos = new Set();
         let caminos = {};
 
-        // 1. Movimientos simples (1 o 2 casillas) siempre disponibles
+        // Movimiento simple 1 o 2 pasos
         for (let [df, dc] of dirs) {
-            // 1 paso
             let nf1 = fila + df, nc1 = col + dc;
             if (nf1 >= 0 && nf1 < FILAS && nc1 >= 0 && nc1 < COLUMNAS &&
                 board[nf1][nc1] === null && esJugable(nf1, nc1)) {
@@ -24,7 +23,6 @@ class F5 extends Pieza {
                 destinos.add(clave1);
                 if (!caminos[clave1]) caminos[clave1] = [{ tipo: 'move', to: [nf1, nc1] }];
 
-                // 2 pasos (si la primera casilla está libre)
                 let nf2 = fila + df * 2, nc2 = col + dc * 2;
                 if (nf2 >= 0 && nf2 < FILAS && nc2 >= 0 && nc2 < COLUMNAS &&
                     board[nf2][nc2] === null && esJugable(nf2, nc2)) {
@@ -35,17 +33,15 @@ class F5 extends Pieza {
             }
         }
 
-        // 2. Saltos (simple y extendido)
+        // Saltos
         for (let [df, dc] of dirs) {
-            let overF = fila + df, overC = col + dc;          // pieza adyacente
+            let overF = fila + df, overC = col + dc;
             if (overF < 0 || overF >= FILAS || overC < 0 || overC >= COLUMNAS) continue;
             let piezaSaltada = board[overF][overC];
-            if (piezaSaltada === null) continue;               // no hay pieza
+            if (piezaSaltada === null) continue;
 
-            // ¿Se puede saltar sobre ella?
             if (piezaSaltada.jugador === jugador || capturaPermitida('F5', piezaSaltada)) {
-
-                // --- Salto simple (detrás de la pieza, 2 casillas) ---
+                // Salto simple
                 let land1F = fila + df * 2, land1C = col + dc * 2;
                 if (land1F >= 0 && land1F < FILAS && land1C >= 0 && land1C < COLUMNAS &&
                     board[land1F][land1C] === null && esJugable(land1F, land1C)) {
@@ -56,11 +52,11 @@ class F5 extends Pieza {
                     }];
                 }
 
-                // --- Salto extendido (dos detrás, 3 casillas) ---
+                // Salto extendido
                 let land2F = fila + df * 3, land2C = col + dc * 3;
-                let interF = fila + df * 2, interC = col + dc * 2; // casilla intermedia
+                let interF = fila + df * 2, interC = col + dc * 2;
                 if (interF >= 0 && interF < FILAS && interC >= 0 && interC < COLUMNAS &&
-                    board[interF][interC] === null &&                // intermedia vacía
+                    board[interF][interC] === null &&
                     land2F >= 0 && land2F < FILAS && land2C >= 0 && land2C < COLUMNAS &&
                     board[land2F][land2C] === null && esJugable(land2F, land2C)) {
                     let clave2 = `${land2F},${land2C}`;
