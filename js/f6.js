@@ -14,7 +14,7 @@ class F6 extends Pieza {
         let destinos = new Set();
         let caminos = {};
 
-        // 1. Movimientos deslizantes (se detienen ante la primera pieza)
+        // 1. Movimiento deslizante en 8 direcciones (hasta chocar con pieza o límite)
         for (let [df, dc] of dirs) {
             let f = fila + df;
             let c = col + dc;
@@ -28,28 +28,7 @@ class F6 extends Pieza {
             }
         }
 
-        // 2. Saltos sobre una pieza adyacente (solo un salto, termina el turno)
-        for (let [df, dc] of dirs) {
-            let overF = fila + df, overC = col + dc;          // pieza a saltar
-            let landF = fila + df * 2, landC = col + dc * 2;  // destino del salto
-            if (overF >= 0 && overF < FILAS && overC >= 0 && overC < COLUMNAS &&
-                board[overF][overC] !== null &&
-                landF >= 0 && landF < FILAS && landC >= 0 && landC < COLUMNAS &&
-                board[landF][landC] === null && esJugable(landF, landC)) {
-                let piezaSaltada = board[overF][overC];
-                // Se puede saltar sobre amigas o enemigas (si la captura está permitida)
-                if (piezaSaltada.jugador === jugador ||
-                    capturaPermitida('F6', piezaSaltada)) {
-                    let clave = `${landF},${landC}`;
-                    destinos.add(clave);
-                    if (!caminos[clave]) {
-                        caminos[clave] = [{ tipo: 'jump', over: [overF, overC], to: [landF, landC] }];
-                    }
-                }
-            }
-        }
-
-        // 3. Movimientos en L (caballo)
+        // 2. Movimiento en L (caballo) – solo a casillas vacías, no captura
         const saltosL = [
             [-2,-1], [-2,1], [2,-1], [2,1],
             [-1,-2], [-1,2], [1,-2], [1,2]
@@ -62,6 +41,31 @@ class F6 extends Pieza {
                 let clave = `${nf},${nc}`;
                 destinos.add(clave);
                 if (!caminos[clave]) caminos[clave] = [{ tipo: 'move', to: [nf, nc] }];
+            }
+        }
+
+        // 3. Salto único sobre una pieza adyacente (amiga o enemiga)
+        for (let [df, dc] of dirs) {
+            let overF = fila + df, overC = col + dc;          // pieza a saltar
+            let landF = fila + df * 2, landC = col + dc * 2;  // destino del salto
+            if (overF >= 0 && overF < FILAS && overC >= 0 && overC < COLUMNAS &&
+                board[overF][overC] !== null &&
+                landF >= 0 && landF < FILAS && landC >= 0 && landC < COLUMNAS &&
+                board[landF][landC] === null && esJugable(landF, landC)) {
+                let piezaSaltada = board[overF][overC];
+                // Permitir salto si es amiga, o si es enemiga y la captura está permitida
+                if (piezaSaltada.jugador === jugador ||
+                    (typeof capturaPermitida === 'function' && capturaPermitida('F6', piezaSaltada))) {
+                    let clave = `${landF},${landC}`;
+                    destinos.add(clave);
+                    if (!caminos[clave]) {
+                        caminos[clave] = [{
+                            tipo: 'jump',
+                            over: [overF, overC],
+                            to: [landF, landC]
+                        }];
+                    }
+                }
             }
         }
 
