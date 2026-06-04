@@ -1,4 +1,4 @@
-console.log("✅ f52.js cargado");
+console.log("✅ f5.js cargado");
 
 class F5 extends Pieza {
     constructor(jugador) {
@@ -33,41 +33,50 @@ class F5 extends Pieza {
             }
         }
 
-        // 2. Saltos (simple y extendido)
+        // 2. Saltos (simple y doble)
         for (let [df, dc] of dirs) {
-            let over1f = fila + df, over1c = col + dc;
+            let over1f = fila + df, over1c = col + dc;        // distancia 1
             if (over1f < 0 || over1f >= FILAS || over1c < 0 || over1c >= COLUMNAS) continue;
-            let piezaSaltada = board[over1f][over1c];
-            if (piezaSaltada === null) continue;
+            let piezaAdyacente = board[over1f][over1c];
 
-            // ¿Se puede saltar sobre esta pieza?
-            let puedeSaltar = (piezaSaltada.jugador === jugador) ||
-                              (typeof capturaPermitida === 'function' ? capturaPermitida('F5', piezaSaltada) : true);
-            if (!puedeSaltar) continue;
-
-            // --- Salto simple (2 casillas) ---
-            let land1f = fila + df * 2, land1c = col + dc * 2;
-            if (land1f >= 0 && land1f < FILAS && land1c >= 0 && land1c < COLUMNAS &&
-                board[land1f][land1c] === null && esJugable(land1f, land1c)) {
-                let clave1 = `${land1f},${land1c}`;
-                destinos.add(clave1);
-                if (!caminos[clave1]) caminos[clave1] = [{
-                    tipo: 'jump', over: [over1f, over1c], to: [land1f, land1c]
-                }];
+            // Salto simple (sobre la pieza adyacente si existe)
+            if (piezaAdyacente !== null) {
+                if (piezaAdyacente.jugador === jugador || capturaPermitida('F5', piezaAdyacente)) {
+                    let land1f = fila + df * 2, land1c = col + dc * 2;
+                    if (land1f >= 0 && land1f < FILAS && land1c >= 0 && land1c < COLUMNAS &&
+                        board[land1f][land1c] === null && esJugable(land1f, land1c)) {
+                        let clave = `${land1f},${land1c}`;
+                        destinos.add(clave);
+                        if (!caminos[clave]) caminos[clave] = [{
+                            tipo: 'jump', over: [over1f, over1c], to: [land1f, land1c]
+                        }];
+                    }
+                }
             }
 
-            // --- Salto extendido (3 casillas) ---
+            // Salto doble (aterrizar a distancia 3 si hay al menos una pieza en distancia 1 o 2)
             let land2f = fila + df * 3, land2c = col + dc * 3;
-            let interF = fila + df * 2, interC = col + dc * 2; // casilla intermedia DEBE estar vacía
-            if (interF >= 0 && interF < FILAS && interC >= 0 && interC < COLUMNAS &&
-                board[interF][interC] === null &&
-                land2f >= 0 && land2f < FILAS && land2c >= 0 && land2c < COLUMNAS &&
+            if (land2f >= 0 && land2f < FILAS && land2c >= 0 && land2c < COLUMNAS &&
                 board[land2f][land2c] === null && esJugable(land2f, land2c)) {
-                let clave2 = `${land2f},${land2c}`;
-                destinos.add(clave2);
-                if (!caminos[clave2]) caminos[clave2] = [{
-                    tipo: 'jump', over: [over1f, over1c], to: [land2f, land2c]
-                }];
+                let pieza1 = board[over1f]?.[over1c];                  // distancia 1
+                let pieza2 = board[fila + df * 2]?.[col + dc * 2];    // distancia 2
+                let hay1 = (pieza1 !== null && pieza1 !== undefined);
+                let hay2 = (pieza2 !== null && pieza2 !== undefined);
+                if (hay1 || hay2) {
+                    let saltables = true;
+                    if (hay1 && pieza1.jugador !== jugador && !capturaPermitida('F5', pieza1)) saltables = false;
+                    if (hay2 && pieza2.jugador !== jugador && !capturaPermitida('F5', pieza2)) saltables = false;
+                    if (saltables) {
+                        let clave = `${land2f},${land2c}`;
+                        destinos.add(clave);
+                        if (!caminos[clave]) caminos[clave] = [{
+                            tipo: 'jump',
+                            over: [over1f, over1c], // referencia para captura simple (se usa la primera pieza)
+                            to: [land2f, land2c],
+                            capturarVarios: true
+                        }];
+                    }
+                }
             }
         }
 
