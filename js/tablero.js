@@ -142,9 +142,10 @@ function aplicarMovimiento(origen, destino) {
             board[f][c] = null;
             board[nf][nc] = pieza;
             f = nf; c = nc;
-     } else if (paso.tipo === 'jump') {
+   } else if (paso.tipo === 'jump') {
     let [of, oc] = paso.over;
     let [nf, nc] = paso.to;
+    // Capturar la pieza sobre la que se salta si es enemiga
     let piezaSaltada = board[of][oc];
     if (piezaSaltada && piezaSaltada.jugador !== jugador) {
         // F4 solo puede ser capturada por F6
