@@ -1,16 +1,85 @@
 console.log("✅ f5.js cargado");
+
 class F5 extends Pieza {
-    constructor(jugador) { super('F5', jugador); }
+    constructor(jugador) {
+        super('F5', jugador);
+    }
+
     obtenerMovimientos(fila, col, board) {
-        const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
-        let destinos = []; let caminos = {};
-        for (let [df, dc] of dirs) {
-            let nf = fila+df, nc = col+dc;
-            if (nf>=0 && nf<FILAS && nc>=0 && nc<COLUMNAS && board[nf][nc]===null && esJugable(nf, nc)) {
-                let clave = `${nf},${nc}`; destinos.push([nf, nc]); caminos[clave] = [{tipo:'move', to:[nf,nc]}];
+        const jugador = this.jugador;
+        const dirs = [
+            [-1, 0], [1, 0], [0, -1], [0, 1],   // rectas
+            [-1, -1], [-1, 1], [1, -1], [1, 1]  // diagonales
+        ];
+        let destinos = new Set();
+        let caminos = {};
+
+        const explorar = (f, c, tablero, camino, visitados, haSaltado, saltosRestantes) => {
+            // Movimiento simple (solo si no ha saltado)
+            if (!haSaltado) {
+                for (let [df, dc] of dirs) {
+                    let nf = f + df, nc = c + dc;
+                    if (nf >= 0 && nf < FILAS && nc >= 0 && nc < COLUMNAS &&
+                        tablero[nf][nc] === null && esJugable(nf, nc)) {
+                        let clave = `${nf},${nc}`;
+                        if (!visitados.has(clave)) {
+                            visitados.add(clave);
+                            let nuevoCamino = [...camino, { tipo: 'move', to: [nf, nc] }];
+                            destinos.add(clave);
+                            if (!caminos[clave]) caminos[clave] = nuevoCamino;
+                        }
+                    }
+                }
             }
+
+            // Saltos (solo si quedan saltos permitidos)
+            if (saltosRestantes > 0) {
+                for (let [df, dc] of dirs) {
+                    let nf = f + df, nc = c + dc;                 // pieza adyacente
+                    let jf = f + df * 2, jc = c + dc * 2;        // destino del salto
+                    if (nf >= 0 && nf < FILAS && nc >= 0 && nc < COLUMNAS &&
+                        tablero[nf][nc] !== null &&               // hay pieza sobre la que saltar
+                        jf >= 0 && jf < FILAS && jc >= 0 && jc < COLUMNAS &&
+                        tablero[jf][jc] === null && esJugable(jf, jc)) {
+                        let clave = `${jf},${jc}`;
+                        if (!visitados.has(clave)) {
+                            visitados.add(clave);
+                            // Clonar tablero para simular salto
+                            let nuevoTab = tablero.map(fila => fila.map(celda => {
+                                if (celda === null) return null;
+                                const ClasePieza = piezasRegistradas.get(celda.tipo);
+                                return ClasePieza ? new ClasePieza(celda.jugador) : null;
+                            }));
+                            let piezaInter = nuevoTab[nf][nc];
+                            let ficha = nuevoTab[f][c];
+                            nuevoTab[f][c] = null;
+                            // Capturar solo si es enemiga y está permitido
+                            if (piezaInter && piezaInter.jugador !== jugador && capturaPermitida(this.tipo, piezaInter)) {
+                                nuevoTab[nf][nc] = null;
+                            }
+                            nuevoTab[jf][jc] = ficha;
+                            let nuevoCamino = [...camino, { tipo: 'jump', over: [nf, nc], to: [jf, jc] }];
+                            destinos.add(clave);
+                            if (!caminos[clave]) caminos[clave] = nuevoCamino;
+                            // Continuar exploración con un salto menos
+                            explorar(jf, jc, nuevoTab, nuevoCamino, visitados, true, saltosRestantes - 1);
+                        }
+                    }
+                }
+            }
+        };
+
+        let visitados = new Set();
+        visitados.add(`${fila},${col}`);
+        explorar(fila, col, board, [], visitados, false, 2); // máximo 2 saltos
+
+        let arr = [];
+        for (let clave of destinos) {
+            let [f, c] = clave.split(',').map(Number);
+            arr.push([f, c]);
         }
-        return { destinos, caminos };
+        return { destinos: arr, caminos };
     }
 }
+
 piezasRegistradas.set('F5', F5);
