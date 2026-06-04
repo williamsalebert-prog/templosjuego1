@@ -14,17 +14,51 @@ class F6 extends Pieza {
         let destinos = new Set();
         let caminos = {};
 
-        // 1. Movimiento deslizante en 8 direcciones (hasta chocar con pieza o límite)
+        // 1. Movimiento deslizante (puede saltar una pieza, pero después se detiene)
         for (let [df, dc] of dirs) {
             let f = fila + df;
             let c = col + dc;
-            while (f >= 0 && f < FILAS && c >= 0 && c < COLUMNAS &&
-                   esJugable(f, c) && board[f][c] === null) {
-                let clave = `${f},${c}`;
-                destinos.add(clave);
-                if (!caminos[clave]) caminos[clave] = [{ tipo: 'move', to: [f, c] }];
-                f += df;
-                c += dc;
+            let haSaltado = false;
+
+            while (f >= 0 && f < FILAS && c >= 0 && c < COLUMNAS && esJugable(f, c)) {
+                if (board[f][c] === null) {
+                    // Casilla vacía: destino válido
+                    let clave = `${f},${c}`;
+                    destinos.add(clave);
+                    if (!caminos[clave]) caminos[clave] = [{ tipo: 'move', to: [f, c] }];
+                    // Avanzar
+                    f += df;
+                    c += dc;
+                } else {
+                    // Hay una pieza en (f,c)
+                    if (!haSaltado) {
+                        // Intentar saltar sobre ella
+                        let landF = f + df;
+                        let landC = c + dc;
+                        if (landF >= 0 && landF < FILAS && landC >= 0 && landC < COLUMNAS &&
+                            board[landF][landC] === null && esJugable(landF, landC)) {
+                            let piezaSaltada = board[f][c];
+                            if (piezaSaltada.jugador === jugador ||
+                                (typeof capturaPermitida === 'function' && capturaPermitida('F6', piezaSaltada))) {
+                                // Se puede saltar: añadir destino de aterrizaje
+                                let clave = `${landF},${landC}`;
+                                destinos.add(clave);
+                                if (!caminos[clave]) {
+                                    caminos[clave] = [{
+                                        tipo: 'jump',
+                                        over: [f, c],
+                                        to: [landF, landC]
+                                    }];
+                                }
+                                haSaltado = true;
+                                // Detenerse completamente después del salto
+                                break;
+                            }
+                        }
+                    }
+                    // Si no se pudo saltar (o ya se saltó), terminamos esta dirección
+                    break;
+                }
             }
         }
 
@@ -41,31 +75,6 @@ class F6 extends Pieza {
                 let clave = `${nf},${nc}`;
                 destinos.add(clave);
                 if (!caminos[clave]) caminos[clave] = [{ tipo: 'move', to: [nf, nc] }];
-            }
-        }
-
-        // 3. Salto único sobre una pieza adyacente (amiga o enemiga)
-        for (let [df, dc] of dirs) {
-            let overF = fila + df, overC = col + dc;          // pieza a saltar
-            let landF = fila + df * 2, landC = col + dc * 2;  // destino del salto
-            if (overF >= 0 && overF < FILAS && overC >= 0 && overC < COLUMNAS &&
-                board[overF][overC] !== null &&
-                landF >= 0 && landF < FILAS && landC >= 0 && landC < COLUMNAS &&
-                board[landF][landC] === null && esJugable(landF, landC)) {
-                let piezaSaltada = board[overF][overC];
-                // Permitir salto si es amiga, o si es enemiga y la captura está permitida
-                if (piezaSaltada.jugador === jugador ||
-                    (typeof capturaPermitida === 'function' && capturaPermitida('F6', piezaSaltada))) {
-                    let clave = `${landF},${landC}`;
-                    destinos.add(clave);
-                    if (!caminos[clave]) {
-                        caminos[clave] = [{
-                            tipo: 'jump',
-                            over: [overF, overC],
-                            to: [landF, landC]
-                        }];
-                    }
-                }
             }
         }
 
