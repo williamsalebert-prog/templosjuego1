@@ -28,3 +28,13 @@ const colores = {
     jardin:  { par: '#B0E0B0', impar: '#228B22' },
     vacio:   { par: '#2c2c2c', impar: '#2c2c2c' }
 };
+/**
+ * Determina si una pieza atacante puede capturar a la pieza objetivo.
+ * Regla especial: F4 solo puede ser capturada por F6.
+ */
+function capturaPermitida(tipoAtacante, piezaObjetivo) {
+    if (piezaObjetivo.tipo === 'F4') {
+        return tipoAtacante === 'F6';  // solo F6 puede capturar F4
+    }
+    return true; // para el resto de piezas, siempre se permite la captura
+}
