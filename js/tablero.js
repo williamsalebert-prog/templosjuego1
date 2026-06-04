@@ -145,35 +145,20 @@ function aplicarMovimiento(origen, destino) {
       } else if (paso.tipo === 'jump') {
     let [of, oc] = paso.over;
     let [nf, nc] = paso.to;
-    // Si es salto doble (distancia 3)
-    if (paso.doble) {
-        let inter1f = f + (nf - f) / 3, inter1c = c + (nc - c) / 3;
-        let inter2f = f + 2 * (nf - f) / 3, inter2c = c + 2 * (nc - c) / 3;
-        let pieza1 = board[inter1f]?.[inter1c];
-        let pieza2 = board[inter2f]?.[inter2c];
-        if (pieza1 && pieza1.jugador !== jugador) {
-            carcela.agregar(pieza1);
-            board[inter1f][inter1c] = null;
-        }
-        if (pieza2 && pieza2.jugador !== jugador) {
-            carcela.agregar(pieza2);
-            board[inter2f][inter2c] = null;
-        }
-    } else {
-        // Salto simple
-        let piezaSaltada = board[of][oc];
-        if (piezaSaltada && piezaSaltada.jugador !== jugador) {
-            if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F6') {
-                // no capturar
-            } else {
-                carcela.agregar(piezaSaltada);
-                board[of][oc] = null;
-            }
+    let piezaSaltada = board[of][oc];
+    if (piezaSaltada && piezaSaltada.jugador !== jugador) {
+        // F4 solo puede ser capturada por F6
+        if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F6') {
+            // no se captura
+        } else {
+            carcela.agregar(piezaSaltada);
+            board[of][oc] = null;
         }
     }
     board[f][c] = null;
     board[nf][nc] = pieza;
     f = nf; c = nc;
+}f = nf; c = nc;
 }
     }
     return true;
