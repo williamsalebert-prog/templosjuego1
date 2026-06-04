@@ -2,98 +2,19 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Templos - Colores corregidos (rojo claro, no blanco)</title>
+    <title>Templos - Inicio</title>
     <style>
-        body {
-            background: #1a472a;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .game-container {
-            background: #2c5e2e;
-            padding: 20px;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
-        canvas {
-            box-shadow: 0 0 0 4px #c9a87b, 0 0 0 8px #6b3e1c;
-            border-radius: 8px;
-        }
-        .info {
-            margin-top: 15px;
-            text-align: center;
-            color: #f9e0a0;
-            background: #2d2b1fcc;
-            padding: 8px;
-            border-radius: 16px;
-        }
+        body { background: #1a472a; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Segoe UI', sans-serif; margin: 0; }
+        .pantalla-inicio { text-align: center; color: #f9e0a0; background: #2d2b1fcc; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        button { font-size: 1.5rem; padding: 15px 30px; margin-top: 20px; background: #c9a87b; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #dbb87c; }
     </style>
 </head>
 <body>
-<div class="game-container">
-    <canvas id="tableroCanvas" width="1150" height="750"></canvas>
-    <div class="info">
-        Templo Izquierdo: rojo oscuro y rojo claro (casi blanco) | Jardín: verdes | Templo Derecho: azul oscuro y azul claro<br>
-        Patrón ajedrez invertido (claro en par, oscuro en impar)
+    <div class="pantalla-inicio">
+        <h1>⚔️ Templos ⚔️</h1>
+        <p>Juego de estrategia tipo damas chinas</p>
+        <button onclick="window.location.href='tablero.html'">Iniciar Partida</button>
     </div>
-</div>
-
-<script>
-    const FILAS = 15;
-    const COLUMNAS = 23;
-    const CELL_SIZE = 750 / FILAS;
-    const canvas = document.getElementById('tableroCanvas');
-    const ctx = canvas.getContext('2d');
-
-    function getZona(fila, col) {
-        // Templo izquierdo: 1,3,5,7 desde el borde (col0=1, col1=3, col2=5, col3=7)
-        if (col === 0 && fila === 7) return 'templo1';
-        if (col === 1 && fila >= 6 && fila <= 8) return 'templo1';
-        if (col === 2 && fila >= 5 && fila <= 9) return 'templo1';
-        if (col === 3 && fila >= 4 && fila <= 10) return 'templo1';
-        // Templo derecho
-        if (col === 22 && fila === 7) return 'templo2';
-        if (col === 21 && fila >= 6 && fila <= 8) return 'templo2';
-        if (col === 20 && fila >= 5 && fila <= 9) return 'templo2';
-        if (col === 19 && fila >= 4 && fila <= 10) return 'templo2';
-        // Jardín
-        if (col >= 4 && col <= 18) return 'jardin';
-        return 'vacio';
-    }
-
-    // Colores: claro en par, oscuro en impar (invertido respecto al principio)
-    const colores = {
-        templo1: { par: '#FFCCCC', impar: '#CC0000' },   // rojo claro y oscuro
-        templo2: { par: '#BBDFFF', impar: '#1E3A8A' },   // azul claro y oscuro
-        jardin:  { par: '#B0E0B0', impar: '#228B22' },   // verde claro y oscuro
-        vacio:   { par: '#2c2c2c', impar: '#2c2c2c' }
-    };
-
-    function dibujar() {
-        for (let i = 0; i < FILAS; i++) {
-            for (let j = 0; j < COLUMNAS; j++) {
-                const x = j * CELL_SIZE;
-                const y = i * CELL_SIZE;
-                const zona = getZona(i, j);
-                const esPar = (i + j) % 2 === 0;
-                let color;
-                if (zona === 'vacio') {
-                    color = colores.vacio.par;
-                } else {
-                    color = esPar ? colores[zona].par : colores[zona].impar;
-                }
-                ctx.fillStyle = color;
-                ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
-                ctx.strokeStyle = '#a57c4c';
-                ctx.strokeRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
-            }
-        }
-    }
-
-    dibujar();
-</script>
 </body>
 </html>
