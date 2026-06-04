@@ -1,3 +1,4 @@
+console.log("✅ zonas.js cargado");
 const FILAS = 15, COLUMNAS = 23, CELL_SIZE = 50;
 
 function esTemploIzquierdo(f, c) {
