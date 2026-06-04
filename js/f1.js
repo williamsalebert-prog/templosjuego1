@@ -1,9 +1,12 @@
+console.log("✅ f1.js cargado");
+
 class F1 extends Pieza {
     constructor(jugador) {
         super('F1', jugador);
     }
 
     obtenerMovimientos(fila, col, board) {
+        const jugador = this.jugador;
         const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
         let destinos = new Set();
         let caminos = {};
@@ -25,7 +28,7 @@ class F1 extends Pieza {
                     }
                 }
             }
-            // Saltos sobre cualquier pieza (captura si es enemiga)
+            // Saltos sobre cualquier pieza
             for (let [df, dc] of dirs) {
                 let nf = f+df, nc = c+dc;
                 let jf = f+df*2, jc = c+dc*2;
@@ -35,12 +38,18 @@ class F1 extends Pieza {
                     let clave = `${jf},${jc}`;
                     if (!visitados.has(clave)) {
                         visitados.add(clave);
-                        let nuevoTab = tablero.map(fila => fila.map(celda => celda ? new F1(celda.jugador) : null));
+                        // Clonación genérica usando el registro de piezas
+                        let nuevoTab = tablero.map(fila => fila.map(celda => {
+                            if (celda === null) return null;
+                            const ClasePieza = piezasRegistradas.get(celda.tipo);
+                            return ClasePieza ? new ClasePieza(celda.jugador) : null;
+                        }));
                         let piezaInter = nuevoTab[nf][nc];
                         let ficha = nuevoTab[f][c];
                         nuevoTab[f][c] = null;
-                        if (piezaInter && piezaInter.jugador !== this.jugador) {
-                            nuevoTab[nf][nc] = null; // captura enemiga
+                        if (piezaInter && piezaInter.jugador !== jugador &&
+                            capturaPermitida(this.tipo, piezaInter)) {
+                            nuevoTab[nf][nc] = null;
                         }
                         nuevoTab[jf][jc] = ficha;
                         let nuevoCamino = [...camino, {tipo:'jump', over:[nf,nc], to:[jf,jc]}];
@@ -64,3 +73,5 @@ class F1 extends Pieza {
         return { destinos: arr, caminos };
     }
 }
+
+piezasRegistradas.set('F1', F1);
