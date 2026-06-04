@@ -3,138 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tablero Templos - Versión corregida</title>
+    <title>Tablero Templos - Pirámides 7,5,3,1</title>
     <style>
         body {
-            background: #2c3e2f;
+            background: #1e3a1e;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            font-family: monospace;
         }
         canvas {
-            box-shadow: 0 0 0 4px #b88b4a, 0 0 0 8px #5a3a1a;
-            border-radius: 8px;
-        }
-        .info {
-            margin-top: 20px;
-            text-align: center;
-            color: #f0e6a0;
-            background: #1e2a1a;
-            padding: 10px;
-            border-radius: 8px;
+            box-shadow: 0 0 0 6px #c49a6c, 0 0 0 12px #5e3a1e;
+            border-radius: 12px;
         }
     </style>
 </head>
 <body>
-<div>
-    <canvas id="tableroCanvas" width="750" height="750"></canvas>
-    <div class="info">
-        ⬆️ Templo Jugador 1 (pirámide invertida, vértice arriba) ⬇️ Templo Jugador 2 (vértice abajo)<br>
-        Jardín central (verde). Las celdas negras no son jugables.
-    </div>
-</div>
-
+<canvas id="tableroCanvas" width="750" height="750"></canvas>
 <script>
-    const TAM = 15;          // 15x15
+    const TAM = 15;
     const CELL_SIZE = 750 / TAM; // 50px
     const canvas = document.getElementById('tableroCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Función para determinar el tipo de celda (templo J1, templo J2, jardín, vacío)
-    function getCellType(row, col) {
-        // Templo Jugador 1 (arriba): filas 0..3
-        if (row >= 0 && row <= 3) {
-            // Definimos la pirámide invertida: fila0: 1 celda (col7); fila1: 3 celdas (6-8); fila2: 5 (5-9); fila3: 7 (4-10)
-            let centro = 7;
-            let ancho = 1 + (3 - row) * 2;  // row0:1, row1:3, row2:5, row3:7
-            let inicio = centro - Math.floor(ancho/2);
-            let fin = centro + Math.floor(ancho/2);
-            if (col >= inicio && col <= fin) {
-                return 'templo1';
-            } else {
-                return 'vacio';
-            }
-        }
-        // Templo Jugador 2 (abajo): filas 11..14
-        else if (row >= 11 && row <= 14) {
-            let centro = 7;
-            // row14:1, row13:3, row12:5, row11:7
-            let ancho = 1 + (row - 11) * 2;  // row11:1? No, mejor: row14:1, row13:3, row12:5, row11:7
-            // Usamos distancia desde abajo: dist = 14 - row; entonces ancho = 1 + dist*2
-            let dist = 14 - row;
-            let ancho2 = 1 + dist * 2;
-            let inicio = centro - Math.floor(ancho2/2);
-            let fin = centro + Math.floor(ancho2/2);
-            if (col >= inicio && col <= fin) {
-                return 'templo2';
-            } else {
-                return 'vacio';
-            }
-        }
-        // Jardín: filas 4 a 10 (inclusive), todas las columnas
-        else if (row >= 4 && row <= 10) {
-            return 'jardin';
-        }
-        else {
-            return 'vacio';
-        }
+    // Determina tipo de celda según fila y columna
+    function getTipoCelda(fila, col) {
+        // Pirámide Jugador 1 (arriba) - filas 0 a 3
+        if (fila === 0 && col >= 4 && col <= 10) return 'templo1';
+        if (fila === 1 && col >= 5 && col <= 9) return 'templo1';
+        if (fila === 2 && col >= 6 && col <= 8) return 'templo1';
+        if (fila === 3 && col === 7) return 'templo1';
+
+        // Pirámide Jugador 2 (abajo) - filas 11 a 14
+        if (fila === 14 && col >= 4 && col <= 10) return 'templo2';
+        if (fila === 13 && col >= 5 && col <= 9) return 'templo2';
+        if (fila === 12 && col >= 6 && col <= 8) return 'templo2';
+        if (fila === 11 && col === 7) return 'templo2';
+
+        // Jardín (filas 4 a 10, todas las columnas)
+        if (fila >= 4 && fila <= 10) return 'jardin';
+
+        // Cualquier otra celda no jugable
+        return 'vacio';
     }
 
-    function dibujarTablero() {
+    function dibujar() {
         for (let i = 0; i < TAM; i++) {
             for (let j = 0; j < TAM; j++) {
-                let x = j * CELL_SIZE;
-                let y = i * CELL_SIZE;
-                let tipo = getCellType(i, j);
+                const x = j * CELL_SIZE;
+                const y = i * CELL_SIZE;
+                const tipo = getTipoCelda(i, j);
                 let color;
                 switch (tipo) {
-                    case 'templo1':
-                        color = '#c9a87b';  // marrón claro
-                        break;
-                    case 'templo2':
-                        color = '#9e7b5c';  // marrón grisáceo
-                        break;
-                    case 'jardin':
-                        color = '#6a9c4b';  // verde
-                        break;
-                    default:
-                        color = '#2a2a2a';  // negro (no jugable)
+                    case 'templo1': color = '#e6c394'; break; // marrón claro
+                    case 'templo2': color = '#b78f5a'; break; // marrón oscuro
+                    case 'jardin': color = '#5a9e4e'; break;  // verde
+                    default: color = '#2c2c2c'; // negro (no jugable)
                 }
                 ctx.fillStyle = color;
-                ctx.fillRect(x, y, CELL_SIZE-1, CELL_SIZE-1);
-                ctx.strokeStyle = '#403018';
-                ctx.strokeRect(x, y, CELL_SIZE-1, CELL_SIZE-1);
+                ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
+                ctx.strokeStyle = '#a57c4c';
+                ctx.strokeRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
             }
-        }
-        // Dibujar bordes de los templos (opcional)
-        ctx.strokeStyle = '#ffcc88';
-        ctx.lineWidth = 2;
-        for (let i = 0; i <= 3; i++) {
-            let centro = 7;
-            let ancho = 1 + (3 - i) * 2;
-            let inicio = centro - Math.floor(ancho/2);
-            let fin = centro + Math.floor(ancho/2);
-            let y = i * CELL_SIZE;
-            let x0 = inicio * CELL_SIZE;
-            let x1 = (fin+1) * CELL_SIZE;
-            ctx.strokeRect(x0, y, (fin-inicio+1)*CELL_SIZE-1, CELL_SIZE-1);
-        }
-        for (let i = 11; i <= 14; i++) {
-            let centro = 7;
-            let dist = 14 - i;
-            let ancho = 1 + dist * 2;
-            let inicio = centro - Math.floor(ancho/2);
-            let fin = centro + Math.floor(ancho/2);
-            let y = i * CELL_SIZE;
-            let x0 = inicio * CELL_SIZE;
-            let x1 = (fin+1) * CELL_SIZE;
-            ctx.strokeRect(x0, y, (fin-inicio+1)*CELL_SIZE-1, CELL_SIZE-1);
         }
     }
 
-    dibujarTablero();
+    dibujar();
 </script>
 </body>
 </html>
