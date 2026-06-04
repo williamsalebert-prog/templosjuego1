@@ -54,9 +54,9 @@ class F3 extends Pieza {
                         let ficha = nuevoTab[f][c];
                         nuevoTab[f][c] = null;
                         // Capturar solo si es enemiga
-                        if (piezaInter && piezaInter.jugador !== jugador) {
-                            nuevoTab[nf][nc] = null;
-                        }
+                       if (piezaInter && piezaInter.jugador !== jugador && capturaPermitida(this.tipo, piezaInter)) {
+    nuevoTab[nf][nc] = null;
+}
                         nuevoTab[jf][jc] = ficha;
                         let nuevoCamino = [...camino, { tipo: 'jump', over: [nf, nc], to: [jf, jc] }];
                         destinos.add(clave);
