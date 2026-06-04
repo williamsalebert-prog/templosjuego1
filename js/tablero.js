@@ -147,9 +147,14 @@ function aplicarMovimiento(origen, destino) {
             let [nf, nc] = paso.to;
             let piezaSaltada = board[of][oc];
             if (piezaSaltada && piezaSaltada.jugador !== jugador) {
-                carcela.agregar(piezaSaltada);
-                board[of][oc] = null;
-            }
+    // F4 solo puede ser capturada por F6
+    if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F6') {
+        // No se captura
+    } else {
+        carcela.agregar(piezaSaltada);
+        board[of][oc] = null;
+    }
+}
             board[f][c] = null;
             board[nf][nc] = pieza;
             f = nf; c = nc;
