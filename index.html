@@ -3,538 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Templos - Juego de Espíritus</title>
+    <title>Tablero Templos - 15x15 con pirámides 7,5,3,1</title>
     <style>
-        * {
-            user-select: none;
-        }
         body {
-            background: #1a472a;
+            background: #2c4a2e;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .game-container {
-            background: #2c5e2e;
-            padding: 20px;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            font-family: monospace;
         }
         canvas {
-            display: block;
-            margin: 0 auto;
-            box-shadow: 0 0 0 4px #c9a87b, 0 0 0 8px #6b3e1c;
+            border: 4px solid #c9a87b;
             border-radius: 8px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
             cursor: pointer;
         }
-        .info-panel {
-            display: flex;
-            justify-content: space-between;
+        .info {
             margin-top: 20px;
-            gap: 20px;
-            color: #f9e0a0;
-            text-shadow: 1px 1px 0 #3a2a1a;
-        }
-        .player-panel {
-            background: #2d2b1fcc;
-            backdrop-filter: blur(4px);
-            padding: 10px 20px;
-            border-radius: 16px;
-            width: 200px;
-            border: 1px solid #f3c26b;
-        }
-        .turn-indicator {
-            background: #c99e3a;
-            color: #1e2a0e;
-            font-weight: bold;
-            padding: 8px 16px;
-            border-radius: 40px;
-            text-align: center;
-        }
-        button {
-            background: #e4b363;
-            border: none;
-            color: #1e2a0e;
-            font-weight: bold;
-            padding: 6px 12px;
-            border-radius: 20px;
-            cursor: pointer;
-            margin-top: 8px;
-        }
-        .status {
-            background: #000000aa;
-            padding: 8px;
+            background: #1e2a1a;
+            color: #e6d5a8;
+            padding: 10px;
             border-radius: 12px;
-            margin-top: 12px;
-            font-size: 0.9rem;
-        }
-        .ficha-leyenda {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 8px;
-            font-size: 0.75rem;
-        }
-        .ficha-simbolo {
-            display: inline-block;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
             text-align: center;
-            line-height: 24px;
-            font-weight: bold;
+            max-width: 750px;
         }
     </style>
 </head>
 <body>
 <div>
-    <div class="game-container">
-        <canvas id="tableroCanvas" width="750" height="750"></canvas>
-        <div class="info-panel">
-            <div class="player-panel" id="panelJ1">
-                <strong>🏮 Jugador 1 (Blanco)</strong><br>
-                Cárcel: <span id="carcelJ1">0</span>/5<br>
-                Yin-Yang: <span id="yyJ1">1</span><br>
-                <div id="fichasJ1" class="ficha-leyenda"></div>
-            </div>
-            <div class="turn-indicator" id="turnoTexto">Turno: Jugador 1</div>
-            <div class="player-panel" id="panelJ2">
-                <strong>🐉 Jugador 2 (Negro)</strong><br>
-                Cárcel: <span id="carcelJ2">0</span>/5<br>
-                Yin-Yang: <span id="yyJ2">1</span><br>
-                <div id="fichasJ2" class="ficha-leyenda"></div>
-            </div>
-        </div>
-        <div class="status" id="statusMsg">
-            Haz clic en una ficha tuya y luego en una casilla de movimiento.
-        </div>
-        <button id="btnReiniciar">🔄 Reiniciar partida</button>
+    <canvas id="tableroCanvas" width="750" height="750"></canvas>
+    <div class="info">
+        🔷 Tablero 15x15 | 🟫 Templos (pirámides 7,5,3,1 arriba y abajo) | ⬜ Jardín central
     </div>
 </div>
 
 <script>
-    // --------------------------------------------------------------
-    // CONFIGURACIÓN DEL TABLERO (15x15)
-    // --------------------------------------------------------------
-    const TAM = 15;          // 15x15
-    const CELL_SIZE = 750 / TAM; // 50px
+    const TAM = 15;               // 15x15
+    const CELL_SIZE = 750 / TAM;  // 50px
 
-    // Jugadores: 0 = Jugador1 (blanco), 1 = Jugador2 (negro)
-    let turno = 0;           // 0: J1, 1: J2
-    let selectedPiece = null; // {row, col, jugador, tipo}
-    let posiblesMovimientos = [];
+    const canvas = document.getElementById('tableroCanvas');
+    const ctx = canvas.getContext('2d');
 
-    // Estructura del tablero: matriz 15x15 de objetos {pieza, jugador, tipo}
-    // tipo: 'F1','F2','F3','F4','F5','YY'
-    let board = Array(TAM).fill().map(() => Array(TAM).fill(null));
-
-    // Cárceles: array de piezas capturadas (cada elemento es {tipo, jugador})
-    let carcel = [[], []];   // carcel[0] para J1, carcel[1] para J2
-    const CARCEL_MAX = 5;
-
-    // Contadores de Yin-Yang restantes (cada jugador empieza con 1)
-    let yinYangCount = [1, 1];
-
-    // Para debug: registrar si alguien ganó
-    let gameOver = false;
-    let winner = null;
-
-    // --------------------------------------------------------------
-    // DEFINICIÓN DE MOVIMIENTOS (versión resumida para programar)
-    // Movimiento base (sin saltos múltiples en esta primera versión)
-    // Pero implementamos saltos simples para F1,F2,F3,F5 y reglas de bloqueo
-    // Para simplificar la primera versión jugable, haremos movimientos de 1 casilla
-    // excepto F5 que tiene doble paso o salto doble (implementaremos solo salto doble sobre dos fichas)
-    // y las reglas de captura/liberación completas.
-    // --------------------------------------------------------------
-
-    // Direcciones
-    const DIRS_8 = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-    const DIRS_DIAG = [[-1,-1],[-1,1],[1,-1],[1,1]];
-    const DIRS_RECT = [[-1,0],[1,0],[0,-1],[0,1]];
-    // Adelante para cada jugador: para J1 (fila 0 es su base?) Definimos adelante = hacia el rival
-    // J1 juega en filas 0-7, J2 en filas 14-7 (centro). Adelante para J1 es +fila, para J2 es -fila.
-    function isAdelante(jugador, fromRow, toRow) {
-        if (jugador === 0) return toRow > fromRow;
-        else return toRow < fromRow;
-    }
-
-    // Obtener tipo de ficha a partir de su string
-    function getTipoFicha(tipo) {
-        // movimientos básicos (sin saltos encadenados por ahora)
-        // En esta versión implementaremos movimiento de 1 celda con reglas de bloqueo/captura
-        // Las fichas que pueden saltar: F1,F2,F3,F5 (F4 no puede saltar ni ser comida)
-        // Para simplificar, los saltos serán opcionales de 1 sobre enemigo (captura)
-        // Pero F5 además puede saltar dos piezas seguidas (solo si están consecutivas)
-        // Más adelante se puede expandir.
-    }
-
-    // Función para verificar si un movimiento es válido (sin salto)
-    function esMovimientoSimple(pieza, fromRow, fromCol, toRow, toCol, jugador) {
-        const tipo = pieza.tipo;
-        const dr = toRow - fromRow;
-        const dc = toCol - fromCol;
-        const absDr = Math.abs(dr);
-        const absDc = Math.abs(dc);
-
-        // No moverse al mismo sitio
-        if (dr === 0 && dc === 0) return false;
-        // La casilla destino debe estar vacía o tener pieza enemiga (captura)
-        const dest = board[toRow][toCol];
-        if (dest && dest.jugador === jugador) return false; // amiga
-
-        // Ficha 4: no puede moverse si hay cualquier pieza (bloqueo) y no come
-        if (tipo === 'F4') {
-            // solo mueve 1 casilla en cualquier dirección, siempre que destino vacío
-            if ((absDr === 1 && absDc <= 1) || (absDc === 1 && absDr <= 1)) {
-                return dest === null;
-            }
-            return false;
+    // Función para saber si una casilla pertenece al templo superior (jugador 1) o inferior (jugador 2)
+    // Templo superior: filas 0,1,2,3 con forma de pirámide centrada: 
+    // fila 0: 7 casillas centrales
+    // fila 1: 5 centrales
+    // fila 2: 3 centrales
+    // fila 3: 1 central
+    // Templo inferior: filas 14,13,12,11 igual pero simétrico.
+    function esTemploSuperior(fila, col) {
+        if (fila === 0) {
+            let inicio = (TAM - 7) / 2;  // (15-7)/2 = 4
+            return col >= inicio && col < inicio + 7;
         }
-
-        // Ficha YY (Yin-Yang): movimiento de rey (1 casilla), captura solo en piso superior/techo
-        if (tipo === 'YY') {
-            if ((absDr <= 1 && absDc <= 1) && !(dr===0 && dc===0)) {
-                // Si hay enemigo, solo puede capturar si está en piso superior/techo (simplificamos: filas templo)
-                // Definimos piso superior: para J1 filas 0-3? Lo manejaremos después
-                if (dest && dest.jugador !== jugador) {
-                    // necesita estar en zona de captura (fila del templo superior enemigo)
-                    // por ahora permitimos captura solo en las primeras 4 filas para J2 o últimas para J1
-                    if ((jugador === 0 && toRow <= 3) || (jugador === 1 && toRow >= TAM-4)) {
-                        return true;
-                    } else return false;
-                }
-                return dest === null;
-            }
-            return false;
+        if (fila === 1) {
+            let inicio = (TAM - 5) / 2;  // (15-5)/2 = 5
+            return col >= inicio && col < inicio + 5;
         }
-
-        // F1, F2, F3, F5: Movimiento de 1 casilla en direcciones permitidas
-        let direccionesPermitidas = [];
-        if (tipo === 'F1') direccionesPermitidas = DIRS_DIAG;
-        else if (tipo === 'F2') direccionesPermitidas = DIRS_RECT;
-        else if (tipo === 'F3') direccionesPermitidas = DIRS_8;
-        else if (tipo === 'F5') {
-            // F5 solo hacia adelante (recta o diagonal)
-            if (jugador === 0) direccionesPermitidas = [[1,0],[1,1],[1,-1]];
-            else direccionesPermitidas = [[-1,0],[-1,1],[-1,-1]];
+        if (fila === 2) {
+            let inicio = (TAM - 3) / 2;  // (15-3)/2 = 6
+            return col >= inicio && col < inicio + 3;
         }
-
-        // Verificar si el movimiento está en direcciones permitidas y distancia 1
-        let valido = false;
-        for (let d of direccionesPermitidas) {
-            if (dr === d[0] && dc === d[1]) {
-                valido = true;
-                break;
-            }
-        }
-        if (!valido) return false;
-
-        // Captura: si destino enemigo -> está permitido (si la ficha puede capturar)
-        if (dest && dest.jugador !== jugador) {
-            // Ficha 4 no puede capturar (ya filtrado), F3,F1,F2,F5 y YY sí.
-            if (tipo !== 'F4') return true;
-            else return false;
-        }
-        // Movimiento a vacío
-        return dest === null;
-    }
-
-    // Movimiento especial F5: salto doble (sobre dos piezas consecutivas)
-    function esSaltoDobleF5(jugador, fromRow, fromCol, toRow, toCol) {
-        const tipo = board[fromRow][fromCol].tipo;
-        if (tipo !== 'F5') return false;
-        const dr = toRow - fromRow;
-        const dc = toCol - fromCol;
-        const absDr = Math.abs(dr);
-        const absDc = Math.abs(dc);
-        // Salto doble: debe ser dirección recta o diagonal hacia adelante, dos pasos
-        // Las dos casillas intermedias deben contener piezas (amigas o enemigas)
-        if (jugador === 0 && dr <= 0) return false;
-        if (jugador === 1 && dr >= 0) return false;
-        // Distancia de 2 en fila y columna a lo sumo 2
-        if ((absDr === 2 && absDc === 0) || (absDr === 0 && absDc === 2) || (absDr === 2 && absDc === 2)) {
-            let midRow = (fromRow + toRow) / 2;
-            let midCol = (fromCol + toCol) / 2;
-            if (midRow !== Math.floor(midRow) || midCol !== Math.floor(midCol)) return false;
-            const step1Row = fromRow + dr/2;
-            const step1Col = fromCol + dc/2;
-            const midPiece = board[step1Row][step1Col];
-            const destPiece = board[toRow][toCol];
-            if (!midPiece) return false; // debe haber pieza en medio
-            // La segunda pieza está en la casilla de destino? No, el salto doble aterriza detrás de la segunda pieza
-            // Necesitamos que haya otra pieza en la casilla intermedia? Reinterpretemos: salto sobre dos fichas consecutivas
-            // significa que hay ficha en step1 y también otra en step2? La casilla destino debe estar vacía.
-            // Vamos a hacerlo simple: hay una pieza en (step1) y otra en (toRow - dr/2, toCol - dc/2)?? Es confuso.
-            // Para no complicar, en esta versión inicial desactivamos salto doble, o implementamos solo salto simple.
-            // Dado que el usuario quiere algo funcional, pondré solo movimiento simple para F5 y luego él expande.
-            return false;
+        if (fila === 3) {
+            let inicio = (TAM - 1) / 2;  // (15-1)/2 = 7
+            return col === inicio;
         }
         return false;
     }
 
-    // Generar movimientos posibles para una pieza (incluye capturas simples)
-    function obtenerMovimientos(row, col, jugador, pieza) {
-        let moves = [];
-        const tipo = pieza.tipo;
-        // Movimientos de 1 celda
-        for (let i = 0; i < TAM; i++) {
-            for (let j = 0; j < TAM; j++) {
-                if (esMovimientoSimple(pieza, row, col, i, j, jugador)) {
-                    moves.push([i,j]);
-                }
-            }
+    function esTemploInferior(fila, col) {
+        if (fila === 14) {
+            let inicio = (TAM - 7) / 2;
+            return col >= inicio && col < inicio + 7;
         }
-        // TODO: Saltos múltiples (F1,F2,F3) en futura versión
-        return moves;
-    }
-
-    // Ejecutar movimiento
-    function moverPieza(fromRow, fromCol, toRow, toCol) {
-        const pieza = board[fromRow][fromCol];
-        const jugador = pieza.jugador;
-        const dest = board[toRow][toCol];
-        let esCaptura = false;
-        let piezaCapturada = null;
-
-        // Captura
-        if (dest && dest.jugador !== jugador) {
-            esCaptura = true;
-            piezaCapturada = dest;
-            // Eliminar la pieza del tablero
-            board[toRow][toCol] = null;
-            // Ver si es eliminación directa o va a la cárcel
-            // Regla: captura dentro del templo propio -> eliminación permanente
-            // El templo propio: para J1 filas 0-3? Definimos templo propio como las primeras 4 filas para J1, últimas 4 para J2.
-            const esTemploPropio = (jugador === 0 && toRow < 4) || (jugador === 1 && toRow > TAM-5);
-            if (esTemploPropio) {
-                // Eliminación directa (no va a cárcel)
-                agregarMensaje(`¡Eliminación directa! ${getNombreFicha(piezaCapturada.tipo)} enemigo desaparece.`);
-            } else {
-                // Va a la cárcel si hay espacio
-                if (carcel[jugador].length < CARCEL_MAX) {
-                    carcel[jugador].push(piezaCapturada);
-                    agregarMensaje(`Captura: ${getNombreFicha(piezaCapturada.tipo)} enviado a la cárcel.`);
-                } else {
-                    agregarMensaje(`Cárcel llena, la pieza enemiga es eliminada directamente.`);
-                }
-            }
-            // Si la pieza capturada es Yin-Yang, reducir contador y ver derrota
-            if (piezaCapturada.tipo === 'YY') {
-                yinYangCount[jugador === 0 ? 1 : 0]--; // el oponente pierde un YY
-                agregarMensaje(`¡El Yin-Yang enemigo ha sido capturado!`);
-                if (yinYangCount[jugador === 0 ? 1 : 0] === 0) {
-                    gameOver = true;
-                    winner = jugador;
-                    agregarMensaje(`¡Jugador ${jugador+1} ha eliminado el Yin-Yang y GANA!`);
-                }
-            }
+        if (fila === 13) {
+            let inicio = (TAM - 5) / 2;
+            return col >= inicio && col < inicio + 5;
         }
-
-        // Mover pieza
-        board[fromRow][fromCol] = null;
-        board[toRow][toCol] = pieza;
-
-        // Liberación: si hubo captura fuera del templo propio, se libera una pieza de la cárcel
-        if (esCaptura && !((jugador === 0 && toRow < 4) || (jugador === 1 && toRow > TAM-5))) {
-            if (carcel[jugador].length > 0) {
-                const liberada = carcel[jugador].pop();
-                // Colocar en piso inferior del templo (buscar casilla vacía en las filas templo)
-                let colocada = false;
-                const filasTemplo = (jugador === 0) ? [0,1,2,3] : [TAM-1, TAM-2, TAM-3, TAM-4];
-                for (let f of filasTemplo) {
-                    for (let c = 0; c < TAM; c++) {
-                        if (!board[f][c]) {
-                            board[f][c] = liberada;
-                            colocada = true;
-                            agregarMensaje(`Se liberó un ${getNombreFicha(liberada.tipo)} en el templo.`);
-                            break;
-                        }
-                    }
-                    if (colocada) break;
-                }
-            }
+        if (fila === 12) {
+            let inicio = (TAM - 3) / 2;
+            return col >= inicio && col < inicio + 3;
         }
-
-        // Cambiar turno
-        turno = 1 - turno;
-        actualizarUI();
-        dibujarTablero();
-        selectedPiece = null;
-    }
-
-    // Helper nombre ficha
-    function getNombreFicha(tipo) {
-        const nombres = { F1:'Conejo', F2:'Serpiente', F3:'Dragón', F4:'Fénix', F5:'Kitsune', YY:'Yin-Yang' };
-        return nombres[tipo] || tipo;
-    }
-
-    // Inicializar tablero con las pirámides 7,5,3,1 para cada templo
-    function inicializarJuego() {
-        board = Array(TAM).fill().map(() => Array(TAM).fill(null));
-        carcel = [[], []];
-        yinYangCount = [1, 1];
-        turno = 0;
-        gameOver = false;
-        winner = null;
-
-        // Distribución de fichas según cantidades:
-        // Jugador 0 (blanco) en filas superiores (0-3), Jugador 1 (negro) en filas inferiores (14-11)
-        const fichasPorTipo = {
-            'F1': 3, 'F2': 4, 'F3': 2, 'F4': 5, 'F5': 1, 'YY': 1
-        };
-        const ordenTipo = ['F5','F3','F1','F2','F4','YY'];
-        // Forma pirámide: fila0:7, fila1:5, fila2:3, fila3:1 casillas centradas
-        const piramide = [7,5,3,1];
-        for (let jug = 0; jug <= 1; jug++) {
-            let filasBase = (jug === 0) ? [0,1,2,3] : [TAM-1, TAM-2, TAM-3, TAM-4];
-            let idxTipo = 0;
-            for (let i = 0; i < piramide.length; i++) {
-                let numCasillas = piramide[i];
-                let fila = filasBase[i];
-                let inicioCol = Math.floor((TAM - numCasillas) / 2);
-                for (let c = inicioCol; c < inicioCol + numCasillas; c++) {
-                    if (idxTipo >= ordenTipo.length) break;
-                    let tipo = ordenTipo[idxTipo];
-                    let cantidad = fichasPorTipo[tipo];
-                    if (cantidad > 0) {
-                        board[fila][c] = { jugador: jug, tipo: tipo };
-                        fichasPorTipo[tipo]--;
-                        if (fichasPorTipo[tipo] === 0) idxTipo++;
-                    } else {
-                        idxTipo++;
-                        if (idxTipo < ordenTipo.length) tipo = ordenTipo[idxTipo];
-                        board[fila][c] = { jugador: jug, tipo: tipo };
-                        fichasPorTipo[tipo]--;
-                        if (fichasPorTipo[tipo] === 0) idxTipo++;
-                    }
-                }
-            }
+        if (fila === 11) {
+            let inicio = (TAM - 1) / 2;
+            return col === inicio;
         }
-        // Restaurar contador de fichas (por si acaso)
-        actualizarUI();
-        dibujarTablero();
+        return false;
     }
-
-    // UI y dibujo
-    const canvas = document.getElementById('tableroCanvas');
-    const ctx = canvas.getContext('2d');
 
     function dibujarTablero() {
-        ctx.clearRect(0, 0, 750, 750);
-        for (let i = 0; i < TAM; i++) {
-            for (let j = 0; j < TAM; j++) {
-                let x = j * CELL_SIZE;
-                let y = i * CELL_SIZE;
-                // Color de fondo
-                let colorBase = (i+j) % 2 === 0 ? '#c2a575' : '#e5d3aa';
-                ctx.fillStyle = colorBase;
-                ctx.fillRect(x, y, CELL_SIZE-1, CELL_SIZE-1);
-                ctx.strokeStyle = '#b38b40';
-                ctx.strokeRect(x, y, CELL_SIZE-1, CELL_SIZE-1);
-                let pieza = board[i][j];
-                if (pieza) {
-                    let color = pieza.jugador === 0 ? '#f0f0f0' : '#2a2a2a';
-                    ctx.beginPath();
-                    ctx.arc(x+CELL_SIZE/2, y+CELL_SIZE/2, CELL_SIZE*0.35, 0, 2*Math.PI);
-                    ctx.fillStyle = color;
-                    ctx.fill();
-                    ctx.strokeStyle = '#000';
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
-                    ctx.fillStyle = pieza.jugador === 0 ? '#000' : '#fff';
-                    ctx.font = `bold ${CELL_SIZE*0.35}px monospace`;
-                    ctx.fillText(pieza.tipo, x+CELL_SIZE*0.33, y+CELL_SIZE*0.65);
+        for (let fila = 0; fila < TAM; fila++) {
+            for (let col = 0; col < TAM; col++) {
+                let x = col * CELL_SIZE;
+                let y = fila * CELL_SIZE;
+
+                // Determinar color de fondo
+                let color;
+                if (esTemploSuperior(fila, col)) {
+                    color = '#c9a87b'; // marrón claro (templo superior)
+                } else if (esTemploInferior(fila, col)) {
+                    color = '#b87c4f'; // marrón más oscuro (templo inferior)
+                } else {
+                    // Jardín central: alternar colores tipo dama
+                    color = (fila + col) % 2 === 0 ? '#a2c48a' : '#6b8c42';
                 }
-                if (selectedPiece && selectedPiece.row === i && selectedPiece.col === j) {
-                    ctx.strokeStyle = '#ffaa33';
-                    ctx.lineWidth = 4;
-                    ctx.strokeRect(x+2, y+2, CELL_SIZE-5, CELL_SIZE-5);
-                }
+
+                ctx.fillStyle = color;
+                ctx.fillRect(x, y, CELL_SIZE - 0.5, CELL_SIZE - 0.5);
+
+                // Borde sutil
+                ctx.strokeStyle = '#3a2a1a';
+                ctx.lineWidth = 0.5;
+                ctx.strokeRect(x, y, CELL_SIZE, CELL_SIZE);
+
+                // Opcional: marcar el centro de cada casilla con un puntito o número (para debug)
+                ctx.fillStyle = '#00000088';
+                ctx.font = `${CELL_SIZE * 0.24}px monospace`;
+                ctx.fillText(`${fila},${col}`, x + CELL_SIZE*0.1, y + CELL_SIZE*0.4);
             }
         }
+
+        // Dibujar un borde grueso alrededor del tablero
+        ctx.strokeStyle = '#c9a87b';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
     }
 
-    function actualizarUI() {
-        document.getElementById('carcelJ1').innerText = carcel[0].length;
-        document.getElementById('carcelJ2').innerText = carcel[1].length;
-        document.getElementById('yyJ1').innerText = yinYangCount[0];
-        document.getElementById('yyJ2').innerText = yinYangCount[1];
-        document.getElementById('turnoTexto').innerHTML = `Turno: Jugador ${turno+1}`;
-        if (gameOver) {
-            document.getElementById('statusMsg').innerHTML = `🏆 GAME OVER - Gana Jugador ${winner+1} 🏆`;
-        }
-    }
-
-    let messageQueue = [];
-    function agregarMensaje(msg) {
-        messageQueue.unshift(msg);
-        if (messageQueue.length > 5) messageQueue.pop();
-        document.getElementById('statusMsg').innerHTML = messageQueue.join('<br>');
-    }
-
-    canvas.addEventListener('click', (e) => {
-        if (gameOver) return;
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const mouseX = (e.clientX - rect.left) * scaleX;
-        const mouseY = (e.clientY - rect.top) * scaleY;
-        const col = Math.floor(mouseX / CELL_SIZE);
-        const row = Math.floor(mouseY / CELL_SIZE);
-        if (row < 0 || row >= TAM || col < 0 || col >= TAM) return;
-
-        if (selectedPiece === null) {
-            const pieza = board[row][col];
-            if (pieza && pieza.jugador === turno) {
-                selectedPiece = { row, col, jugador: pieza.jugador, tipo: pieza.tipo };
-                posiblesMovimientos = obtenerMovimientos(row, col, turno, pieza);
-                dibujarTablero();
-                // Dibujar posibles movimientos
-                for (let [r,c] of posiblesMovimientos) {
-                    ctx.fillStyle = '#88ff88aa';
-                    ctx.fillRect(c*CELL_SIZE, r*CELL_SIZE, CELL_SIZE-1, CELL_SIZE-1);
-                }
-            } else {
-                agregarMensaje("Selecciona una ficha propia.");
-            }
-        } else {
-            // Movimiento
-            let valido = false;
-            for (let [r,c] of posiblesMovimientos) {
-                if (r === row && c === col) {
-                    valido = true;
-                    break;
-                }
-            }
-            if (valido) {
-                moverPieza(selectedPiece.row, selectedPiece.col, row, col);
-                selectedPiece = null;
-                posiblesMovimientos = [];
-                dibujarTablero();
-                if (gameOver) actualizarUI();
-            } else {
-                agregarMensaje("Movimiento no válido.");
-                selectedPiece = null;
-                dibujarTablero();
-            }
-        }
-    });
-
-    document.getElementById('btnReiniciar').addEventListener('click', () => {
-        inicializarJuego();
-        selectedPiece = null;
-        gameOver = false;
-        messageQueue = [];
-        agregarMensaje("Partida reiniciada.");
-        actualizarUI();
-        dibujarTablero();
-    });
-
-    inicializarJuego();
     dibujarTablero();
+
+    // Para que no se vea borroso si redimensionan (opcional)
+    window.addEventListener('resize', () => {
+        // no hacemos nada porque el canvas tiene tamaño fijo
+    });
 </script>
 </body>
 </html>
