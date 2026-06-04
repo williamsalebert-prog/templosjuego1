@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tablero Templos - Pirámides Horizontales 7,5,3,1</title>
+    <title>Templos - Colores corregidos (rojo claro, no blanco)</title>
     <style>
         body {
             background: #1a472a;
@@ -12,53 +12,78 @@
             align-items: center;
             min-height: 100vh;
         }
+        .game-container {
+            background: #2c5e2e;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
         canvas {
-            box-shadow: 0 0 0 6px #c9a87b, 0 0 0 12px #6b3e1c;
-            border-radius: 12px;
+            box-shadow: 0 0 0 4px #c9a87b, 0 0 0 8px #6b3e1c;
+            border-radius: 8px;
+        }
+        .info {
+            margin-top: 15px;
+            text-align: center;
+            color: #f9e0a0;
+            background: #2d2b1fcc;
+            padding: 8px;
+            border-radius: 16px;
         }
     </style>
 </head>
 <body>
-<canvas id="tableroCanvas" width="750" height="750"></canvas>
+<div class="game-container">
+    <canvas id="tableroCanvas" width="1150" height="750"></canvas>
+    <div class="info">
+        Templo Izquierdo: rojo oscuro y rojo claro (casi blanco) | Jardín: verdes | Templo Derecho: azul oscuro y azul claro<br>
+        Patrón ajedrez invertido (claro en par, oscuro en impar)
+    </div>
+</div>
+
 <script>
-    const TAM = 15;
-    const CELL_SIZE = 750 / TAM; // 50px
+    const FILAS = 15;
+    const COLUMNAS = 23;
+    const CELL_SIZE = 750 / FILAS;
     const canvas = document.getElementById('tableroCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Función que determina el tipo de celda según fila (i) y columna (j)
-    function getTipoCelda(i, j) {
-        // Templo izquierdo (jugador 1) - columnas 0 a 3
-        if (j === 0 && i >= 4 && i <= 10) return 'templo1';      // 7 casillas
-        if (j === 1 && i >= 5 && i <= 9) return 'templo1';       // 5 casillas
-        if (j === 2 && i >= 6 && i <= 8) return 'templo1';       // 3 casillas
-        if (j === 3 && i === 7) return 'templo1';                // 1 casilla
-
-        // Templo derecho (jugador 2) - columnas 14 a 11
-        if (j === 14 && i >= 4 && i <= 10) return 'templo2';
-        if (j === 13 && i >= 5 && i <= 9) return 'templo2';
-        if (j === 12 && i >= 6 && i <= 8) return 'templo2';
-        if (j === 11 && i === 7) return 'templo2';
-
-        // Jardín: columnas 4 a 10, todas las filas (0 a 14)
-        if (j >= 4 && j <= 10) return 'jardin';
-
-        // Cualquier otra celda (esquinas fuera de las pirámides) no jugable
+    function getZona(fila, col) {
+        // Templo izquierdo: 1,3,5,7 desde el borde (col0=1, col1=3, col2=5, col3=7)
+        if (col === 0 && fila === 7) return 'templo1';
+        if (col === 1 && fila >= 6 && fila <= 8) return 'templo1';
+        if (col === 2 && fila >= 5 && fila <= 9) return 'templo1';
+        if (col === 3 && fila >= 4 && fila <= 10) return 'templo1';
+        // Templo derecho
+        if (col === 22 && fila === 7) return 'templo2';
+        if (col === 21 && fila >= 6 && fila <= 8) return 'templo2';
+        if (col === 20 && fila >= 5 && fila <= 9) return 'templo2';
+        if (col === 19 && fila >= 4 && fila <= 10) return 'templo2';
+        // Jardín
+        if (col >= 4 && col <= 18) return 'jardin';
         return 'vacio';
     }
 
+    // Colores: claro en par, oscuro en impar (invertido respecto al principio)
+    const colores = {
+        templo1: { par: '#FFCCCC', impar: '#CC0000' },   // rojo claro y oscuro
+        templo2: { par: '#BBDFFF', impar: '#1E3A8A' },   // azul claro y oscuro
+        jardin:  { par: '#B0E0B0', impar: '#228B22' },   // verde claro y oscuro
+        vacio:   { par: '#2c2c2c', impar: '#2c2c2c' }
+    };
+
     function dibujar() {
-        for (let i = 0; i < TAM; i++) {
-            for (let j = 0; j < TAM; j++) {
+        for (let i = 0; i < FILAS; i++) {
+            for (let j = 0; j < COLUMNAS; j++) {
                 const x = j * CELL_SIZE;
                 const y = i * CELL_SIZE;
-                const tipo = getTipoCelda(i, j);
+                const zona = getZona(i, j);
+                const esPar = (i + j) % 2 === 0;
                 let color;
-                switch (tipo) {
-                    case 'templo1': color = '#e6c394'; break;
-                    case 'templo2': color = '#b78f5a'; break;
-                    case 'jardin': color = '#5a9e4e'; break;
-                    default: color = '#2c2c2c';
+                if (zona === 'vacio') {
+                    color = colores.vacio.par;
+                } else {
+                    color = esPar ? colores[zona].par : colores[zona].impar;
                 }
                 ctx.fillStyle = color;
                 ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
