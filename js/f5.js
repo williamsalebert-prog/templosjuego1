@@ -24,7 +24,7 @@ class F5 extends Pieza {
                 destinos.add(clave1);
                 if (!caminos[clave1]) caminos[clave1] = [{ tipo: 'move', to: [nf1, nc1] }];
 
-                // 2 pasos (si la primera casilla está libre)
+                // 2 pasos (solo si la primera casilla está libre)
                 let nf2 = fila + df * 2, nc2 = col + dc * 2;
                 if (nf2 >= 0 && nf2 < FILAS && nc2 >= 0 && nc2 < COLUMNAS &&
                     board[nf2][nc2] === null && esJugable(nf2, nc2)) {
@@ -35,41 +35,45 @@ class F5 extends Pieza {
             }
         }
 
-        // 2. Saltos (simple y doble) siempre disponibles como alternativa
+        // 2. Saltos sobre una pieza (simple y extendido)
         for (let [df, dc] of dirs) {
-            // Salto simple (sobre 1 pieza)
-            let over1f = fila + df, over1c = col + dc;
-            let land1f = fila + df * 2, land1c = col + dc * 2;
-            if (over1f >= 0 && over1f < FILAS && over1c >= 0 && over1c < COLUMNAS &&
-                board[over1f][over1c] !== null &&
-                land1f >= 0 && land1f < FILAS && land1c >= 0 && land1c < COLUMNAS &&
-                board[land1f][land1c] === null && esJugable(land1f, land1c)) {
-                let piezaSaltada = board[over1f][over1c];
-                // Solo se puede saltar si es enemiga y la captura está permitida, o si es amiga (sin capturar)
-                if (piezaSaltada.jugador === jugador || capturaPermitida('F5', piezaSaltada)) {
-                    let clave = `${land1f},${land1c}`;
-                    destinos.add(clave);
-                    if (!caminos[clave]) caminos[clave] = [{ tipo: 'jump', over: [over1f, over1c], to: [land1f, land1c] }];
-                }
-            }
+            let over1f = fila + df, over1c = col + dc;          // pieza a saltar
+            if (over1f < 0 || over1f >= FILAS || over1c < 0 || over1c >= COLUMNAS) continue;
+            let piezaSaltada = board[over1f][over1c];
+            if (piezaSaltada === null) continue;               // no hay pieza
 
-            // Salto doble (sobre 2 piezas consecutivas)
-            let over2f = fila + df * 2, over2c = col + dc * 2;
-            let land2f = fila + df * 3, land2c = col + dc * 3;
-            if (over2f >= 0 && over2f < FILAS && over2c >= 0 && over2c < COLUMNAS &&
-                board[over1f]?.[over1c] !== null &&
-                board[over2f]?.[over2c] !== null &&
-                land2f >= 0 && land2f < FILAS && land2c >= 0 && land2c < COLUMNAS &&
-                board[land2f][land2c] === null && esJugable(land2f, land2c)) {
-                let pieza1 = board[over1f][over1c];
-                let pieza2 = board[over2f][over2c];
-                // Ambas deben ser saltables (amigas o enemigas capturables)
-                let perm1 = (pieza1.jugador === jugador || capturaPermitida('F5', pieza1));
-                let perm2 = (pieza2.jugador === jugador || capturaPermitida('F5', pieza2));
-                if (perm1 && perm2) {
-                    let clave = `${land2f},${land2c}`;
-                    destinos.add(clave);
-                    if (!caminos[clave]) caminos[clave] = [{ tipo: 'jump', over: [over1f, over1c], to: [land2f, land2c], doble: true }];
+            // Verificar si podemos saltar sobre esta pieza (amiga o enemiga capturable)
+            if (piezaSaltada.jugador === jugador ||
+                capturaPermitida('F5', piezaSaltada)) {
+
+                // Salto simple (aterrizar justo detrás de la pieza)
+                let land1f = fila + df * 2, land1c = col + dc * 2;
+                if (land1f >= 0 && land1f < FILAS && land1c >= 0 && land1c < COLUMNAS &&
+                    board[land1f][land1c] === null && esJugable(land1f, land1c)) {
+                    let clave1 = `${land1f},${land1c}`;
+                    destinos.add(clave1);
+                    if (!caminos[clave1]) caminos[clave1] = [{
+                        tipo: 'jump',
+                        over: [over1f, over1c],
+                        to: [land1f, land1c]
+                    }];
+                }
+
+                // Salto extendido (aterrizar dos casillas detrás de la pieza)
+                let land2f = fila + df * 3, land2c = col + dc * 3;
+                // Debe estar vacía la casilla intermedia (fila+df*2) y la final
+                let interF = fila + df * 2, interC = col + dc * 2;
+                if (interF >= 0 && interF < FILAS && interC >= 0 && interC < COLUMNAS &&
+                    board[interF][interC] === null &&
+                    land2f >= 0 && land2f < FILAS && land2c >= 0 && land2c < COLUMNAS &&
+                    board[land2f][land2c] === null && esJugable(land2f, land2c)) {
+                    let clave2 = `${land2f},${land2c}`;
+                    destinos.add(clave2);
+                    if (!caminos[clave2]) caminos[clave2] = [{
+                        tipo: 'jump',
+                        over: [over1f, over1c],
+                        to: [land2f, land2c]
+                    }];
                 }
             }
         }
