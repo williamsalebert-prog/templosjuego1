@@ -1,4 +1,4 @@
-console.log("✅ f1.js cargado");
+console.log("✅ f1 a.js cargado");
 
 class F1 extends Pieza {
     constructor(jugador) {
