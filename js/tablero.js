@@ -184,49 +184,49 @@ function aplicarMovimiento(origen, destino) {
 function iniciarJuego() {
     board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
 
-    // Templo izquierdo (jugador 0, rojo) - Pirámide 1,3,5,7 con columnas 0-6
-    // Fila 4 (1 celda): col 3
-    board[4][3] = new F1(0);
-    // Fila 5 (3 celdas): cols 2,3,4
-    board[5][2] = new F4(0);
-    board[5][3] = new F1(0);
-    board[5][4] = new F5(0);
-    // Fila 6 (5 celdas): cols 1,2,3,4,5
-    board[6][1] = new F5(0);
-    board[6][2] = new F2(0);
-    board[6][3] = new F1(0);
-    board[6][4] = new F2(0);
-    board[6][5] = new F1(0);
-    // Fila 7 (7 celdas): cols 0,1,2,3,4,5,6
-    board[7][0] = new F6(0);
+    // Templo izquierdo (jugador 0) – Pirámide horizontal, columnas 0-3
+    // Columna 0: filas 4 a 10 (7)
+    board[4][0] = new F1(0);
+    board[5][0] = new F1(0);
+    board[6][0] = new F1(0);
+    board[7][0] = new F6(0);   // F6 protegida al fondo
+    board[8][0] = new F1(0);
+    board[9][0] = new F1(0);
+    board[10][0] = new F1(0);
+    // Columna 1: filas 5 a 9 (5)
+    board[5][1] = new F5(0);
+    board[6][1] = new F2(0);
     board[7][1] = new F5(0);
-    board[7][2] = new F1(0);
-    board[7][3] = new F2(0);
-    board[7][4] = new F4(0);
-    board[7][5] = new F1(0);
-    board[7][6] = new F1(0);
+    board[8][1] = new F2(0);
+    board[9][1] = new F5(0);
+    // Columna 2: filas 6 a 8 (3)
+    board[6][2] = new F4(0);
+    board[7][2] = new F2(0);
+    board[8][2] = new F4(0);
+    // Columna 3: fila 7 (1, la punta)
+    board[7][3] = new F1(0);   // esta F1 coronará fácilmente
 
-    // Templo derecho (jugador 1, azul) - Espejo: columnas 16-22
-    // Fila 4 (1 celda): col 19
-    board[4][19] = new F1(1);
-    // Fila 5 (3 celdas): cols 18,19,20
-    board[5][18] = new F4(1);
-    board[5][19] = new F1(1);
-    board[5][20] = new F5(1);
-    // Fila 6 (5 celdas): cols 17,18,19,20,21
-    board[6][17] = new F5(1);
-    board[6][18] = new F2(1);
-    board[6][19] = new F1(1);
-    board[6][20] = new F2(1);
-    board[6][21] = new F1(1);
-    // Fila 7 (7 celdas): cols 16,17,18,19,20,21,22
-    board[7][16] = new F6(1);
-    board[7][17] = new F5(1);
-    board[7][18] = new F1(1);
-    board[7][19] = new F2(1);
-    board[7][20] = new F4(1);
-    board[7][21] = new F1(1);
-    board[7][22] = new F1(1);
+    // Templo derecho (jugador 1) – Espejo, columnas 19-22
+    // Columna 22: filas 4 a 10 (7)
+    board[4][22] = new F1(1);
+    board[5][22] = new F1(1);
+    board[6][22] = new F1(1);
+    board[7][22] = new F6(1);
+    board[8][22] = new F1(1);
+    board[9][22] = new F1(1);
+    board[10][22] = new F1(1);
+    // Columna 21: filas 5 a 9 (5)
+    board[5][21] = new F5(1);
+    board[6][21] = new F2(1);
+    board[7][21] = new F5(1);
+    board[8][21] = new F2(1);
+    board[9][21] = new F5(1);
+    // Columna 20: filas 6 a 8 (3)
+    board[6][20] = new F4(1);
+    board[7][20] = new F2(1);
+    board[8][20] = new F4(1);
+    // Columna 19: fila 7 (1)
+    board[7][19] = new F1(1);   // punta
 
     turno = 0;
     selectedPiece = null;
