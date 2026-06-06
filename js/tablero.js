@@ -1,4 +1,4 @@
-console.log("✅ tablero.js cargado");
+console.log("✅ tablero 2.js cargado");
 const canvas = document.getElementById('tableroCanvas');
 const ctx = canvas.getContext('2d');
 const btnDeshacer = document.getElementById('btnDeshacer');
@@ -142,49 +142,91 @@ function aplicarMovimiento(origen, destino) {
             board[f][c] = null;
             board[nf][nc] = pieza;
             f = nf; c = nc;
- } else if (paso.tipo === 'jump') {
-    let [of, oc] = paso.over;
-    let [nf, nc] = paso.to;
-    // Capturar la pieza sobre la que se salta si es enemiga
-    let piezaSaltada = board[of][oc];
-    if (piezaSaltada && piezaSaltada.jugador !== jugador) {
-        // F4 solo puede ser capturada por F6
-        if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F6') {
-            // no se captura
-        } else {
-            carcela.agregar(piezaSaltada);
-            board[of][oc] = null;
+        } else if (paso.tipo === 'jump') {
+            let [of, oc] = paso.over;
+            let [nf, nc] = paso.to;
+            // Capturar la pieza sobre la que se salta si es enemiga
+            let piezaSaltada = board[of][oc];
+            if (piezaSaltada && piezaSaltada.jugador !== jugador) {
+                // F4 solo puede ser capturada por F6
+                if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F6') {
+                    // no se captura
+                } else {
+                    carcela.agregar(piezaSaltada);
+                    board[of][oc] = null;
+                }
+            }
+            board[f][c] = null;
+            board[nf][nc] = pieza;
+            f = nf; c = nc;
         }
     }
-    board[f][c] = null;
-    board[nf][nc] = pieza;
-    f = nf; c = nc;
-}
-        
+
+    // Coronación de F1 al llegar al templo enemigo
+    if (pieza.tipo === 'F1') {
+        let zona = getZona(f, c);
+        if ((jugador === 0 && zona === 'templo2') || (jugador === 1 && zona === 'templo1')) {
+            let eleccion = prompt("Elige coronación:\n2 = F2\n5 = F5");
+            if (eleccion === '2') {
+                board[f][c] = new F2(jugador);
+            } else if (eleccion === '5') {
+                board[f][c] = new F5(jugador);
+            } else {
+                // Por defecto F2
+                board[f][c] = new F2(jugador);
+            }
+        }
     }
+
     return true;
 }
 
 function iniciarJuego() {
     board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
 
-    // Templo izquierdo (jugador 0, rojo)
-    board[4][3] = new F4(0);
-    board[5][2] = new F3(0); board[5][3] = new F1(0);
-    board[6][1] = new F3(0); board[6][2] = new F2(0); board[6][3] = new F1(0);
-    board[7][0] = new F6(0); board[7][1] = new F5(0); board[7][2] = new F2(0); board[7][3] = new F1(0);
-    board[8][1] = new F3(0); board[8][2] = new F2(0); board[8][3] = new F1(0);
-    board[9][2] = new F3(0); board[9][3] = new F1(0);
-    board[10][3] = new F4(0);
+    // Templo izquierdo (jugador 0, rojo) - Pirámide 1,3,5,7 con columnas 0-6
+    // Fila 4 (1 celda): col 3
+    board[4][3] = new F1(0);
+    // Fila 5 (3 celdas): cols 2,3,4
+    board[5][2] = new F4(0);
+    board[5][3] = new F1(0);
+    board[5][4] = new F5(0);
+    // Fila 6 (5 celdas): cols 1,2,3,4,5
+    board[6][1] = new F5(0);
+    board[6][2] = new F2(0);
+    board[6][3] = new F1(0);
+    board[6][4] = new F2(0);
+    board[6][5] = new F1(0);
+    // Fila 7 (7 celdas): cols 0,1,2,3,4,5,6
+    board[7][0] = new F6(0);
+    board[7][1] = new F5(0);
+    board[7][2] = new F1(0);
+    board[7][3] = new F2(0);
+    board[7][4] = new F4(0);
+    board[7][5] = new F1(0);
+    board[7][6] = new F1(0);
 
-    // Templo derecho (jugador 1, azul)
-    board[4][19] = new F4(1);
-    board[5][20] = new F3(1); board[5][19] = new F1(1);
-    board[6][21] = new F3(1); board[6][20] = new F2(1); board[6][19] = new F1(1);
-    board[7][22] = new F6(1); board[7][21] = new F5(1); board[7][20] = new F2(1); board[7][19] = new F1(1);
-    board[8][21] = new F3(1); board[8][20] = new F2(1); board[8][19] = new F1(1);
-    board[9][20] = new F3(1); board[9][19] = new F1(1);
-    board[10][19] = new F4(1);
+    // Templo derecho (jugador 1, azul) - Espejo: columnas 16-22
+    // Fila 4 (1 celda): col 19
+    board[4][19] = new F1(1);
+    // Fila 5 (3 celdas): cols 18,19,20
+    board[5][18] = new F4(1);
+    board[5][19] = new F1(1);
+    board[5][20] = new F5(1);
+    // Fila 6 (5 celdas): cols 17,18,19,20,21
+    board[6][17] = new F5(1);
+    board[6][18] = new F2(1);
+    board[6][19] = new F1(1);
+    board[6][20] = new F2(1);
+    board[6][21] = new F1(1);
+    // Fila 7 (7 celdas): cols 16,17,18,19,20,21,22
+    board[7][16] = new F6(1);
+    board[7][17] = new F5(1);
+    board[7][18] = new F1(1);
+    board[7][19] = new F2(1);
+    board[7][20] = new F4(1);
+    board[7][21] = new F1(1);
+    board[7][22] = new F1(1);
 
     turno = 0;
     selectedPiece = null;
