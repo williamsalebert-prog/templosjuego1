@@ -14,7 +14,7 @@ class F5 extends Pieza {
         let destinos = new Set();
         let caminos = {};
 
-        // 1. Movimientos simples (1 o 2 casillas) siempre disponibles
+        // Movimientos simples (1 o 2 pasos)
         for (let [df, dc] of dirs) {
             let nf1 = fila + df, nc1 = col + dc;
             if (nf1 >= 0 && nf1 < FILAS && nc1 >= 0 && nc1 < COLUMNAS &&
@@ -33,15 +33,17 @@ class F5 extends Pieza {
             }
         }
 
-        // 2. Saltos (simple y doble)
+        // Saltos
         for (let [df, dc] of dirs) {
-            let over1f = fila + df, over1c = col + dc;        // distancia 1
+            let over1f = fila + df, over1c = col + dc;
             if (over1f < 0 || over1f >= FILAS || over1c < 0 || over1c >= COLUMNAS) continue;
             let piezaAdyacente = board[over1f][over1c];
 
-            // Salto simple (sobre la pieza adyacente si existe)
+            // Salto simple (sobre pieza adyacente)
             if (piezaAdyacente !== null) {
-                if (piezaAdyacente.jugador === jugador || capturaPermitida('F5', piezaAdyacente)) {
+                if (piezaAdyacente.tipo === 'F4' && piezaAdyacente.jugador !== jugador && this.tipo !== 'F6') {
+                    // bloqueado, no hacer nada
+                } else if (piezaAdyacente.jugador === jugador || capturaPermitida('F5', piezaAdyacente)) {
                     let land1f = fila + df * 2, land1c = col + dc * 2;
                     if (land1f >= 0 && land1f < FILAS && land1c >= 0 && land1c < COLUMNAS &&
                         board[land1f][land1c] === null && esJugable(land1f, land1c)) {
@@ -63,15 +65,22 @@ class F5 extends Pieza {
                 let hay1 = (pieza1 !== null && pieza1 !== undefined);
                 let hay2 = (pieza2 !== null && pieza2 !== undefined);
                 if (hay1 || hay2) {
+                    // Verificar que todas las piezas presentes permitan el salto
                     let saltables = true;
-                    if (hay1 && pieza1.jugador !== jugador && !capturaPermitida('F5', pieza1)) saltables = false;
-                    if (hay2 && pieza2.jugador !== jugador && !capturaPermitida('F5', pieza2)) saltables = false;
+                    if (hay1) {
+                        if (pieza1.tipo === 'F4' && pieza1.jugador !== jugador && this.tipo !== 'F6') saltables = false;
+                        else if (pieza1.jugador !== jugador && !capturaPermitida('F5', pieza1)) saltables = false;
+                    }
+                    if (hay2) {
+                        if (pieza2.tipo === 'F4' && pieza2.jugador !== jugador && this.tipo !== 'F6') saltables = false;
+                        else if (pieza2.jugador !== jugador && !capturaPermitida('F5', pieza2)) saltables = false;
+                    }
                     if (saltables) {
                         let clave = `${land2f},${land2c}`;
                         destinos.add(clave);
                         if (!caminos[clave]) caminos[clave] = [{
                             tipo: 'jump',
-                            over: [over1f, over1c], // referencia para captura simple (se usa la primera pieza)
+                            over: [over1f, over1c],
                             to: [land2f, land2c],
                             capturarVarios: true
                         }];
