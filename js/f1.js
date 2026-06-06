@@ -12,7 +12,6 @@ class F1 extends Pieza {
         let caminos = {};
 
         const explorar = (f, c, tablero, camino, visitados, haSaltado) => {
-            // Movimiento simple solo si no ha saltado antes
             if (!haSaltado) {
                 for (let [df, dc] of dirs) {
                     let nf = f+df, nc = c+dc;
@@ -28,27 +27,26 @@ class F1 extends Pieza {
                     }
                 }
             }
-            // Saltos sobre cualquier pieza
             for (let [df, dc] of dirs) {
                 let nf = f+df, nc = c+dc;
                 let jf = f+df*2, jc = c+dc*2;
                 if (nf>=0 && nf<FILAS && nc>=0 && nc<COLUMNAS && tablero[nf][nc]!==null &&
                     jf>=0 && jf<FILAS && jc>=0 && jc<COLUMNAS &&
                     tablero[jf][jc]===null && esJugable(jf, jc)) {
+                    let piezaInter = tablero[nf][nc];
+                    // Bloquear salto sobre F4 enemiga a menos que seas F6
+                    if (piezaInter.tipo === 'F4' && piezaInter.jugador !== jugador && this.tipo !== 'F6') continue;
                     let clave = `${jf},${jc}`;
                     if (!visitados.has(clave)) {
                         visitados.add(clave);
-                        // Clonación genérica usando el registro de piezas
                         let nuevoTab = tablero.map(fila => fila.map(celda => {
                             if (celda === null) return null;
                             const ClasePieza = piezasRegistradas.get(celda.tipo);
                             return ClasePieza ? new ClasePieza(celda.jugador) : null;
                         }));
-                        let piezaInter = nuevoTab[nf][nc];
                         let ficha = nuevoTab[f][c];
                         nuevoTab[f][c] = null;
-                        if (piezaInter && piezaInter.jugador !== jugador &&
-                            capturaPermitida(this.tipo, piezaInter)) {
+                        if (piezaInter && piezaInter.jugador !== jugador && capturaPermitida(this.tipo, piezaInter)) {
                             nuevoTab[nf][nc] = null;
                         }
                         nuevoTab[jf][jc] = ficha;
