@@ -184,49 +184,49 @@ function aplicarMovimiento(origen, destino) {
 function iniciarJuego() {
     board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
 
-    // Templo izquierdo (jugador 0) – Pirámide horizontal, columnas 0-3
-    // Columna 0: filas 4 a 10 (7)
-    board[4][0] = new F1(0);
-    board[5][0] = new F1(0);
-    board[6][0] = new F1(0);
-    board[7][0] = new F6(0);   // F6 protegida al fondo
-    board[8][0] = new F1(0);
-    board[9][0] = new F1(0);
-    board[10][0] = new F1(0);
-    // Columna 1: filas 5 a 9 (5)
-    board[5][1] = new F5(0);
-    board[6][1] = new F2(0);
+    // Templo izquierdo (jugador 0) - Pirámide 1,3,5,7
+    // Columna 0 (punta): 1 pieza
+    board[7][0] = new F6(0);
+    // Columna 1: 3 piezas
+    board[6][1] = new F5(0);
     board[7][1] = new F5(0);
-    board[8][1] = new F2(0);
-    board[9][1] = new F5(0);
-    // Columna 2: filas 6 a 8 (3)
-    board[6][2] = new F4(0);
+    board[8][1] = new F5(0);
+    // Columna 2: 5 piezas
+    board[5][2] = new F4(0);
+    board[6][2] = new F2(0);
     board[7][2] = new F2(0);
-    board[8][2] = new F4(0);
-    // Columna 3: fila 7 (1, la punta)
-    board[7][3] = new F1(0);   // esta F1 coronará fácilmente
+    board[8][2] = new F2(0);
+    board[9][2] = new F4(0);
+    // Columna 3 (base): 7 piezas
+    board[4][3] = new F1(0);
+    board[5][3] = new F1(0);
+    board[6][3] = new F1(0);
+    board[7][3] = new F1(0);
+    board[8][3] = new F1(0);
+    board[9][3] = new F1(0);
+    board[10][3] = new F1(0);
 
-    // Templo derecho (jugador 1) – Espejo, columnas 19-22
-    // Columna 22: filas 4 a 10 (7)
-    board[4][22] = new F1(1);
-    board[5][22] = new F1(1);
-    board[6][22] = new F1(1);
+    // Templo derecho (jugador 1) - Pirámide 1,3,5,7
+    // Columna 22 (punta): 1 pieza
     board[7][22] = new F6(1);
-    board[8][22] = new F1(1);
-    board[9][22] = new F1(1);
-    board[10][22] = new F1(1);
-    // Columna 21: filas 5 a 9 (5)
-    board[5][21] = new F5(1);
-    board[6][21] = new F2(1);
+    // Columna 21: 3 piezas
+    board[6][21] = new F5(1);
     board[7][21] = new F5(1);
-    board[8][21] = new F2(1);
-    board[9][21] = new F5(1);
-    // Columna 20: filas 6 a 8 (3)
-    board[6][20] = new F4(1);
+    board[8][21] = new F5(1);
+    // Columna 20: 5 piezas
+    board[5][20] = new F4(1);
+    board[6][20] = new F2(1);
     board[7][20] = new F2(1);
-    board[8][20] = new F4(1);
-    // Columna 19: fila 7 (1)
-    board[7][19] = new F1(1);   // punta
+    board[8][20] = new F2(1);
+    board[9][20] = new F4(1);
+    // Columna 19 (base): 7 piezas
+    board[4][19] = new F1(1);
+    board[5][19] = new F1(1);
+    board[6][19] = new F1(1);
+    board[7][19] = new F1(1);
+    board[8][19] = new F1(1);
+    board[9][19] = new F1(1);
+    board[10][19] = new F1(1);
 
     turno = 0;
     selectedPiece = null;
