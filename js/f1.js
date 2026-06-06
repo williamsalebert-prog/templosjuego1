@@ -1,4 +1,4 @@
-console.log("✅ f1 a.js cargado");
+console.log("✅ f1.js cargado");
 
 class F1 extends Pieza {
     constructor(jugador) {
@@ -7,20 +7,27 @@ class F1 extends Pieza {
 
     obtenerMovimientos(fila, col, board) {
         const jugador = this.jugador;
-        const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+        // 5 direcciones: arriba, abajo, y las 3 hacia adelante (según el jugador)
+        const dirs = (jugador === 0) ? [
+            [-1, 0], [1, 0],         // arriba, abajo
+            [-1, 1], [0, 1], [1, 1]  // diagonales arriba-derecha, derecha, abajo-derecha
+        ] : [
+            [-1, 0], [1, 0],         // arriba, abajo
+            [-1, -1], [0, -1], [1, -1] // diagonales arriba-izquierda, izquierda, abajo-izquierda
+        ];
         let destinos = new Set();
         let caminos = {};
 
         const explorar = (f, c, tablero, camino, visitados, haSaltado) => {
             if (!haSaltado) {
                 for (let [df, dc] of dirs) {
-                    let nf = f+df, nc = c+dc;
-                    if (nf>=0 && nf<FILAS && nc>=0 && nc<COLUMNAS &&
-                        tablero[nf][nc]===null && esJugable(nf, nc)) {
+                    let nf = f + df, nc = c + dc;
+                    if (nf >= 0 && nf < FILAS && nc >= 0 && nc < COLUMNAS &&
+                        tablero[nf][nc] === null && esJugable(nf, nc)) {
                         let clave = `${nf},${nc}`;
                         if (!visitados.has(clave)) {
                             visitados.add(clave);
-                            let nuevoCamino = [...camino, {tipo:'move', to:[nf,nc]}];
+                            let nuevoCamino = [...camino, { tipo: 'move', to: [nf, nc] }];
                             destinos.add(clave);
                             if (!caminos[clave]) caminos[clave] = nuevoCamino;
                         }
@@ -28,13 +35,12 @@ class F1 extends Pieza {
                 }
             }
             for (let [df, dc] of dirs) {
-                let nf = f+df, nc = c+dc;
-                let jf = f+df*2, jc = c+dc*2;
-                if (nf>=0 && nf<FILAS && nc>=0 && nc<COLUMNAS && tablero[nf][nc]!==null &&
-                    jf>=0 && jf<FILAS && jc>=0 && jc<COLUMNAS &&
-                    tablero[jf][jc]===null && esJugable(jf, jc)) {
+                let nf = f + df, nc = c + dc;
+                let jf = f + df * 2, jc = c + dc * 2;
+                if (nf >= 0 && nf < FILAS && nc >= 0 && nc < COLUMNAS && tablero[nf][nc] !== null &&
+                    jf >= 0 && jf < FILAS && jc >= 0 && jc < COLUMNAS &&
+                    tablero[jf][jc] === null && esJugable(jf, jc)) {
                     let piezaInter = tablero[nf][nc];
-                    // Bloquear salto sobre F4 enemiga a menos que seas F6
                     if (piezaInter.tipo === 'F4' && piezaInter.jugador !== jugador && this.tipo !== 'F6') continue;
                     let clave = `${jf},${jc}`;
                     if (!visitados.has(clave)) {
@@ -50,7 +56,7 @@ class F1 extends Pieza {
                             nuevoTab[nf][nc] = null;
                         }
                         nuevoTab[jf][jc] = ficha;
-                        let nuevoCamino = [...camino, {tipo:'jump', over:[nf,nc], to:[jf,jc]}];
+                        let nuevoCamino = [...camino, { tipo: 'jump', over: [nf, nc], to: [jf, jc] }];
                         destinos.add(clave);
                         if (!caminos[clave]) caminos[clave] = nuevoCamino;
                         explorar(jf, jc, nuevoTab, nuevoCamino, visitados, true);
