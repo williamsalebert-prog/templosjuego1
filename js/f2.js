@@ -7,60 +7,38 @@ class F2 extends Pieza {
 
     obtenerMovimientos(fila, col, board) {
         const jugador = this.jugador;
-        const dirs = [[-1,-1], [-1,1], [1,-1], [1,1]];
+        // Saltos de caballo (L) - 8 posiciones
+        const saltosL = [
+            [-2, -1], [-2, 1], [2, -1], [2, 1],
+            [-1, -2], [-1, 2], [1, -2], [1, 2]
+        ];
         let destinos = new Set();
         let caminos = {};
 
-        const explorar = (f, c, tablero, camino, visitados, haSaltado) => {
-            if (!haSaltado) {
-                for (let [df, dc] of dirs) {
-                    let nf = f+df, nc = c+dc;
-                    if (nf>=0 && nf<FILAS && nc>=0 && nc<COLUMNAS &&
-                        tablero[nf][nc]===null && esJugable(nf, nc)) {
-                        let clave = `${nf},${nc}`;
-                        if (!visitados.has(clave)) {
-                            visitados.add(clave);
-                            let nuevoCamino = [...camino, {tipo:'move', to:[nf,nc]}];
-                            destinos.add(clave);
-                            if (!caminos[clave]) caminos[clave] = nuevoCamino;
-                        }
-                    }
-                }
-            }
-            for (let [df, dc] of dirs) {
-                let nf = f+df, nc = c+dc;
-                let jf = f+df*2, jc = c+dc*2;
-                if (nf>=0 && nf<FILAS && nc>=0 && nc<COLUMNAS && tablero[nf][nc]!==null &&
-                    jf>=0 && jf<FILAS && jc>=0 && jc<COLUMNAS &&
-                    tablero[jf][jc]===null && esJugable(jf, jc)) {
-                    let piezaInter = tablero[nf][nc];
-                    if (piezaInter.tipo === 'F4' && piezaInter.jugador !== jugador && this.tipo !== 'F6') continue;
-                    let clave = `${jf},${jc}`;
-                    if (!visitados.has(clave)) {
-                        visitados.add(clave);
-                        let nuevoTab = tablero.map(fila => fila.map(celda => {
-                            if (celda === null) return null;
-                            const ClasePieza = piezasRegistradas.get(celda.tipo);
-                            return ClasePieza ? new ClasePieza(celda.jugador) : null;
-                        }));
-                        let ficha = nuevoTab[f][c];
-                        nuevoTab[f][c] = null;
-                        if (piezaInter && piezaInter.jugador !== jugador && capturaPermitida(this.tipo, piezaInter)) {
-                            nuevoTab[nf][nc] = null;
-                        }
-                        nuevoTab[jf][jc] = ficha;
-                        let nuevoCamino = [...camino, {tipo:'jump', over:[nf,nc], to:[jf,jc]}];
-                        destinos.add(clave);
-                        if (!caminos[clave]) caminos[clave] = nuevoCamino;
-                        explorar(jf, jc, nuevoTab, nuevoCamino, visitados, true);
-                    }
-                }
-            }
-        };
+        for (let [df, dc] of saltosL) {
+            let nf = fila + df, nc = col + dc;
+            if (nf < 0 || nf >= FILAS || nc < 0 || nc >= COLUMNAS) continue;
+            if (!esJugable(nf, nc)) continue;
 
-        let visitados = new Set();
-        visitados.add(`${fila},${col}`);
-        explorar(fila, col, board, [], visitados, false);
+            let contenido = board[nf][nc];
+            if (contenido === null) {
+                // Casilla vacía: movimiento normal
+                let clave = `${nf},${nc}`;
+                destinos.add(clave);
+                if (!caminos[clave]) caminos[clave] = [{ tipo: 'move', to: [nf, nc] }];
+            } else if (contenido.jugador !== jugador && capturaPermitida(this.tipo, contenido)) {
+                // Captura: elimina la pieza enemiga y ocupa su lugar
+                let clave = `${nf},${nc}`;
+                destinos.add(clave);
+                // Usamos tipo 'jump' con over = destino, para que tablero.js lo capture
+                if (!caminos[clave]) caminos[clave] = [{
+                    tipo: 'jump',
+                    over: [nf, nc],  // pieza a capturar
+                    to: [nf, nc]     // misma casilla
+                }];
+            }
+            // Si es una pieza amiga, no se hace nada
+        }
 
         let arr = [];
         for (let clave of destinos) {
