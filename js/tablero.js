@@ -1,4 +1,4 @@
-console.log("✅ tablero 2.js cargado");
+console.log("✅ tablero.js cargado");
 const canvas = document.getElementById('tableroCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = 650;
@@ -9,7 +9,7 @@ const turnoTexto = document.getElementById('turnoTexto');
 let board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
 let turno = 0;
 let selectedPiece = null;
-let posiblesMovimientos = [];   // ahora puede contener objetos {f, c, tipoMov} o arrays [f,c]
+let posiblesMovimientos = [];   // puede contener arrays [f,c] u objetos {f,c,tipoMov:'enroque'}
 let caminosDestino = {};
 
 // --- variables para elección de ruta del caballo ---
@@ -142,7 +142,7 @@ function dibujarTablero() {
         }
     }
 
-    // Dibujar posibles movimientos (amarillo) y enroques (morado)
+    // Dibujar movimientos posibles (amarillo) y enroques (morado)
     if (!modoRuta) {
         for (let mov of posiblesMovimientos) {
             let f, c;
@@ -152,9 +152,9 @@ function dibujarTablero() {
                 f = mov[0]; c = mov[1];
             }
             if (mov.tipoMov === 'enroque') {
-                ctx.fillStyle = '#AA00AA'; // morado para enroque
+                ctx.fillStyle = '#AA00AA'; // morado
             } else {
-                ctx.fillStyle = '#FFFF00AA'; // amarillo normal
+                ctx.fillStyle = '#FFFF00AA'; // amarillo
             }
             ctx.fillRect(c * CELL_SIZE, f * CELL_SIZE, CELL_SIZE - 1, CELL_SIZE - 1);
         }
@@ -236,7 +236,7 @@ function ejecutarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
 }
 
 // ----------------------------------------------------------
-// APLICAR MOVIMIENTO (sin cambios)
+// APLICAR MOVIMIENTO
 // ----------------------------------------------------------
 function aplicarMovimiento(origen, destino, caminoElegido = null) {
     let clave = `${destino[0]},${destino[1]}`;
@@ -409,6 +409,9 @@ function iniciarJuego() {
     actualizarTurno();
 }
 
+// ----------------------------------------------------------
+// EVENTO CLICK MEJORADO
+// ----------------------------------------------------------
 canvas.addEventListener('click', (e) => {
     if (coronacionPendiente) return;
     const rect = canvas.getBoundingClientRect();
@@ -446,13 +449,13 @@ canvas.addEventListener('click', (e) => {
         return;
     }
 
-    // Selección normal
+    // ─── Si NO hay pieza seleccionada ───
     if (!selectedPiece) {
         let ficha = board[fila][col];
         if (ficha && ficha.jugador === turno) {
             selectedPiece = { fila, col };
             let res = ficha.obtenerMovimientos(fila, col, board);
-            posiblesMovimientos = res.destinos;  // arrays [f,c]
+            posiblesMovimientos = res.destinos;
             caminosDestino = res.caminos;
 
             // Si es el Rey, añadir objetivos de enroque
@@ -463,7 +466,6 @@ canvas.addEventListener('click', (e) => {
                         if (!piezaObj || piezaObj.jugador !== turno) continue;
                         if (!['F0','F3','F5'].includes(piezaObj.tipo)) continue;
                         if (validarEnroque(selectedPiece.fila, selectedPiece.col, i, j, turno)) {
-                            // Añadir como destino de enroque (marcador especial)
                             posiblesMovimientos.push({ f: i, c: j, tipoMov: 'enroque' });
                         }
                     }
@@ -471,73 +473,108 @@ canvas.addEventListener('click', (e) => {
             }
             dibujarTablero();
         }
-    } else {
-        // Ver si es un enroque (clic en pieza marcada como enroque)
-        let movEnroque = posiblesMovimientos.find(m => m.tipoMov === 'enroque' && m.f === fila && m.c === col);
-        if (movEnroque) {
-            if (ejecutarEnroque(selectedPiece.fila, selectedPiece.col, fila, col, turno)) {
-                turno = 1 - turno;
-                actualizarTurno();
+        return;
+    }
+
+    // ─── YA HAY UNA PIEZA SELECCIONADA ───
+
+    // 1. ¿Es un enroque? (clic en celda morada)
+    let movEnroque = posiblesMovimientos.find(m => m.tipoMov === 'enroque' && m.f === fila && m.c === col);
+    if (movEnroque) {
+        if (ejecutarEnroque(selectedPiece.fila, selectedPiece.col, fila, col, turno)) {
+            turno = 1 - turno;
+            actualizarTurno();
+        }
+        selectedPiece = null;
+        posiblesMovimientos = [];
+        caminosDestino = {};
+        dibujarTablero();
+        return;
+    }
+
+    // 2. ¿Es un movimiento normal? (clic en celda amarilla)
+    let clave = `${fila},${col}`;
+    let esValido = posiblesMovimientos.some(mov => {
+        if (Array.isArray(mov)) return mov[0] === fila && mov[1] === col;
+        if (mov.tipoMov === 'enroque') return false;
+        return false;
+    });
+    if (esValido) {
+        let info = caminosDestino[clave];
+        // Caballo con múltiples rutas
+        if (Array.isArray(info) && info.length > 0 && info[0].hasOwnProperty('pasos')) {
+            if (info.length > 1) {
+                let algunaConEnemigo = info.some(ruta => ruta.tieneEnemigo);
+                if (algunaConEnemigo) {
+                    rutasAlternativas = info;
+                    destinoRuta = [fila, col];
+                    modoRuta = true;
+                    dibujarTablero();
+                    return;
+                } else {
+                    let rutaElegida = info[0].pasos;
+                    if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaElegida)) {
+                        turno = 1 - turno;
+                        actualizarTurno();
+                    }
+                }
+            } else {
+                let rutaUnica = info[0].pasos;
+                if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaUnica)) {
+                    turno = 1 - turno;
+                    actualizarTurno();
+                }
             }
             selectedPiece = null;
             posiblesMovimientos = [];
             caminosDestino = {};
+            modoRuta = false;
             dibujarTablero();
             return;
         }
-
-        // Movimiento normal
-        let clave = `${fila},${col}`;
-        let esValido = posiblesMovimientos.some(([f, c]) => f === fila && c === col);
-        if (esValido) {
-            let info = caminosDestino[clave];
-            if (Array.isArray(info) && info.length > 0 && info[0].hasOwnProperty('pasos')) {
-                if (info.length > 1) {
-                    let algunaConEnemigo = info.some(ruta => ruta.tieneEnemigo);
-                    if (algunaConEnemigo) {
-                        rutasAlternativas = info;
-                        destinoRuta = [fila, col];
-                        modoRuta = true;
-                        dibujarTablero();
-                        return;
-                    } else {
-                        let rutaElegida = info[0].pasos;
-                        if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaElegida)) {
-                            turno = 1 - turno;
-                            actualizarTurno();
-                        }
-                        selectedPiece = null;
-                        posiblesMovimientos = [];
-                        caminosDestino = {};
-                        modoRuta = false;
-                        dibujarTablero();
-                        return;
-                    }
-                } else {
-                    let rutaUnica = info[0].pasos;
-                    if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaUnica)) {
-                        turno = 1 - turno;
-                        actualizarTurno();
-                    }
-                    selectedPiece = null;
-                    posiblesMovimientos = [];
-                    caminosDestino = {};
-                    modoRuta = false;
-                    dibujarTablero();
-                    return;
-                }
-            }
-            if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col])) {
-                turno = 1 - turno;
-                actualizarTurno();
-            }
+        // Movimiento normal (otras piezas)
+        if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col])) {
+            turno = 1 - turno;
+            actualizarTurno();
         }
         selectedPiece = null;
         posiblesMovimientos = [];
         caminosDestino = {};
         modoRuta = false;
         dibujarTablero();
+        return;
     }
+
+    // 3. Clic en otra pieza propia → cambiar de selección directamente
+    let fichaClic = board[fila][col];
+    if (fichaClic && fichaClic.jugador === turno) {
+        selectedPiece = { fila, col };
+        let res = fichaClic.obtenerMovimientos(fila, col, board);
+        posiblesMovimientos = res.destinos;
+        caminosDestino = res.caminos;
+        // Si es el Rey, añadir enroques
+        if (fichaClic.tipo === 'F6' && !enroqueRealizado[turno]) {
+            for (let i = 0; i < FILAS; i++) {
+                for (let j = 0; j < COLUMNAS; j++) {
+                    let piezaObj = board[i][j];
+                    if (!piezaObj || piezaObj.jugador !== turno) continue;
+                    if (!['F0','F3','F5'].includes(piezaObj.tipo)) continue;
+                    if (validarEnroque(selectedPiece.fila, selectedPiece.col, i, j, turno)) {
+                        posiblesMovimientos.push({ f: i, c: j, tipoMov: 'enroque' });
+                    }
+                }
+            }
+        }
+        dibujarTablero();
+        return;
+    }
+
+    // 4. Clic en cualquier otro sitio → cancelar selección
+    selectedPiece = null;
+    posiblesMovimientos = [];
+    caminosDestino = {};
+    modoRuta = false;
+    dibujarTablero();
 });
 
 btnDeshacer.addEventListener('click', deshacerMovimiento);
