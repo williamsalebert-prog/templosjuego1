@@ -95,33 +95,43 @@ function simularMovimiento(tablero, mov) {
     let f = mov.origen[0], c = mov.origen[1];
     let camino = mov.caminos[`${mov.destino[0]},${mov.destino[1]}`];
     if (!camino) return null;
-    for (let paso of camino) {
-        if (paso.tipo === 'move') {
-            let [nf, nc] = paso.to;
-            nuevoTab[f][c] = null;
-            nuevoTab[nf][nc] = pieza;
-            f = nf; c = nc;
-        } else if (paso.tipo === 'captureDirect') {
-            let [of, oc] = paso.over;
-            let [nf, nc] = paso.to;
-            nuevoTab[of][oc] = null;
-            nuevoTab[f][c] = null;
-            nuevoTab[nf][nc] = pieza;
-            f = nf; c = nc;
-        } else if (paso.tipo === 'jump') {
-            let [of, oc] = paso.over;
-            let [nf, nc] = paso.to;
-            let piezaSaltada = nuevoTab[of][oc];
-            if (piezaSaltada && piezaSaltada.jugador !== pieza.jugador) {
-                if (piezaSaltada.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
-                    nuevoTab[of][oc] = null;
-                }
+  for (let paso of camino) {
+    if (paso.tipo === 'move') {
+        let [nf, nc] = paso.to;
+        board[f][c] = null;
+        board[nf][nc] = pieza;
+        f = nf; c = nc;
+    } else if (paso.tipo === 'captureDirect') {
+        let [of, oc] = paso.over;
+        let [nf, nc] = paso.to;
+        let piezaObjetivo = board[of][oc];
+        if (piezaObjetivo && piezaObjetivo.jugador !== jugador) {
+            if (piezaObjetivo.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
+                carcela.agregar(piezaObjetivo);
+                board[of][oc] = null;
             }
-            nuevoTab[f][c] = null;
-            nuevoTab[nf][nc] = pieza;
-            f = nf; c = nc;
         }
+        board[f][c] = null;
+        board[nf][nc] = pieza;
+        f = nf; c = nc;
+    } else if (paso.tipo === 'jump') {
+        let [of, oc] = paso.over;
+        let [nf, nc] = paso.to;
+        let piezaSaltada = board[of][oc];
+        if (piezaSaltada && piezaSaltada.jugador !== jugador) {
+            if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F3' && pieza.tipo !== 'F6') {
+                // no se captura
+            } else {
+                carcela.agregar(piezaSaltada);
+                board[of][oc] = null;
+            }
+        }
+        // Solo movemos la pieza una vez, no en cada paso del camino
+        board[f][c] = null;
+        board[nf][nc] = pieza;
+        f = nf; c = nc;
     }
+}
     return nuevoTab;
 }
 
