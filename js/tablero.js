@@ -95,22 +95,23 @@ function simularMovimiento(tablero, mov) {
     let f = mov.origen[0], c = mov.origen[1];
     let camino = mov.caminos[`${mov.destino[0]},${mov.destino[1]}`];
     if (!camino) return null;
-   for (let paso of camino) {
-        if (paso.tipo === 'move') {
-            let [nf, nc] = paso.to;
-            board[f][c] = null;
-            board[nf][nc] = pieza;
-            f = nf; c = nc;
-        } else if (paso.tipo === 'removePiece') {
-            let [of, oc] = paso.over;
-            let piezaAEliminar = board[of][oc];
-            if (piezaAEliminar && piezaAEliminar.jugador !== jugador) {
-                if (piezaAEliminar.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
-                    carcela.agregar(piezaAEliminar);
-                    board[of][oc] = null;
-                }
+  for (let paso of camino) {
+    if (paso.tipo === 'move') {
+        let [nf, nc] = paso.to;
+        board[f][c] = null;
+        board[nf][nc] = pieza;
+        f = nf; c = nc;
+    } else if (paso.tipo === 'removePiece') {
+        let [of, oc] = paso.over;
+        let piezaAEliminar = board[of][oc];
+        if (piezaAEliminar && piezaAEliminar.jugador !== jugador) {
+            // Solo Reina y Rey pueden capturar Trampero
+            if (piezaAEliminar.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
+                carcela.agregar(piezaAEliminar);
+                board[of][oc] = null;
             }
-        } else if (paso.tipo === 'captureDirect') {
+        }
+    } else if (paso.tipo === 'captureDirect') {
         let [of, oc] = paso.over;
         let [nf, nc] = paso.to;
         let piezaObjetivo = board[of][oc];
@@ -135,7 +136,6 @@ function simularMovimiento(tablero, mov) {
                 board[of][oc] = null;
             }
         }
-        // Solo movemos la pieza una vez, no en cada paso del camino
         board[f][c] = null;
         board[nf][nc] = pieza;
         f = nf; c = nc;
