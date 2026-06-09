@@ -1,4 +1,4 @@
-console.log("✅ tablero.js cargado");
+console.log("✅ tablero 2.js cargado");
 const canvas = document.getElementById('tableroCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = 650;
@@ -9,7 +9,7 @@ const turnoTexto = document.getElementById('turnoTexto');
 let board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
 let turno = 0;
 let selectedPiece = null;
-let posiblesMovimientos = [];
+let posiblesMovimientos = [];   // ahora puede contener objetos {f, c, tipoMov} o arrays [f,c]
 let caminosDestino = {};
 
 // --- variables para elección de ruta del caballo ---
@@ -23,7 +23,7 @@ const opcionesCoronacion = document.getElementById('opcionesCoronacion');
 let coronacionPendiente = null;
 
 // --- enroque ---
-let enroqueRealizado = [false, false]; // un enroque por jugador
+let enroqueRealizado = [false, false];
 
 const imagenesPiezas = {};
 const colorBordeEquipo = ['#CC0000', '#1E3A8A'];
@@ -142,9 +142,20 @@ function dibujarTablero() {
         }
     }
 
+    // Dibujar posibles movimientos (amarillo) y enroques (morado)
     if (!modoRuta) {
-        for (let [f, c] of posiblesMovimientos) {
-            ctx.fillStyle = '#FFFF00AA';
+        for (let mov of posiblesMovimientos) {
+            let f, c;
+            if (mov.hasOwnProperty('f')) {
+                f = mov.f; c = mov.c;
+            } else {
+                f = mov[0]; c = mov[1];
+            }
+            if (mov.tipoMov === 'enroque') {
+                ctx.fillStyle = '#AA00AA'; // morado para enroque
+            } else {
+                ctx.fillStyle = '#FFFF00AA'; // amarillo normal
+            }
             ctx.fillRect(c * CELL_SIZE, f * CELL_SIZE, CELL_SIZE - 1, CELL_SIZE - 1);
         }
     }
@@ -172,33 +183,29 @@ function actualizarTurno() {
 // VALIDACIÓN DE ENROQUE
 // ----------------------------------------------------------
 function validarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
+    if (enroqueRealizado[jugador]) return false;
     const pieza = board[piezaFila][piezaCol];
     if (!pieza) return false;
     if (pieza.jugador !== jugador) return false;
-    // Solo Reina (F3), Torre (F0) o Alfil (F5)
     if (!['F3', 'F0', 'F5'].includes(pieza.tipo)) return false;
 
-    // Verificar que la pieza está en una línea válida según su movimiento
     let mismoRey = (reyFila === piezaFila && reyCol === piezaCol);
     if (mismoRey) return false;
 
     let df = piezaFila - reyFila;
     let dc = piezaCol - reyCol;
 
-    // Dirección de la línea
     let dirF = df === 0 ? 0 : df / Math.abs(df);
     let dirC = dc === 0 ? 0 : dc / Math.abs(dc);
 
-    // Comprobar que la dirección es válida para la pieza objetivo
-    if (pieza.tipo === 'F0') { // Torre: misma fila o misma columna
+    if (pieza.tipo === 'F0') {
         if (df !== 0 && dc !== 0) return false;
-    } else if (pieza.tipo === 'F5') { // Alfil: misma diagonal
+    } else if (pieza.tipo === 'F5') {
         if (Math.abs(df) !== Math.abs(dc)) return false;
-    } else if (pieza.tipo === 'F3') { // Reina: cualquier dirección (recta o diagonal)
+    } else if (pieza.tipo === 'F3') {
         if (!(df === 0 || dc === 0 || Math.abs(df) === Math.abs(dc))) return false;
     }
 
-    // Contar piezas en la línea entre rey y pieza (excluyendo ambos extremos)
     let fichasAmigas = 0;
     let f = reyFila + dirF;
     let c = reyCol + dirC;
@@ -207,7 +214,6 @@ function validarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
             if (board[f][c].jugador === jugador) {
                 fichasAmigas++;
             } else {
-                // Hay enemiga → enroque inválido
                 return false;
             }
         }
@@ -215,19 +221,14 @@ function validarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
         c += dirC;
     }
 
-    // Máximo una ficha amiga intermedia
     if (fichasAmigas > 1) return false;
-
     return true;
 }
 
 function ejecutarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
     guardarEstado();
-    // Eliminar la pieza objetivo
     let piezaEliminada = board[piezaFila][piezaCol];
     carcela.agregar(piezaEliminada);
-    board[piezaFila][piezaCol] = null;
-    // Mover el rey a la posición de la pieza
     board[piezaFila][piezaCol] = board[reyFila][reyCol];
     board[reyFila][reyCol] = null;
     enroqueRealizado[jugador] = true;
@@ -235,7 +236,7 @@ function ejecutarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
 }
 
 // ----------------------------------------------------------
-// APLICAR MOVIMIENTO (igual que antes)
+// APLICAR MOVIMIENTO (sin cambios)
 // ----------------------------------------------------------
 function aplicarMovimiento(origen, destino, caminoElegido = null) {
     let clave = `${destino[0]},${destino[1]}`;
@@ -451,25 +452,38 @@ canvas.addEventListener('click', (e) => {
         if (ficha && ficha.jugador === turno) {
             selectedPiece = { fila, col };
             let res = ficha.obtenerMovimientos(fila, col, board);
-            posiblesMovimientos = res.destinos;
+            posiblesMovimientos = res.destinos;  // arrays [f,c]
             caminosDestino = res.caminos;
+
+            // Si es el Rey, añadir objetivos de enroque
+            if (ficha.tipo === 'F6' && !enroqueRealizado[turno]) {
+                for (let i = 0; i < FILAS; i++) {
+                    for (let j = 0; j < COLUMNAS; j++) {
+                        let piezaObj = board[i][j];
+                        if (!piezaObj || piezaObj.jugador !== turno) continue;
+                        if (!['F0','F3','F5'].includes(piezaObj.tipo)) continue;
+                        if (validarEnroque(selectedPiece.fila, selectedPiece.col, i, j, turno)) {
+                            // Añadir como destino de enroque (marcador especial)
+                            posiblesMovimientos.push({ f: i, c: j, tipoMov: 'enroque' });
+                        }
+                    }
+                }
+            }
             dibujarTablero();
         }
     } else {
-        // Ver si es un intento de enroque (Rey seleccionado, clic en pieza propia válida)
-        let piezaOrigen = board[selectedPiece.fila][selectedPiece.col];
-        let piezaDestino = board[fila][col];
-        if (piezaOrigen && piezaOrigen.tipo === 'F6' && piezaDestino && piezaDestino.jugador === turno) {
-            if (!enroqueRealizado[turno] && validarEnroque(selectedPiece.fila, selectedPiece.col, fila, col, turno)) {
-                ejecutarEnroque(selectedPiece.fila, selectedPiece.col, fila, col, turno);
+        // Ver si es un enroque (clic en pieza marcada como enroque)
+        let movEnroque = posiblesMovimientos.find(m => m.tipoMov === 'enroque' && m.f === fila && m.c === col);
+        if (movEnroque) {
+            if (ejecutarEnroque(selectedPiece.fila, selectedPiece.col, fila, col, turno)) {
                 turno = 1 - turno;
                 actualizarTurno();
-                selectedPiece = null;
-                posiblesMovimientos = [];
-                caminosDestino = {};
-                dibujarTablero();
-                return;
             }
+            selectedPiece = null;
+            posiblesMovimientos = [];
+            caminosDestino = {};
+            dibujarTablero();
+            return;
         }
 
         // Movimiento normal
