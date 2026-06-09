@@ -18,18 +18,12 @@ const colorBordeEquipo = ['#CC0000', '#1E3A8A'];
 // -------- CONFIGURACIÓN DE IA --------
 const urlParams = new URLSearchParams(window.location.search);
 const modoIA = (urlParams.get('mode') === '1');
-const dificultad = parseInt(urlParams.get('diff')) || 1; // 1 fácil, 2 medio, 3 difícil
+const dificultad = parseInt(urlParams.get('diff')) || 1;
 const PROFUNDIDAD_IA = (dificultad === 3) ? 3 : ((dificultad === 2) ? 2 : 1);
 
-// Valor de las piezas para evaluación
 const VALOR_PIEZAS = {
-    'F0': 5,  // Torre
-    'F1': 1,  // Peón
-    'F2': 3,  // Caballo
-    'F3': 9,  // Reina
-    'F4': 3,  // Trampero
-    'F5': 3,  // Alfil
-    'F6': 100 // Rey (valor muy alto, capturarlo = victoria)
+    'F0': 5, 'F1': 1, 'F2': 3, 'F3': 9,
+    'F4': 3, 'F5': 3, 'F6': 100
 };
 
 // -------- FUNCIONES DE IA --------
@@ -48,14 +42,11 @@ function evaluarTablero(tablero) {
             let pieza = tablero[i][j];
             if (!pieza) continue;
             let valor = VALOR_PIEZAS[pieza.tipo] || 0;
-            // Bonificación por centro (columnas 5-8)
             if (j >= 5 && j <= 8) valor += Math.floor(valor * 0.1);
-            // Peones avanzados (cercanos a coronar)
             if (pieza.tipo === 'F1') {
                 if (pieza.jugador === 0 && j >= 9) valor += 2;
                 else if (pieza.jugador === 1 && j <= 3) valor += 2;
             }
-            // Rey seguro (cerca de sus piezas)
             if (pieza.tipo === 'F6') {
                 let aliadasCerca = 0;
                 for (let df = -1; df <= 1; df++)
@@ -63,7 +54,7 @@ function evaluarTablero(tablero) {
                         if (tablero[i+df]?.[j+dc] && tablero[i+df][j+dc].jugador === pieza.jugador) aliadasCerca++;
                 valor += aliadasCerca * 5;
             }
-            if (pieza.jugador === 1) puntuacion += valor; // IA es jugador 1
+            if (pieza.jugador === 1) puntuacion += valor;
             else puntuacion -= valor;
         }
     }
@@ -95,63 +86,56 @@ function simularMovimiento(tablero, mov) {
     let f = mov.origen[0], c = mov.origen[1];
     let camino = mov.caminos[`${mov.destino[0]},${mov.destino[1]}`];
     if (!camino) return null;
-  for (let paso of camino) {
-    if (paso.tipo === 'move') {
-        let [nf, nc] = paso.to;
-        board[f][c] = null;
-        board[nf][nc] = pieza;
-        f = nf; c = nc;
-    } else if (paso.tipo === 'removePiece') {
-        let [of, oc] = paso.over;
-        let piezaAEliminar = board[of][oc];
-        if (piezaAEliminar && piezaAEliminar.jugador !== jugador) {
-            // Solo Reina y Rey pueden capturar Trampero
-            if (piezaAEliminar.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
-                carcela.agregar(piezaAEliminar);
-                board[of][oc] = null;
+    for (let paso of camino) {
+        if (paso.tipo === 'move') {
+            let [nf, nc] = paso.to;
+            nuevoTab[f][c] = null;
+            nuevoTab[nf][nc] = pieza;
+            f = nf; c = nc;
+        } else if (paso.tipo === 'removePiece') {
+            let [of, oc] = paso.over;
+            let piezaAEliminar = nuevoTab[of]?.[oc];
+            if (piezaAEliminar && piezaAEliminar.jugador !== pieza.jugador) {
+                if (piezaAEliminar.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
+                    nuevoTab[of][oc] = null;
+                }
             }
-        }
-    } else if (paso.tipo === 'captureDirect') {
-        let [of, oc] = paso.over;
-        let [nf, nc] = paso.to;
-        let piezaObjetivo = board[of][oc];
-        if (piezaObjetivo && piezaObjetivo.jugador !== jugador) {
-            if (piezaObjetivo.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
-                carcela.agregar(piezaObjetivo);
-                board[of][oc] = null;
+        } else if (paso.tipo === 'captureDirect') {
+            let [of, oc] = paso.over;
+            let [nf, nc] = paso.to;
+            let piezaObjetivo = nuevoTab[of]?.[oc];
+            if (piezaObjetivo && piezaObjetivo.jugador !== pieza.jugador) {
+                if (piezaObjetivo.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
+                    nuevoTab[of][oc] = null;
+                }
             }
-        }
-        board[f][c] = null;
-        board[nf][nc] = pieza;
-        f = nf; c = nc;
-    } else if (paso.tipo === 'jump') {
-        let [of, oc] = paso.over;
-        let [nf, nc] = paso.to;
-        let piezaSaltada = board[of][oc];
-        if (piezaSaltada && piezaSaltada.jugador !== jugador) {
-            if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F3' && pieza.tipo !== 'F6') {
-                // no se captura
-            } else {
-                carcela.agregar(piezaSaltada);
-                board[of][oc] = null;
+            nuevoTab[f][c] = null;
+            nuevoTab[nf][nc] = pieza;
+            f = nf; c = nc;
+        } else if (paso.tipo === 'jump') {
+            let [of, oc] = paso.over;
+            let [nf, nc] = paso.to;
+            let piezaSaltada = nuevoTab[of]?.[oc];
+            if (piezaSaltada && piezaSaltada.jugador !== pieza.jugador) {
+                if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F3' && pieza.tipo !== 'F6') {
+                    // no se captura
+                } else {
+                    nuevoTab[of][oc] = null;
+                }
             }
+            nuevoTab[f][c] = null;
+            nuevoTab[nf][nc] = pieza;
+            f = nf; c = nc;
         }
-        board[f][c] = null;
-        board[nf][nc] = pieza;
-        f = nf; c = nc;
     }
-}
     return nuevoTab;
 }
 
 function minimax(tablero, profundidad, alfa, beta, esMaximizador) {
     if (profundidad === 0) return evaluarTablero(tablero);
-    
     let jugadorActual = esMaximizador ? 1 : 0;
     let movimientos = obtenerTodosMovimientos(tablero, jugadorActual);
-    
     if (movimientos.length === 0) return esMaximizador ? -Infinity : Infinity;
-
     if (esMaximizador) {
         let maxEval = -Infinity;
         for (let mov of movimientos) {
@@ -179,15 +163,10 @@ function minimax(tablero, profundidad, alfa, beta, esMaximizador) {
 
 function jugarIA() {
     if (!modoIA || turno !== 1) return;
-
     let movimientos = obtenerTodosMovimientos(board, 1);
     if (movimientos.length === 0) return;
-
     let movElegido = null;
-    let prioridadCaptura = (dificultad >= 2); // medio y difícil prefieren capturar
-
     if (dificultad === 1) {
-        // Fácil: aleatorio pero prefiere capturas
         let capturas = movimientos.filter(m => {
             let camino = m.caminos[`${m.destino[0]},${m.destino[1]}`];
             return camino && (camino[0].tipo === 'jump' || camino[0].tipo === 'captureDirect');
@@ -195,7 +174,6 @@ function jugarIA() {
         if (capturas.length > 0) movimientos = capturas;
         movElegido = movimientos[Math.floor(Math.random() * movimientos.length)];
     } else if (dificultad === 2) {
-        // Medio: elige el mejor movimiento inmediato
         let mejorEval = -Infinity;
         for (let mov of movimientos) {
             let nuevoTab = simularMovimiento(board, mov);
@@ -207,7 +185,6 @@ function jugarIA() {
             }
         }
     } else {
-        // Difícil: minimax con poda alfa-beta
         let mejorEval = -Infinity;
         for (let mov of movimientos) {
             let nuevoTab = simularMovimiento(board, mov);
@@ -219,10 +196,7 @@ function jugarIA() {
             }
         }
     }
-
     if (!movElegido) return;
-
-    // Aplicar el movimiento elegido
     selectedPiece = { fila: movElegido.origen[0], col: movElegido.origen[1] };
     caminosDestino = movElegido.caminos;
     if (aplicarMovimiento(movElegido.origen, movElegido.destino)) {
@@ -235,7 +209,7 @@ function jugarIA() {
     dibujarTablero();
 }
 
-// -------- RESTO DEL CÓDIGO (sin cambios) --------
+// -------- RESTO DEL CÓDIGO --------
 function precargarImagenes() {
     const extensiones = ['.jpg', '.jpeg', '.png'];
     for (let tipo of piezasRegistradas.keys()) {
@@ -352,7 +326,7 @@ function actualizarTurno() {
     turnoTexto.innerText = `Turno: Jugador ${turno + 1}`;
 }
 
-ffunction aplicarMovimiento(origen, destino) {
+function aplicarMovimiento(origen, destino) {
     let clave = `${destino[0]},${destino[1]}`;
     let camino = caminosDestino[clave];
     if (!camino) return false;
@@ -447,7 +421,7 @@ function iniciarJuego() {
 }
 
 canvas.addEventListener('click', (e) => {
-    if (modoIA && turno === 1) return; // Bloquear clics durante turno de la IA
+    if (modoIA && turno === 1) return;
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -475,7 +449,6 @@ canvas.addEventListener('click', (e) => {
         posiblesMovimientos = [];
         caminosDestino = {};
         dibujarTablero();
-        // Activar IA si es modo 1 jugador y ahora le toca al PC
         if (modoIA && turno === 1) {
             setTimeout(jugarIA, 500);
         }
