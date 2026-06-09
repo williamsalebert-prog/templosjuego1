@@ -1,7 +1,6 @@
 console.log("✅ tablero.js cargado");
 const canvas = document.getElementById('tableroCanvas');
 const ctx = canvas.getContext('2d');
-// Ajuste del canvas al nuevo tablero 13×10
 canvas.width = 650;
 canvas.height = 500;
 const btnDeshacer = document.getElementById('btnDeshacer');
@@ -65,7 +64,6 @@ function dibujarTablero() {
         for (let j = 0; j < COLUMNAS; j++) {
             let x = j * CELL_SIZE, y = i * CELL_SIZE;
             if (esNoJugable(i, j)) {
-                // Pintar las X de negro o gris muy oscuro
                 ctx.fillStyle = '#111111';
                 ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
                 ctx.strokeStyle = '#333333';
@@ -147,42 +145,42 @@ function aplicarMovimiento(origen, destino) {
     let pieza = board[origen[0]][origen[1]];
     let jugador = pieza.jugador;
     let f = origen[0], c = origen[1];
- for (let paso of camino) {
-    if (paso.tipo === 'move') {
-        let [nf, nc] = paso.to;
-        board[f][c] = null;
-        board[nf][nc] = pieza;
-        f = nf; c = nc;
-    } else if (paso.tipo === 'captureDirect') {
-        let [of, oc] = paso.over;
-        let [nf, nc] = paso.to;
-        let piezaObjetivo = board[of][oc];
-        if (piezaObjetivo && piezaObjetivo.jugador !== jugador) {
-            if (piezaObjetivo.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
-                carcela.agregar(piezaObjetivo);
-                board[of][oc] = null;
+    for (let paso of camino) {
+        if (paso.tipo === 'move') {
+            let [nf, nc] = paso.to;
+            board[f][c] = null;
+            board[nf][nc] = pieza;
+            f = nf; c = nc;
+        } else if (paso.tipo === 'captureDirect') {
+            let [of, oc] = paso.over;
+            let [nf, nc] = paso.to;
+            let piezaObjetivo = board[of][oc];
+            if (piezaObjetivo && piezaObjetivo.jugador !== jugador) {
+                if (piezaObjetivo.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
+                    carcela.agregar(piezaObjetivo);
+                    board[of][oc] = null;
+                }
             }
-        }
-        board[f][c] = null;
-        board[nf][nc] = pieza;
-        f = nf; c = nc;
-    } else if (paso.tipo === 'jump') {
-        let [of, oc] = paso.over;
-        let [nf, nc] = paso.to;
-        let piezaSaltada = board[of][oc];
-        if (piezaSaltada && piezaSaltada.jugador !== jugador) {
-            if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F3' && pieza.tipo !== 'F6') {
-                // no se captura
-            } else {
-                carcela.agregar(piezaSaltada);
-                board[of][oc] = null;
+            board[f][c] = null;
+            board[nf][nc] = pieza;
+            f = nf; c = nc;
+        } else if (paso.tipo === 'jump') {
+            let [of, oc] = paso.over;
+            let [nf, nc] = paso.to;
+            let piezaSaltada = board[of][oc];
+            if (piezaSaltada && piezaSaltada.jugador !== jugador) {
+                if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F3' && pieza.tipo !== 'F6') {
+                    // no se captura
+                } else {
+                    carcela.agregar(piezaSaltada);
+                    board[of][oc] = null;
+                }
             }
+            board[f][c] = null;
+            board[nf][nc] = pieza;
+            f = nf; c = nc;
         }
-        board[f][c] = null;
-        board[nf][nc] = pieza;
-        f = nf; c = nc;
     }
-}
 
     return true;
 }
@@ -191,35 +189,29 @@ function iniciarJuego() {
     board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
 
     // Templo izquierdo (jugador 0)
-    // Columna 2: filas 1-8 → 8 peones F1
     for (let f = 1; f <= 8; f++) board[f][2] = new F1(0);
-    // Columna 1: fila 2 F5, fila 3 F2, fila 4 F0, fila 5 F0, fila 6 F2, fila 7 F5
     board[2][1] = new F5(0);
     board[3][1] = new F2(0);
     board[4][1] = new F0(0);
     board[5][1] = new F0(0);
     board[6][1] = new F2(0);
     board[7][1] = new F5(0);
-    // Columna 0: fila 3 F4, fila 4 F6, fila 5 F3, fila 6 F4
     board[3][0] = new F4(0);
     board[4][0] = new F6(0);
     board[5][0] = new F3(0);
     board[6][0] = new F4(0);
 
     // Templo derecho (jugador 1)
-    // Columna 10: filas 1-8 → 8 peones F1
     for (let f = 1; f <= 8; f++) board[f][10] = new F1(1);
-    // Columna 11: espejo de columna 1
     board[2][11] = new F5(1);
     board[3][11] = new F2(1);
     board[4][11] = new F0(1);
     board[5][11] = new F0(1);
     board[6][11] = new F2(1);
     board[7][11] = new F5(1);
-    // Columna 12: espejo de columna 0
     board[3][12] = new F4(1);
-    board[4][12] = new F3(1);
-    board[5][12] = new F6(1);
+    board[4][12] = new F6(1);
+    board[5][12] = new F3(1);
     board[6][12] = new F4(1);
 
     turno = 0;
