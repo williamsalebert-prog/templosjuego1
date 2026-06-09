@@ -16,18 +16,20 @@
 </head>
 <body>
 <div class="game-container">
-    <canvas id="tableroCanvas" width="1150" height="750"></canvas>
+    <canvas id="tableroCanvas" width="650" height="500"></canvas>
     <div class="info">
         <div>🔴 Jugador 1 (Rojo)  |  🔵 Jugador 2 (Azul)</div>
         <div class="turno" id="turnoTexto">Turno: Jugador 1</div>
-        <div>✅ Mover 1 casilla o saltar sobre pieza adyacente. ⚔️ Saltar sobre enemiga = captura.<br>
-        Tras un salto solo se pueden encadenar más saltos. Movimiento solo en zonas jugables.</div>
+        <div>⚔️ Captura por salto (damas) o directa en bordes.<br>
+        🏰 Enroque: intercambia Rey con Reina/Torre/Alfil (1 vez).<br>
+        👑 Victoria: capturar al Rey enemigo.</div>
     </div>
     <button id="btnDeshacer" class="boton-deshacer" disabled>↩️ Deshacer movimiento</button>
 </div>
 
 <script src="js/zonas.js"></script>
 <script src="js/pieza.js"></script>
+<script src="js/f0.js"></script>
 <script src="js/f1.js"></script>
 <script src="js/f2.js"></script>
 <script src="js/f3.js"></script>
