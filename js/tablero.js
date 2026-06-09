@@ -17,6 +17,11 @@ let modoRuta = false;
 let rutasAlternativas = [];
 let destinoRuta = null;
 
+// --- menú de coronación ---
+const menuCoronacion = document.getElementById('menuCoronacion');
+const opcionesCoronacion = document.getElementById('opcionesCoronacion');
+let coronacionPendiente = null; // { jugador, f, c }
+
 const imagenesPiezas = {};
 const colorBordeEquipo = ['#CC0000', '#1E3A8A'];
 
@@ -167,10 +172,8 @@ function aplicarMovimiento(origen, destino, caminoElegido = null) {
         if (!info) return false;
         if (Array.isArray(info)) {
             if (info.length > 0 && info[0].hasOwnProperty('pasos')) {
-                // Caballo: hay una o varias rutas. Si es automático, tomamos la primera.
                 camino = info[0].pasos;
             } else {
-                // Pieza normal: info es el array de pasos
                 camino = info;
             }
         } else {
@@ -229,7 +232,63 @@ function aplicarMovimiento(origen, destino, caminoElegido = null) {
             f = nf; c = nc;
         }
     }
+
+    // Comprobar coronación de F1
+    if (pieza.tipo === 'F1') {
+        let zona = getZona(f, c);
+        if ((jugador === 0 && zona === 'templo2') || (jugador === 1 && zona === 'templo1')) {
+            coronacionPendiente = { jugador, f, c };
+            mostrarMenuCoronacion();
+            return true;
+        }
+    }
+
     return true;
+}
+
+function mostrarMenuCoronacion() {
+    if (!coronacionPendiente) return;
+    const opciones = [
+        { tipo: 'F0', nombre: 'Torre' },
+        { tipo: 'F2', nombre: 'Caballo' },
+        { tipo: 'F4', nombre: 'Trampero' },
+        { tipo: 'F5', nombre: 'Alfil' }
+    ];
+    opcionesCoronacion.innerHTML = '';
+    opciones.forEach(op => {
+        const btn = document.createElement('button');
+        const img = document.createElement('img');
+        img.src = `img/${op.tipo.toLowerCase()}.jpg`;
+        img.onerror = () => {
+            img.style.display = 'none';
+            btn.textContent = op.tipo;
+        };
+        img.onload = () => {
+            btn.textContent = '';
+            btn.appendChild(img);
+        };
+        btn.appendChild(img);
+        btn.onclick = () => coronar(op.tipo);
+        opcionesCoronacion.appendChild(btn);
+    });
+    menuCoronacion.style.display = 'block';
+}
+
+function coronar(tipo) {
+    if (!coronacionPendiente) return;
+    const { jugador, f, c } = coronacionPendiente;
+    let nuevaPieza;
+    switch (tipo) {
+        case 'F0': nuevaPieza = new F0(jugador); break;
+        case 'F2': nuevaPieza = new F2(jugador); break;
+        case 'F4': nuevaPieza = new F4(jugador); break;
+        case 'F5': nuevaPieza = new F5(jugador); break;
+        default: return;
+    }
+    board[f][c] = nuevaPieza;
+    menuCoronacion.style.display = 'none';
+    coronacionPendiente = null;
+    dibujarTablero();
 }
 
 function iniciarJuego() {
@@ -272,6 +331,7 @@ function iniciarJuego() {
 }
 
 canvas.addEventListener('click', (e) => {
+    if (coronacionPendiente) return;
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -279,7 +339,6 @@ canvas.addEventListener('click', (e) => {
     const fila = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE);
     if (fila < 0 || fila >= FILAS || col < 0 || col >= COLUMNAS) return;
 
-    // Si estamos en modo elección de ruta del caballo
     if (modoRuta) {
         for (let ruta of rutasAlternativas) {
             let [if_, ic] = ruta.inter;
@@ -298,7 +357,6 @@ canvas.addEventListener('click', (e) => {
                 return;
             }
         }
-        // Clic fuera de las opciones de ruta: cancelamos y permitimos seleccionar otra pieza
         modoRuta = false;
         rutasAlternativas = [];
         selectedPiece = null;
@@ -308,7 +366,6 @@ canvas.addEventListener('click', (e) => {
         return;
     }
 
-    // Selección normal de pieza / destino
     if (!selectedPiece) {
         let ficha = board[fila][col];
         if (ficha && ficha.jugador === turno) {
@@ -323,20 +380,16 @@ canvas.addEventListener('click', (e) => {
         let esValido = posiblesMovimientos.some(([f, c]) => f === fila && c === col);
         if (esValido) {
             let info = caminosDestino[clave];
-            // Detectar múltiples rutas (caballo)
             if (Array.isArray(info) && info.length > 0 && info[0].hasOwnProperty('pasos')) {
                 if (info.length > 1) {
-                    // Hay varias rutas válidas
                     let algunaConEnemigo = info.some(ruta => ruta.tieneEnemigo);
                     if (algunaConEnemigo) {
-                        // Preguntar solo si al menos una tiene enemigos
                         rutasAlternativas = info;
                         destinoRuta = [fila, col];
                         modoRuta = true;
                         dibujarTablero();
                         return;
                     } else {
-                        // Ninguna tiene enemigos: elegir la primera automáticamente
                         let rutaElegida = info[0].pasos;
                         if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaElegida)) {
                             turno = 1 - turno;
@@ -350,7 +403,6 @@ canvas.addEventListener('click', (e) => {
                         return;
                     }
                 } else {
-                    // Solo una ruta: se ejecuta directamente
                     let rutaUnica = info[0].pasos;
                     if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaUnica)) {
                         turno = 1 - turno;
@@ -364,7 +416,6 @@ canvas.addEventListener('click', (e) => {
                     return;
                 }
             }
-            // Movimiento normal (otras piezas)
             if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col])) {
                 turno = 1 - turno;
                 actualizarTurno();
