@@ -147,44 +147,58 @@ function aplicarMovimiento(origen, destino) {
     let pieza = board[origen[0]][origen[1]];
     let jugador = pieza.jugador;
     let f = origen[0], c = origen[1];
-    for (let paso of camino) {
-        if (paso.tipo === 'move') {
-            let [nf, nc] = paso.to;
+ for (let paso of camino) {
+    if (paso.tipo === 'move') {
+        let [nf, nc] = paso.to;
+        board[f][c] = null;
+        board[nf][nc] = pieza;
+        f = nf; c = nc;
+    } else if (paso.tipo === 'captureDirect') {
+        let [of, oc] = paso.over;
+        let [nf, nc] = paso.to;
+        // Capturar la pieza enemiga en el destino
+        let piezaObjetivo = board[of][oc];
+        if (piezaObjetivo && piezaObjetivo.jugador !== jugador) {
+            if (piezaObjetivo.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
+                carcela.agregar(piezaObjetivo);
+                board[of][oc] = null;
+            }
+        }
+        board[f][c] = null;
+        board[nf][nc] = pieza;
+        f = nf; c = nc;
+    } else if (paso.tipo === 'jump') {
+        let [of, oc] = paso.over;
+        let [nf, nc] = paso.to;
+        if (of === nf && oc === nc) {
+            // Caso especial (ya no debería ocurrir con el nuevo sistema)
+            let piezaSaltada = board[of][oc];
+            if (piezaSaltada && piezaSaltada.jugador !== jugador) {
+                if (piezaSaltada.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
+                    carcela.agregar(piezaSaltada);
+                    board[of][oc] = null;
+                }
+            }
             board[f][c] = null;
             board[nf][nc] = pieza;
             f = nf; c = nc;
-        } else if (paso.tipo === 'jump') {
-            let [of, oc] = paso.over;
-            let [nf, nc] = paso.to;
-            if (of === nf && oc === nc) {
-                // Captura directa (estilo ajedrez) para caballo (F2) o excepciones
-                let piezaSaltada = board[of][oc];
-                if (piezaSaltada && piezaSaltada.jugador !== jugador) {
-                    if (piezaSaltada.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
-                        carcela.agregar(piezaSaltada);
-                        board[of][oc] = null;
-                    }
+        } else {
+            // Salto normal
+            let piezaSaltada = board[of][oc];
+            if (piezaSaltada && piezaSaltada.jugador !== jugador) {
+                if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F3' && pieza.tipo !== 'F6') {
+                    // no se captura
+                } else {
+                    carcela.agregar(piezaSaltada);
+                    board[of][oc] = null;
                 }
-                board[f][c] = null;
-                board[nf][nc] = pieza;
-                f = nf; c = nc;
-            } else {
-                // Salto normal (estilo damas)
-                let piezaSaltada = board[of][oc];
-                if (piezaSaltada && piezaSaltada.jugador !== jugador) {
-                    if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F3' && pieza.tipo !== 'F6') {
-                        // no se captura
-                    } else {
-                        carcela.agregar(piezaSaltada);
-                        board[of][oc] = null;
-                    }
-                }
-                board[f][c] = null;
-                board[nf][nc] = pieza;
-                f = nf; c = nc;
             }
+            board[f][c] = null;
+            board[nf][nc] = pieza;
+            f = nf; c = nc;
         }
     }
+}
 
     return true;
 }
