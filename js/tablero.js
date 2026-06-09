@@ -15,6 +15,208 @@ let caminosDestino = {};
 const imagenesPiezas = {};
 const colorBordeEquipo = ['#CC0000', '#1E3A8A'];
 
+// -------- CONFIGURACIÓN DE IA --------
+const urlParams = new URLSearchParams(window.location.search);
+const modoIA = (urlParams.get('mode') === '1');
+const dificultad = parseInt(urlParams.get('diff')) || 1; // 1 fácil, 2 medio, 3 difícil
+const PROFUNDIDAD_IA = (dificultad === 3) ? 3 : ((dificultad === 2) ? 2 : 1);
+
+// Valor de las piezas para evaluación
+const VALOR_PIEZAS = {
+    'F0': 5,  // Torre
+    'F1': 1,  // Peón
+    'F2': 3,  // Caballo
+    'F3': 9,  // Reina
+    'F4': 3,  // Trampero
+    'F5': 3,  // Alfil
+    'F6': 100 // Rey (valor muy alto, capturarlo = victoria)
+};
+
+// -------- FUNCIONES DE IA --------
+function clonarBoard(tablero) {
+    return tablero.map(fila => fila.map(celda => {
+        if (celda === null) return null;
+        const ClasePieza = piezasRegistradas.get(celda.tipo);
+        return ClasePieza ? new ClasePieza(celda.jugador) : null;
+    }));
+}
+
+function evaluarTablero(tablero) {
+    let puntuacion = 0;
+    for (let i = 0; i < FILAS; i++) {
+        for (let j = 0; j < COLUMNAS; j++) {
+            let pieza = tablero[i][j];
+            if (!pieza) continue;
+            let valor = VALOR_PIEZAS[pieza.tipo] || 0;
+            // Bonificación por centro (columnas 5-8)
+            if (j >= 5 && j <= 8) valor += Math.floor(valor * 0.1);
+            // Peones avanzados (cercanos a coronar)
+            if (pieza.tipo === 'F1') {
+                if (pieza.jugador === 0 && j >= 9) valor += 2;
+                else if (pieza.jugador === 1 && j <= 3) valor += 2;
+            }
+            // Rey seguro (cerca de sus piezas)
+            if (pieza.tipo === 'F6') {
+                let aliadasCerca = 0;
+                for (let df = -1; df <= 1; df++)
+                    for (let dc = -1; dc <= 1; dc++)
+                        if (tablero[i+df]?.[j+dc] && tablero[i+df][j+dc].jugador === pieza.jugador) aliadasCerca++;
+                valor += aliadasCerca * 5;
+            }
+            if (pieza.jugador === 1) puntuacion += valor; // IA es jugador 1
+            else puntuacion -= valor;
+        }
+    }
+    return puntuacion;
+}
+
+function obtenerTodosMovimientos(tablero, jugador) {
+    let movimientos = [];
+    for (let i = 0; i < FILAS; i++) {
+        for (let j = 0; j < COLUMNAS; j++) {
+            let pieza = tablero[i][j];
+            if (!pieza || pieza.jugador !== jugador) continue;
+            let res = pieza.obtenerMovimientos(i, j, tablero);
+            for (let destino of res.destinos) {
+                movimientos.push({
+                    origen: [i, j],
+                    destino: destino,
+                    caminos: res.caminos
+                });
+            }
+        }
+    }
+    return movimientos;
+}
+
+function simularMovimiento(tablero, mov) {
+    let nuevoTab = clonarBoard(tablero);
+    let pieza = nuevoTab[mov.origen[0]][mov.origen[1]];
+    let f = mov.origen[0], c = mov.origen[1];
+    let camino = mov.caminos[`${mov.destino[0]},${mov.destino[1]}`];
+    if (!camino) return null;
+    for (let paso of camino) {
+        if (paso.tipo === 'move') {
+            let [nf, nc] = paso.to;
+            nuevoTab[f][c] = null;
+            nuevoTab[nf][nc] = pieza;
+            f = nf; c = nc;
+        } else if (paso.tipo === 'captureDirect') {
+            let [of, oc] = paso.over;
+            let [nf, nc] = paso.to;
+            nuevoTab[of][oc] = null;
+            nuevoTab[f][c] = null;
+            nuevoTab[nf][nc] = pieza;
+            f = nf; c = nc;
+        } else if (paso.tipo === 'jump') {
+            let [of, oc] = paso.over;
+            let [nf, nc] = paso.to;
+            let piezaSaltada = nuevoTab[of][oc];
+            if (piezaSaltada && piezaSaltada.jugador !== pieza.jugador) {
+                if (piezaSaltada.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
+                    nuevoTab[of][oc] = null;
+                }
+            }
+            nuevoTab[f][c] = null;
+            nuevoTab[nf][nc] = pieza;
+            f = nf; c = nc;
+        }
+    }
+    return nuevoTab;
+}
+
+function minimax(tablero, profundidad, alfa, beta, esMaximizador) {
+    if (profundidad === 0) return evaluarTablero(tablero);
+    
+    let jugadorActual = esMaximizador ? 1 : 0;
+    let movimientos = obtenerTodosMovimientos(tablero, jugadorActual);
+    
+    if (movimientos.length === 0) return esMaximizador ? -Infinity : Infinity;
+
+    if (esMaximizador) {
+        let maxEval = -Infinity;
+        for (let mov of movimientos) {
+            let nuevoTab = simularMovimiento(tablero, mov);
+            if (!nuevoTab) continue;
+            let eval = minimax(nuevoTab, profundidad - 1, alfa, beta, false);
+            maxEval = Math.max(maxEval, eval);
+            alfa = Math.max(alfa, eval);
+            if (beta <= alfa) break;
+        }
+        return maxEval;
+    } else {
+        let minEval = Infinity;
+        for (let mov of movimientos) {
+            let nuevoTab = simularMovimiento(tablero, mov);
+            if (!nuevoTab) continue;
+            let eval = minimax(nuevoTab, profundidad - 1, alfa, beta, true);
+            minEval = Math.min(minEval, eval);
+            beta = Math.min(beta, eval);
+            if (beta <= alfa) break;
+        }
+        return minEval;
+    }
+}
+
+function jugarIA() {
+    if (!modoIA || turno !== 1) return;
+
+    let movimientos = obtenerTodosMovimientos(board, 1);
+    if (movimientos.length === 0) return;
+
+    let movElegido = null;
+    let prioridadCaptura = (dificultad >= 2); // medio y difícil prefieren capturar
+
+    if (dificultad === 1) {
+        // Fácil: aleatorio pero prefiere capturas
+        let capturas = movimientos.filter(m => {
+            let camino = m.caminos[`${m.destino[0]},${m.destino[1]}`];
+            return camino && (camino[0].tipo === 'jump' || camino[0].tipo === 'captureDirect');
+        });
+        if (capturas.length > 0) movimientos = capturas;
+        movElegido = movimientos[Math.floor(Math.random() * movimientos.length)];
+    } else if (dificultad === 2) {
+        // Medio: elige el mejor movimiento inmediato
+        let mejorEval = -Infinity;
+        for (let mov of movimientos) {
+            let nuevoTab = simularMovimiento(board, mov);
+            if (!nuevoTab) continue;
+            let eval = evaluarTablero(nuevoTab);
+            if (eval > mejorEval || !movElegido) {
+                mejorEval = eval;
+                movElegido = mov;
+            }
+        }
+    } else {
+        // Difícil: minimax con poda alfa-beta
+        let mejorEval = -Infinity;
+        for (let mov of movimientos) {
+            let nuevoTab = simularMovimiento(board, mov);
+            if (!nuevoTab) continue;
+            let eval = minimax(nuevoTab, PROFUNDIDAD_IA - 1, -Infinity, Infinity, false);
+            if (eval > mejorEval || !movElegido) {
+                mejorEval = eval;
+                movElegido = mov;
+            }
+        }
+    }
+
+    if (!movElegido) return;
+
+    // Aplicar el movimiento elegido
+    selectedPiece = { fila: movElegido.origen[0], col: movElegido.origen[1] };
+    caminosDestino = movElegido.caminos;
+    if (aplicarMovimiento(movElegido.origen, movElegido.destino)) {
+        turno = 0;
+        actualizarTurno();
+    }
+    selectedPiece = null;
+    posiblesMovimientos = [];
+    caminosDestino = {};
+    dibujarTablero();
+}
+
+// -------- RESTO DEL CÓDIGO (sin cambios) --------
 function precargarImagenes() {
     const extensiones = ['.jpg', '.jpeg', '.png'];
     for (let tipo of piezasRegistradas.keys()) {
@@ -79,7 +281,6 @@ function dibujarTablero() {
             ctx.strokeRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
         }
     }
-
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             let pieza = board[i][j];
@@ -89,7 +290,6 @@ function dibujarTablero() {
                 let radio = CELL_SIZE * 0.4;
                 let esTurno = pieza.jugador === turno;
                 ctx.globalAlpha = esTurno ? 1.0 : 0.4;
-
                 ctx.strokeStyle = colorBordeEquipo[pieza.jugador];
                 ctx.lineWidth = 2.5;
                 ctx.fillStyle = '#FFFFFF';
@@ -97,7 +297,6 @@ function dibujarTablero() {
                 ctx.arc(cx, cy, radio, 0, 2*Math.PI);
                 ctx.fill();
                 ctx.stroke();
-
                 let img = imagenesPiezas[pieza.tipo];
                 if (img && img.complete && img.naturalWidth > 0) {
                     ctx.save();
@@ -113,7 +312,6 @@ function dibujarTablero() {
                     ctx.textBaseline = 'middle';
                     ctx.fillText(pieza.tipo, cx, cy);
                 }
-
                 if (selectedPiece && selectedPiece.fila === i && selectedPiece.col === j) {
                     ctx.strokeStyle = '#FFDD44';
                     ctx.lineWidth = 3;
@@ -125,7 +323,6 @@ function dibujarTablero() {
             }
         }
     }
-
     for (let [f, c] of posiblesMovimientos) {
         ctx.fillStyle = '#FFFF00AA';
         ctx.fillRect(c * CELL_SIZE, f * CELL_SIZE, CELL_SIZE - 1, CELL_SIZE - 1);
@@ -141,7 +338,6 @@ function aplicarMovimiento(origen, destino) {
     let camino = caminosDestino[clave];
     if (!camino) return false;
     guardarEstado();
-
     let pieza = board[origen[0]][origen[1]];
     let jugador = pieza.jugador;
     let f = origen[0], c = origen[1];
@@ -181,14 +377,11 @@ function aplicarMovimiento(origen, destino) {
             f = nf; c = nc;
         }
     }
-
     return true;
 }
 
 function iniciarJuego() {
     board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
-
-    // Templo izquierdo (jugador 0)
     for (let f = 1; f <= 8; f++) board[f][2] = new F1(0);
     board[2][1] = new F5(0);
     board[3][1] = new F2(0);
@@ -200,8 +393,6 @@ function iniciarJuego() {
     board[4][0] = new F6(0);
     board[5][0] = new F3(0);
     board[6][0] = new F4(0);
-
-    // Templo derecho (jugador 1)
     for (let f = 1; f <= 8; f++) board[f][10] = new F1(1);
     board[2][11] = new F5(1);
     board[3][11] = new F2(1);
@@ -213,7 +404,6 @@ function iniciarJuego() {
     board[4][12] = new F6(1);
     board[5][12] = new F3(1);
     board[6][12] = new F4(1);
-
     turno = 0;
     selectedPiece = null;
     posiblesMovimientos = [];
@@ -221,21 +411,19 @@ function iniciarJuego() {
     historial.limpiar();
     carcela.limpiar();
     btnDeshacer.disabled = true;
-
     precargarImagenes();
-
     dibujarTablero();
     actualizarTurno();
 }
 
 canvas.addEventListener('click', (e) => {
+    if (modoIA && turno === 1) return; // Bloquear clics durante turno de la IA
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     const col = Math.floor(((e.clientX - rect.left) * scaleX) / CELL_SIZE);
     const fila = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE);
     if (fila < 0 || fila >= FILAS || col < 0 || col >= COLUMNAS) return;
-
     if (!selectedPiece) {
         let ficha = board[fila][col];
         if (ficha && ficha.jugador === turno) {
@@ -257,6 +445,10 @@ canvas.addEventListener('click', (e) => {
         posiblesMovimientos = [];
         caminosDestino = {};
         dibujarTablero();
+        // Activar IA si es modo 1 jugador y ahora le toca al PC
+        if (modoIA && turno === 1) {
+            setTimeout(jugarIA, 500);
+        }
     }
 });
 
