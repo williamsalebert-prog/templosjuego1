@@ -59,9 +59,6 @@ class F1 extends Pieza {
                         let clave = `${jf},${jc}`;
                         if (!visitados.has(clave)) {
                             visitados.add(clave);
-                            // Solo añadimos el destino si la cadena cumple la condición de avance
-                            // (si aún no se ha saltado, cualquier salto es válido porque es el primero)
-                            // Si ya se ha saltado, debemos verificar que el destino no esté detrás de la columna inicial
                             let colFinal = jc;
                             let avanceOk = (jugador === 0) ? (colFinal >= colInicial) : (colFinal <= colInicial);
                             if (!haSaltado || avanceOk) {
