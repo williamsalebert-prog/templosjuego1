@@ -7,13 +7,7 @@
         body { background: #1a472a; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Segoe UI', sans-serif; margin: 0; }
         .game-container { background: #2c5e2e; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; position: relative; }
         canvas { display: block; margin: 0 auto; box-shadow: 0 0 0 4px #c9a87b, 0 0 0 8px #6b3e1c; border-radius: 8px; cursor: pointer; }
-        .info { margin-top: 15px; color: #f9e0a0; background: #2d2b1fcc; padding: 8px; border-radius: 16px; font-size: 0.9rem; }
-        .turno { font-weight: bold; background: #c99e3a; color: #1e2a0e; display: inline-block; padding: 4px 12px; border-radius: 20px; margin-top: 10px; }
-        .boton-deshacer { margin-top: 15px; padding: 8px 20px; font-size: 1rem; font-weight: bold; background: #c9a87b; color: #1e2a0e; border: none; border-radius: 20px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .boton-deshacer:hover { background: #dbb87c; }
-        .boton-deshacer:disabled { background: #888; color: #ccc; cursor: not-allowed; }
-
-        /* Menú de coronación */
+        /* Solo se mantiene el menú de coronación, oculto por defecto */
         .menu-coronacion {
             position: absolute;
             top: 50%;
@@ -48,15 +42,6 @@
 <body>
 <div class="game-container">
     <canvas id="tableroCanvas" width="650" height="500"></canvas>
-    <div class="info">
-        <div>🔴 Jugador 1 (Rojo)  |  🔵 Jugador 2 (Azul)</div>
-        <div class="turno" id="turnoTexto">Turno: Jugador 1</div>
-        <div>⚔️ Captura por salto (damas) o directa en bordes.<br>
-        🏰 Enroque: intercambia Rey con Reina/Torre/Alfil (1 vez).<br>
-        👑 Victoria: capturar al Rey enemigo.</div>
-    </div>
-    <button id="btnDeshacer" class="boton-deshacer" disabled>↩️ Deshacer movimiento</button>
-
     <!-- Menú de coronación (oculto hasta que se active) -->
     <div id="menuCoronacion" class="menu-coronacion">
         <p>Elige coronación:</p>
