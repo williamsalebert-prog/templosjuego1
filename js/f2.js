@@ -21,22 +21,18 @@ class F2 extends Pieza {
 
             let contenido = board[nf][nc];
             if (contenido === null) {
-                // Movimiento a casilla vacía
                 let clave = `${nf},${nc}`;
                 destinos.add(clave);
                 if (!caminos[clave]) caminos[clave] = [{ tipo: 'move', to: [nf, nc] }];
             } else if (contenido.jugador !== jugador && capturaPermitida(this.tipo, contenido)) {
-                // Captura directa (el caballo captura ocupando la casilla enemiga)
                 let clave = `${nf},${nc}`;
                 destinos.add(clave);
-                // Usamos captureDirect para que tablero.js lo procese correctamente
                 if (!caminos[clave]) caminos[clave] = [{
                     tipo: 'captureDirect',
                     over: [nf, nc],
                     to: [nf, nc]
                 }];
             }
-            // Si hay pieza amiga, no se puede mover
         }
 
         let arr = [];
