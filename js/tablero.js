@@ -9,7 +9,7 @@ const turnoTexto = document.getElementById('turnoTexto');
 let board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
 let turno = 0;
 let selectedPiece = null;
-let posiblesMovimientos = [];   // puede contener arrays [f,c] u objetos {f,c,tipoMov:'enroque'}
+let posiblesMovimientos = [];
 let caminosDestino = {};
 
 // --- variables para elección de ruta del caballo ---
@@ -160,12 +160,12 @@ function dibujarTablero() {
         }
     }
 
+    // Dibujar rutas alternativas (ambas en morado)
     if (modoRuta && rutasAlternativas.length > 0) {
-        const coloresRuta = ['#AA00AA', '#FF69B4'];
         for (let idx = 0; idx < rutasAlternativas.length; idx++) {
             let ruta = rutasAlternativas[idx];
             let [fInter, cInter] = ruta.inter;
-            ctx.fillStyle = coloresRuta[idx % coloresRuta.length];
+            ctx.fillStyle = '#AA00AA'; // morado
             ctx.fillRect(cInter * CELL_SIZE, fInter * CELL_SIZE, CELL_SIZE - 1, CELL_SIZE - 1);
         }
         let [df, dc] = destinoRuta;
@@ -410,7 +410,7 @@ function iniciarJuego() {
 }
 
 // ----------------------------------------------------------
-// EVENTO CLICK MEJORADO
+// EVENTO CLICK MEJORADO (con selección de ficha amiga en modo ruta)
 // ----------------------------------------------------------
 canvas.addEventListener('click', (e) => {
     if (coronacionPendiente) return;
@@ -423,6 +423,34 @@ canvas.addEventListener('click', (e) => {
 
     // Modo elección de ruta del caballo
     if (modoRuta) {
+        // Si clic en una ficha amiga → cancelar ruta y seleccionar esa ficha
+        let fichaClicRuta = board[fila][col];
+        if (fichaClicRuta && fichaClicRuta.jugador === turno) {
+            // Cancelar modo ruta
+            modoRuta = false;
+            rutasAlternativas = [];
+            // Seleccionar la nueva pieza directamente
+            selectedPiece = { fila, col };
+            let res = fichaClicRuta.obtenerMovimientos(fila, col, board);
+            posiblesMovimientos = res.destinos;
+            caminosDestino = res.caminos;
+            if (fichaClicRuta.tipo === 'F6' && !enroqueRealizado[turno]) {
+                for (let i = 0; i < FILAS; i++) {
+                    for (let j = 0; j < COLUMNAS; j++) {
+                        let piezaObj = board[i][j];
+                        if (!piezaObj || piezaObj.jugador !== turno) continue;
+                        if (!['F0','F3','F5'].includes(piezaObj.tipo)) continue;
+                        if (validarEnroque(selectedPiece.fila, selectedPiece.col, i, j, turno)) {
+                            posiblesMovimientos.push({ f: i, c: j, tipoMov: 'enroque' });
+                        }
+                    }
+                }
+            }
+            dibujarTablero();
+            return;
+        }
+
+        // Si clic en una casilla de ruta → elegir esa ruta
         for (let ruta of rutasAlternativas) {
             let [if_, ic] = ruta.inter;
             if (if_ === fila && ic === col) {
@@ -440,6 +468,7 @@ canvas.addEventListener('click', (e) => {
                 return;
             }
         }
+        // Clic en cualquier otro sitio → cancelar ruta
         modoRuta = false;
         rutasAlternativas = [];
         selectedPiece = null;
@@ -458,7 +487,6 @@ canvas.addEventListener('click', (e) => {
             posiblesMovimientos = res.destinos;
             caminosDestino = res.caminos;
 
-            // Si es el Rey, añadir objetivos de enroque
             if (ficha.tipo === 'F6' && !enroqueRealizado[turno]) {
                 for (let i = 0; i < FILAS; i++) {
                     for (let j = 0; j < COLUMNAS; j++) {
@@ -501,7 +529,6 @@ canvas.addEventListener('click', (e) => {
     });
     if (esValido) {
         let info = caminosDestino[clave];
-        // Caballo con múltiples rutas
         if (Array.isArray(info) && info.length > 0 && info[0].hasOwnProperty('pasos')) {
             if (info.length > 1) {
                 let algunaConEnemigo = info.some(ruta => ruta.tieneEnemigo);
@@ -552,7 +579,6 @@ canvas.addEventListener('click', (e) => {
         let res = fichaClic.obtenerMovimientos(fila, col, board);
         posiblesMovimientos = res.destinos;
         caminosDestino = res.caminos;
-        // Si es el Rey, añadir enroques
         if (fichaClic.tipo === 'F6' && !enroqueRealizado[turno]) {
             for (let i = 0; i < FILAS; i++) {
                 for (let j = 0; j < COLUMNAS; j++) {
