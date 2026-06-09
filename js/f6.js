@@ -19,9 +19,10 @@ class F6 extends Pieza {
             if (!haSaltado) {
                 for (let [df, dc] of dirs) {
                     let nf = f + df, nc = c + dc;
-                    if (nf >= 0 && nf < FILAS && nc >= 0 && nc < COLUMNAS &&
-                        esJugable(nf, nc)) {
-                        if (tablero[nf][nc] === null) {
+                    if (nf >= 0 && nf < FILAS && nc >= 0 && nc < COLUMNAS && esJugable(nf, nc)) {
+                        let contenido = tablero[nf][nc];
+                        if (contenido === null) {
+                            // Movimiento normal a casilla vacía
                             let clave = `${nf},${nc}`;
                             if (!visitados.has(clave)) {
                                 visitados.add(clave);
@@ -29,15 +30,20 @@ class F6 extends Pieza {
                                 destinos.add(clave);
                                 if (!caminos[clave]) caminos[clave] = nuevoCamino;
                             }
-                        } else if (tablero[nf][nc].jugador !== jugador && capturaPermitida(this.tipo, tablero[nf][nc])) {
-                            // Captura directa (extremo o única opción)
-                            let clave = `${nf},${nc}`;
-                            if (!visitados.has(clave)) {
-                                visitados.add(clave);
-                                let nuevoCamino = [...camino, { tipo: 'captureDirect', over: [nf, nc], to: [nf, nc] }];
-                                destinos.add(clave);
-                                if (!caminos[clave]) caminos[clave] = nuevoCamino;
+                        } else if (contenido.jugador !== jugador && capturaPermitida(this.tipo, contenido)) {
+                            // Captura directa SOLO si es extremo (no hay casilla jugable detrás)
+                            let detrasF = nf + df, detrasC = nc + dc;
+                            if (!(detrasF >= 0 && detrasF < FILAS && detrasC >= 0 && detrasC < COLUMNAS &&
+                                  esJugable(detrasF, detrasC))) {
+                                let clave = `${nf},${nc}`;
+                                if (!visitados.has(clave)) {
+                                    visitados.add(clave);
+                                    let nuevoCamino = [...camino, { tipo: 'captureDirect', over: [nf, nc], to: [nf, nc] }];
+                                    destinos.add(clave);
+                                    if (!caminos[clave]) caminos[clave] = nuevoCamino;
+                                }
                             }
+                            // Si hay casilla jugable detrás, NO se ofrece captura directa (se manejará con salto si está vacía)
                         }
                     }
                 }
