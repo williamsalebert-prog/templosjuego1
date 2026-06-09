@@ -3,8 +3,6 @@ const canvas = document.getElementById('tableroCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = 650;
 canvas.height = 500;
-const btnDeshacer = document.getElementById('btnDeshacer');
-const turnoTexto = document.getElementById('turnoTexto');
 
 let board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
 let turno = 0;
@@ -55,7 +53,6 @@ function copiarBoard() {
 
 function guardarEstado() {
     historial.guardar({ board: copiarBoard(), turno: turno, enroqueRealizado: [...enroqueRealizado] });
-    btnDeshacer.disabled = false;
 }
 
 function deshacerMovimiento() {
@@ -73,8 +70,6 @@ function deshacerMovimiento() {
     coronacionPendiente = null;
     menuCoronacion.style.display = 'none';
     dibujarTablero();
-    actualizarTurno();
-    btnDeshacer.disabled = !historial.puedeDeshacer();
 }
 
 function dibujarTablero() {
@@ -82,19 +77,20 @@ function dibujarTablero() {
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             let x = j * CELL_SIZE, y = i * CELL_SIZE;
-          if (esNoJugable(i, j)) {
-    ctx.fillStyle = colores.vacio.par;   // ahora es el negro azulado de la paleta
-    ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
-    ctx.strokeStyle = '#333333';
-    ctx.strokeRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
-    continue;
-}
+            if (esNoJugable(i, j)) {
+                // Completamente negro, sin bordes
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                continue;
+            }
             let zona = getZona(i, j);
             let par = (i + j) % 2 === 0;
             let color = zona === 'vacio' ? colores.vacio.par : (par ? colores[zona].par : colores[zona].impar);
             ctx.fillStyle = color;
             ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
-            ctx.strokeStyle = '#a57c4c';
+            // Bordes suaves para dar relieve
+            ctx.strokeStyle = '#d4a373';
+            ctx.lineWidth = 1.5;
             ctx.strokeRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
         }
     }
@@ -152,20 +148,20 @@ function dibujarTablero() {
                 f = mov[0]; c = mov[1];
             }
             if (mov.tipoMov === 'enroque') {
-                ctx.fillStyle = '#AA00AA'; // morado
+                ctx.fillStyle = '#AA00AA';
             } else {
-                ctx.fillStyle = '#FFFF00AA'; // amarillo
+                ctx.fillStyle = '#FFFF00AA';
             }
             ctx.fillRect(c * CELL_SIZE, f * CELL_SIZE, CELL_SIZE - 1, CELL_SIZE - 1);
         }
     }
 
-    // Dibujar rutas alternativas (ambas en morado)
+    // Rutas del caballo (morado)
     if (modoRuta && rutasAlternativas.length > 0) {
         for (let idx = 0; idx < rutasAlternativas.length; idx++) {
             let ruta = rutasAlternativas[idx];
             let [fInter, cInter] = ruta.inter;
-            ctx.fillStyle = '#AA00AA'; // morado
+            ctx.fillStyle = '#AA00AA';
             ctx.fillRect(cInter * CELL_SIZE, fInter * CELL_SIZE, CELL_SIZE - 1, CELL_SIZE - 1);
         }
         let [df, dc] = destinoRuta;
@@ -173,10 +169,6 @@ function dibujarTablero() {
         ctx.lineWidth = 3;
         ctx.strokeRect(dc * CELL_SIZE, df * CELL_SIZE, CELL_SIZE - 1, CELL_SIZE - 1);
     }
-}
-
-function actualizarTurno() {
-    turnoTexto.innerText = `Turno: Jugador ${turno + 1}`;
 }
 
 // ----------------------------------------------------------
@@ -403,14 +395,12 @@ function iniciarJuego() {
     menuCoronacion.style.display = 'none';
     historial.limpiar();
     carcela.limpiar();
-    btnDeshacer.disabled = true;
     precargarImagenes();
     dibujarTablero();
-    actualizarTurno();
 }
 
 // ----------------------------------------------------------
-// EVENTO CLICK MEJORADO (con selección de ficha amiga en modo ruta)
+// EVENTO CLICK
 // ----------------------------------------------------------
 canvas.addEventListener('click', (e) => {
     if (coronacionPendiente) return;
@@ -421,15 +411,11 @@ canvas.addEventListener('click', (e) => {
     const fila = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE);
     if (fila < 0 || fila >= FILAS || col < 0 || col >= COLUMNAS) return;
 
-    // Modo elección de ruta del caballo
     if (modoRuta) {
-        // Si clic en una ficha amiga → cancelar ruta y seleccionar esa ficha
         let fichaClicRuta = board[fila][col];
         if (fichaClicRuta && fichaClicRuta.jugador === turno) {
-            // Cancelar modo ruta
             modoRuta = false;
             rutasAlternativas = [];
-            // Seleccionar la nueva pieza directamente
             selectedPiece = { fila, col };
             let res = fichaClicRuta.obtenerMovimientos(fila, col, board);
             posiblesMovimientos = res.destinos;
@@ -450,14 +436,12 @@ canvas.addEventListener('click', (e) => {
             return;
         }
 
-        // Si clic en una casilla de ruta → elegir esa ruta
         for (let ruta of rutasAlternativas) {
             let [if_, ic] = ruta.inter;
             if (if_ === fila && ic === col) {
                 let caminoElegido = ruta.pasos;
                 if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], destinoRuta, caminoElegido)) {
                     turno = 1 - turno;
-                    actualizarTurno();
                 }
                 modoRuta = false;
                 rutasAlternativas = [];
@@ -468,7 +452,6 @@ canvas.addEventListener('click', (e) => {
                 return;
             }
         }
-        // Clic en cualquier otro sitio → cancelar ruta
         modoRuta = false;
         rutasAlternativas = [];
         selectedPiece = null;
@@ -478,7 +461,6 @@ canvas.addEventListener('click', (e) => {
         return;
     }
 
-    // ─── Si NO hay pieza seleccionada ───
     if (!selectedPiece) {
         let ficha = board[fila][col];
         if (ficha && ficha.jugador === turno) {
@@ -504,14 +486,10 @@ canvas.addEventListener('click', (e) => {
         return;
     }
 
-    // ─── YA HAY UNA PIEZA SELECCIONADA ───
-
-    // 1. ¿Es un enroque? (clic en celda morada)
     let movEnroque = posiblesMovimientos.find(m => m.tipoMov === 'enroque' && m.f === fila && m.c === col);
     if (movEnroque) {
         if (ejecutarEnroque(selectedPiece.fila, selectedPiece.col, fila, col, turno)) {
             turno = 1 - turno;
-            actualizarTurno();
         }
         selectedPiece = null;
         posiblesMovimientos = [];
@@ -520,7 +498,6 @@ canvas.addEventListener('click', (e) => {
         return;
     }
 
-    // 2. ¿Es un movimiento normal? (clic en celda amarilla)
     let clave = `${fila},${col}`;
     let esValido = posiblesMovimientos.some(mov => {
         if (Array.isArray(mov)) return mov[0] === fila && mov[1] === col;
@@ -542,14 +519,12 @@ canvas.addEventListener('click', (e) => {
                     let rutaElegida = info[0].pasos;
                     if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaElegida)) {
                         turno = 1 - turno;
-                        actualizarTurno();
                     }
                 }
             } else {
                 let rutaUnica = info[0].pasos;
                 if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaUnica)) {
                     turno = 1 - turno;
-                    actualizarTurno();
                 }
             }
             selectedPiece = null;
@@ -559,10 +534,8 @@ canvas.addEventListener('click', (e) => {
             dibujarTablero();
             return;
         }
-        // Movimiento normal (otras piezas)
         if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col])) {
             turno = 1 - turno;
-            actualizarTurno();
         }
         selectedPiece = null;
         posiblesMovimientos = [];
@@ -572,7 +545,6 @@ canvas.addEventListener('click', (e) => {
         return;
     }
 
-    // 3. Clic en otra pieza propia → cambiar de selección directamente
     let fichaClic = board[fila][col];
     if (fichaClic && fichaClic.jugador === turno) {
         selectedPiece = { fila, col };
@@ -595,7 +567,6 @@ canvas.addEventListener('click', (e) => {
         return;
     }
 
-    // 4. Clic en cualquier otro sitio → cancelar selección
     selectedPiece = null;
     posiblesMovimientos = [];
     caminosDestino = {};
@@ -603,6 +574,14 @@ canvas.addEventListener('click', (e) => {
     dibujarTablero();
 });
 
-btnDeshacer.addEventListener('click', deshacerMovimiento);
+// ----------------------------------------------------------
+// CTRL+Z para deshacer
+// ----------------------------------------------------------
+document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'z') {
+        e.preventDefault();
+        deshacerMovimiento();
+    }
+});
 
 iniciarJuego();
