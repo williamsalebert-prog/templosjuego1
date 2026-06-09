@@ -20,14 +20,16 @@ class F2 extends Pieza {
             if (!esJugable(nf, nc)) continue;
             if (board[nf][nc] !== null) continue; // destino debe estar vacío
 
-            // Calcular las dos casillas intermedias (x)
+            // Calcular las dos casillas intermedias correctamente
             let inter1f, inter1c, inter2f, inter2c;
             if (Math.abs(df) === 2) {
+                // Movimiento principal de 2 en fila
                 inter1f = fila + Math.sign(df);
                 inter1c = col;
                 inter2f = fila + df - Math.sign(df);
                 inter2c = nc;
-            } else { // df = ±1, dc = ±2
+            } else {
+                // df = ±1, dc = ±2
                 inter1f = fila;
                 inter1c = col + Math.sign(dc);
                 inter2f = nf;
@@ -41,11 +43,12 @@ class F2 extends Pieza {
             // Revisar primera casilla intermedia
             if (pieza1) {
                 if (pieza1.jugador !== jugador && capturaPermitida(this.tipo, pieza1)) {
+                    // Enemigo capturable → añadir eliminación
                     pasos.push({ tipo: 'removePiece', over: [inter1f, inter1c] });
                 } else if (pieza1.jugador !== jugador && !capturaPermitida(this.tipo, pieza1)) {
-                    continue; // enemiga no capturable
+                    continue; // Enemigo no capturable (ej: Trampero para no Rey/Reina)
                 }
-                // Si es amiga, no se hace nada
+                // Si es amiga, no se hace nada (se permite saltar)
             }
 
             // Revisar segunda casilla intermedia
@@ -57,7 +60,7 @@ class F2 extends Pieza {
                 }
             }
 
-            // Añadir el movimiento final
+            // Paso final: mover el caballo a la casilla vacía
             pasos.push({ tipo: 'move', to: [nf, nc] });
 
             let clave = `${nf},${nc}`;
