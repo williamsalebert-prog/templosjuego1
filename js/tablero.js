@@ -82,13 +82,13 @@ function dibujarTablero() {
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             let x = j * CELL_SIZE, y = i * CELL_SIZE;
-            if (esNoJugable(i, j)) {
-                ctx.fillStyle = '#111111';
-                ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
-                ctx.strokeStyle = '#333333';
-                ctx.strokeRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
-                continue;
-            }
+          if (esNoJugable(i, j)) {
+    ctx.fillStyle = colores.vacio.par;   // ahora es el negro azulado de la paleta
+    ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
+    ctx.strokeStyle = '#333333';
+    ctx.strokeRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
+    continue;
+}
             let zona = getZona(i, j);
             let par = (i + j) % 2 === 0;
             let color = zona === 'vacio' ? colores.vacio.par : (par ? colores[zona].par : colores[zona].impar);
