@@ -12,23 +12,22 @@ class F2 extends Pieza {
             [-1, -2], [-1, 2], [1, -2], [1, 2]
         ];
         let destinos = new Set();
-        let caminos = {};   // clave -> array de caminos (uno por cada ruta válida)
+        let caminos = {};   // clave -> array de rutas {inter, pasos}
 
         for (let [df, dc] of saltosL) {
             let nf = fila + df, nc = col + dc;
             if (nf < 0 || nf >= FILAS || nc < 0 || nc >= COLUMNAS) continue;
             if (!esJugable(nf, nc)) continue;
-            if (board[nf][nc] !== null) continue;   // destino debe estar vacío
+            if (board[nf][nc] !== null) continue;   // destino vacío
 
-            // Determinar las dos posibles casillas intermedias (una por cada ruta)
+            // Determinar las dos casillas intermedias (una por cada posible trayectoria)
             let inter1f, inter1c, inter2f, inter2c;
-            // Ruta "primero avanzar en la dirección larga, luego en la corta"
             if (Math.abs(df) === 2) {
                 inter1f = fila + Math.sign(df);
                 inter1c = col;
                 inter2f = fila;
                 inter2c = col + Math.sign(dc);
-            } else {   // |dc| == 2
+            } else { // |dc| == 2
                 inter1f = fila + Math.sign(df);
                 inter1c = col;
                 inter2f = fila;
@@ -37,14 +36,14 @@ class F2 extends Pieza {
 
             let rutasValidas = [];
 
-            // Evaluar ruta 1
+            // Ruta 1: pasar por inter1
             if (inter1f >= 0 && inter1f < FILAS && inter1c >= 0 && inter1c < COLUMNAS) {
-                let piezaInter = board[inter1f][inter1c];
-                if (piezaInter && piezaInter.jugador !== jugador && !capturaPermitida(this.tipo, piezaInter)) {
-                    // enemiga no capturable → ruta inválida
+                let pieza1 = board[inter1f][inter1c];
+                if (pieza1 && pieza1.jugador !== jugador && !capturaPermitida(this.tipo, pieza1)) {
+                    // Enemiga no capturable → ruta inválida
                 } else {
                     let pasos = [];
-                    if (piezaInter && piezaInter.jugador !== jugador) {
+                    if (pieza1 && pieza1.jugador !== jugador) {
                         pasos.push({ tipo: 'removePiece', over: [inter1f, inter1c] });
                     }
                     pasos.push({ tipo: 'move', to: [nf, nc] });
@@ -52,18 +51,18 @@ class F2 extends Pieza {
                 }
             }
 
-            // Evaluar ruta 2
+            // Ruta 2: pasar por inter2
             if (inter2f >= 0 && inter2f < FILAS && inter2c >= 0 && inter2c < COLUMNAS) {
-                let piezaInter = board[inter2f][inter2c];
-                if (piezaInter && piezaInter.jugador !== jugador && !capturaPermitida(this.tipo, piezaInter)) {
+                let pieza2 = board[inter2f][inter2c];
+                if (pieza2 && pieza2.jugador !== jugador && !capturaPermitida(this.tipo, pieza2)) {
                     // inválida
                 } else {
                     let pasos = [];
-                    if (piezaInter && piezaInter.jugador !== jugador) {
+                    if (pieza2 && pieza2.jugador !== jugador) {
                         pasos.push({ tipo: 'removePiece', over: [inter2f, inter2c] });
                     }
                     pasos.push({ tipo: 'move', to: [nf, nc] });
-                    // Evitar duplicados si ambas rutas son iguales (poco común)
+                    // Evitar duplicados si las dos rutas son la misma casilla (poco común)
                     if (!rutasValidas.some(r => r.inter[0] === inter2f && r.inter[1] === inter2c)) {
                         rutasValidas.push({ inter: [inter2f, inter2c], pasos });
                     }
