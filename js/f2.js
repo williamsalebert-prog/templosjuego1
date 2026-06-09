@@ -1,4 +1,4 @@
-console.log("✅ f2 2.js cargado");
+console.log("✅ f2.js cargado");
 
 class F2 extends Pieza {
     constructor(jugador) {
@@ -7,7 +7,6 @@ class F2 extends Pieza {
 
     obtenerMovimientos(fila, col, board) {
         const jugador = this.jugador;
-        // Saltos de caballo (L) - 8 posiciones
         const saltosL = [
             [-2, -1], [-2, 1], [2, -1], [2, 1],
             [-1, -2], [-1, 2], [1, -2], [1, 2]
@@ -22,22 +21,22 @@ class F2 extends Pieza {
 
             let contenido = board[nf][nc];
             if (contenido === null) {
-                // Casilla vacía: movimiento normal
+                // Movimiento a casilla vacía
                 let clave = `${nf},${nc}`;
                 destinos.add(clave);
                 if (!caminos[clave]) caminos[clave] = [{ tipo: 'move', to: [nf, nc] }];
             } else if (contenido.jugador !== jugador && capturaPermitida(this.tipo, contenido)) {
-                // Captura: elimina la pieza enemiga y ocupa su lugar
+                // Captura directa (el caballo captura ocupando la casilla enemiga)
                 let clave = `${nf},${nc}`;
                 destinos.add(clave);
-                // Usamos tipo 'jump' con over = destino, para que tablero.js lo capture
+                // Usamos captureDirect para que tablero.js lo procese correctamente
                 if (!caminos[clave]) caminos[clave] = [{
-                    tipo: 'jump',
-                    over: [nf, nc],  // pieza a capturar
-                    to: [nf, nc]     // misma casilla
+                    tipo: 'captureDirect',
+                    over: [nf, nc],
+                    to: [nf, nc]
                 }];
             }
-            // Si es una pieza amiga, no se hace nada
+            // Si hay pieza amiga, no se puede mover
         }
 
         let arr = [];
