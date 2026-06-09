@@ -6,15 +6,29 @@
     <style>
         body { background: #1a472a; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Segoe UI', sans-serif; margin: 0; }
         .pantalla-inicio { text-align: center; color: #f9e0a0; background: #2d2b1fcc; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        button { font-size: 1.5rem; padding: 15px 30px; margin-top: 20px; background: #c9a87b; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; }
+        button { font-size: 1.2rem; padding: 12px 25px; margin: 8px; background: #c9a87b; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; }
         button:hover { background: #dbb87c; }
+        .modo-btn { font-size: 1.5rem; padding: 15px 30px; }
+        .dificultad { margin-top: 15px; display: none; }
     </style>
 </head>
 <body>
     <div class="pantalla-inicio">
         <h1>⚔️ Templos ⚔️</h1>
-        <p>Juego de estrategia tipo damas chinas</p>
-        <button onclick="window.location.href='tablero.html'">Iniciar Partida</button>
+        <p>Juego de estrategia tipo damas chinas + ajedrez</p>
+        <button class="modo-btn" onclick="mostrarDificultad()">1 Jugador (vs PC)</button>
+        <button class="modo-btn" onclick="window.location.href='tablero.html?mode=2'">2 Jugadores</button>
+        <div id="dificultad" class="dificultad">
+            <p>Elige dificultad:</p>
+            <button onclick="window.location.href='tablero.html?mode=1&diff=1'">Fácil</button>
+            <button onclick="window.location.href='tablero.html?mode=1&diff=2'">Medio</button>
+            <button onclick="window.location.href='tablero.html?mode=1&diff=3'">Difícil</button>
+        </div>
     </div>
+    <script>
+        function mostrarDificultad() {
+            document.getElementById('dificultad').style.display = 'block';
+        }
+    </script>
 </body>
 </html>
