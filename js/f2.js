@@ -12,67 +12,72 @@ class F2 extends Pieza {
             [-1, -2], [-1, 2], [1, -2], [1, 2]
         ];
         let destinos = new Set();
-        let caminos = {};
+        let caminos = {};   // clave -> array de caminos (uno por cada ruta válida)
 
         for (let [df, dc] of saltosL) {
             let nf = fila + df, nc = col + dc;
             if (nf < 0 || nf >= FILAS || nc < 0 || nc >= COLUMNAS) continue;
             if (!esJugable(nf, nc)) continue;
-            if (board[nf][nc] !== null) continue; // destino vacío obligatorio
+            if (board[nf][nc] !== null) continue;   // destino debe estar vacío
 
-            // Determinar las CUATRO casillas intermedias posibles
-            let intermedias = [];
+            // Determinar las dos posibles casillas intermedias (una por cada ruta)
+            let inter1f, inter1c, inter2f, inter2c;
+            // Ruta "primero avanzar en la dirección larga, luego en la corta"
             if (Math.abs(df) === 2) {
-                // Trayectoria priorizando fila: (f+sign(df), c) y (f+2*sign(df), c) 
-                // Pero la segunda es (f+df, c) que puede ser una esquina
-                intermedias.push([fila + Math.sign(df), col]);
-                intermedias.push([fila + df, col]); // esta puede ser (f+2*sign(df),c) o (f-2*sign(df),c)
-                // Trayectoria priorizando columna: (fila, c+sign(dc)) y (fila+sign(df), c+dc) 
-                intermedias.push([fila, col + Math.sign(dc)]);
-                intermedias.push([fila + Math.sign(df), col + dc]);
-            } else { // df = ±1, dc = ±2
-                intermedias.push([fila, col + Math.sign(dc)]);
-                intermedias.push([fila, col + dc]); // (f, c+2*sign(dc))
-                intermedias.push([fila + Math.sign(df), col]);
-                intermedias.push([fila + df, col + Math.sign(dc)]);
+                inter1f = fila + Math.sign(df);
+                inter1c = col;
+                inter2f = fila;
+                inter2c = col + Math.sign(dc);
+            } else {   // |dc| == 2
+                inter1f = fila + Math.sign(df);
+                inter1c = col;
+                inter2f = fila;
+                inter2c = col + Math.sign(dc);
             }
 
-            // Filtrar casillas repetidas y fuera del tablero
-            let unicas = [];
-            let seen = new Set();
-            for (let [f, c] of intermedias) {
-                if (f < 0 || f >= FILAS || c < 0 || c >= COLUMNAS) continue;
-                let key = `${f},${c}`;
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    unicas.push([f, c]);
-                }
-            }
+            let rutasValidas = [];
 
-            let pasos = [];
-            let movimientoValido = true;
-
-            for (let [fInt, cInt] of unicas) {
-                let pieza = board[fInt]?.[cInt];
-                if (!pieza) continue; // vacía, sin problema
-                if (pieza.jugador === jugador) continue; // amiga, se puede saltar
-                // Enemigo
-                if (capturaPermitida(this.tipo, pieza)) {
-                    pasos.push({ tipo: 'removePiece', over: [fInt, cInt] });
+            // Evaluar ruta 1
+            if (inter1f >= 0 && inter1f < FILAS && inter1c >= 0 && inter1c < COLUMNAS) {
+                let piezaInter = board[inter1f][inter1c];
+                if (piezaInter && piezaInter.jugador !== jugador && !capturaPermitida(this.tipo, piezaInter)) {
+                    // enemiga no capturable → ruta inválida
                 } else {
-                    // Enemigo no capturable (ej. Trampero para no Reina/Rey)
-                    movimientoValido = false;
-                    break;
+                    let pasos = [];
+                    if (piezaInter && piezaInter.jugador !== jugador) {
+                        pasos.push({ tipo: 'removePiece', over: [inter1f, inter1c] });
+                    }
+                    pasos.push({ tipo: 'move', to: [nf, nc] });
+                    rutasValidas.push({ inter: [inter1f, inter1c], pasos });
                 }
             }
 
-            if (!movimientoValido) continue;
+            // Evaluar ruta 2
+            if (inter2f >= 0 && inter2f < FILAS && inter2c >= 0 && inter2c < COLUMNAS) {
+                let piezaInter = board[inter2f][inter2c];
+                if (piezaInter && piezaInter.jugador !== jugador && !capturaPermitida(this.tipo, piezaInter)) {
+                    // inválida
+                } else {
+                    let pasos = [];
+                    if (piezaInter && piezaInter.jugador !== jugador) {
+                        pasos.push({ tipo: 'removePiece', over: [inter2f, inter2c] });
+                    }
+                    pasos.push({ tipo: 'move', to: [nf, nc] });
+                    // Evitar duplicados si ambas rutas son iguales (poco común)
+                    if (!rutasValidas.some(r => r.inter[0] === inter2f && r.inter[1] === inter2c)) {
+                        rutasValidas.push({ inter: [inter2f, inter2c], pasos });
+                    }
+                }
+            }
 
-            pasos.push({ tipo: 'move', to: [nf, nc] });
-
-            let clave = `${nf},${nc}`;
-            destinos.add(clave);
-            if (!caminos[clave]) caminos[clave] = pasos;
+            if (rutasValidas.length > 0) {
+                let clave = `${nf},${nc}`;
+                destinos.add(clave);
+                if (!caminos[clave]) caminos[clave] = [];
+                for (let r of rutasValidas) {
+                    caminos[clave].push({ inter: r.inter, pasos: r.pasos });
+                }
+            }
         }
 
         let arr = [];
