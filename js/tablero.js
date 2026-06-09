@@ -13,9 +13,9 @@ let posiblesMovimientos = [];
 let caminosDestino = {};
 
 // --- variables para elección de ruta del caballo ---
-let modoRuta = false;             // true cuando hay que elegir ruta
-let rutasAlternativas = [];       // array de {inter, pasos}
-let destinoRuta = null;           // [f,c] del destino elegido
+let modoRuta = false;
+let rutasAlternativas = [];
+let destinoRuta = null;
 
 const imagenesPiezas = {};
 const colorBordeEquipo = ['#CC0000', '#1E3A8A'];
@@ -139,7 +139,7 @@ function dibujarTablero() {
     }
 
     if (modoRuta && rutasAlternativas.length > 0) {
-        const coloresRuta = ['#AA00AA', '#FF69B4']; // morado, rosa
+        const coloresRuta = ['#AA00AA', '#FF69B4'];
         for (let idx = 0; idx < rutasAlternativas.length; idx++) {
             let ruta = rutasAlternativas[idx];
             let [fInter, cInter] = ruta.inter;
@@ -160,25 +160,20 @@ function actualizarTurno() {
 function aplicarMovimiento(origen, destino, caminoElegido = null) {
     let clave = `${destino[0]},${destino[1]}`;
     let camino;
-
     if (caminoElegido) {
-        camino = caminoElegido;               // viene elegido del modo ruta
+        camino = caminoElegido;
     } else {
         let info = caminosDestino[clave];
         if (!info) return false;
-
-        // Determinar el array de pasos real según el tipo de pieza
         if (Array.isArray(info)) {
             if (info.length > 0 && info[0].hasOwnProperty('pasos')) {
-                // Es el caballo (tiene objetos {inter, pasos})
-                if (info.length > 1) return false; // necesita elección previa
-                camino = info[0].pasos;            // tomamos los pasos de la única ruta
+                // Caballo: hay una o varias rutas. Si es automático, tomamos la primera.
+                camino = info[0].pasos;
             } else {
-                // Pieza normal: info es ya el array de pasos
+                // Pieza normal: info es el array de pasos
                 camino = info;
             }
         } else {
-            // info no es array (caso improbable, pero por seguridad)
             camino = info;
         }
     }
@@ -309,7 +304,8 @@ canvas.addEventListener('click', (e) => {
         selectedPiece = null;
         posiblesMovimientos = [];
         caminosDestino = {};
-        // No retornamos, dejamos que el código seleccione la pieza del clic
+        dibujarTablero();
+        return;
     }
 
     // Selección normal de pieza / destino
@@ -328,20 +324,35 @@ canvas.addEventListener('click', (e) => {
         if (esValido) {
             let info = caminosDestino[clave];
             // Detectar múltiples rutas (caballo)
-            if (Array.isArray(info) && info.length > 0 && info[0].hasOwnProperty('pasos') && info.length > 1) {
-                // Hay varias rutas: solo preguntamos si ALGUNA contiene un enemigo capturable
-                let algunaConEnemigo = info.some(ruta => ruta.tieneEnemigo);
-                if (algunaConEnemigo) {
-                    // Activar modo elección de ruta
-                    rutasAlternativas = info;
-                    destinoRuta = [fila, col];
-                    modoRuta = true;
-                    dibujarTablero();
-                    return;
+            if (Array.isArray(info) && info.length > 0 && info[0].hasOwnProperty('pasos')) {
+                if (info.length > 1) {
+                    // Hay varias rutas válidas
+                    let algunaConEnemigo = info.some(ruta => ruta.tieneEnemigo);
+                    if (algunaConEnemigo) {
+                        // Preguntar solo si al menos una tiene enemigos
+                        rutasAlternativas = info;
+                        destinoRuta = [fila, col];
+                        modoRuta = true;
+                        dibujarTablero();
+                        return;
+                    } else {
+                        // Ninguna tiene enemigos: elegir la primera automáticamente
+                        let rutaElegida = info[0].pasos;
+                        if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaElegida)) {
+                            turno = 1 - turno;
+                            actualizarTurno();
+                        }
+                        selectedPiece = null;
+                        posiblesMovimientos = [];
+                        caminosDestino = {};
+                        modoRuta = false;
+                        dibujarTablero();
+                        return;
+                    }
                 } else {
-                    // No hay enemigos en ninguna ruta: elegimos la primera automáticamente
-                    let rutaElegida = info[0].pasos;
-                    if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaElegida)) {
+                    // Solo una ruta: se ejecuta directamente
+                    let rutaUnica = info[0].pasos;
+                    if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaUnica)) {
                         turno = 1 - turno;
                         actualizarTurno();
                     }
@@ -353,7 +364,7 @@ canvas.addEventListener('click', (e) => {
                     return;
                 }
             }
-            // Movimiento normal (una sola ruta o pieza estándar)
+            // Movimiento normal (otras piezas)
             if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col])) {
                 turno = 1 - turno;
                 actualizarTurno();
