@@ -131,7 +131,6 @@ function dibujarTablero() {
         }
     }
 
-    // Dibujar destinos (amarillo) solo si no estamos en modo ruta
     if (!modoRuta) {
         for (let [f, c] of posiblesMovimientos) {
             ctx.fillStyle = '#FFFF00AA';
@@ -139,7 +138,6 @@ function dibujarTablero() {
         }
     }
 
-    // Dibujar rutas alternativas (modo elección)
     if (modoRuta && rutasAlternativas.length > 0) {
         const coloresRuta = ['#AA00AA', '#FF69B4']; // morado, rosa
         for (let idx = 0; idx < rutasAlternativas.length; idx++) {
@@ -162,16 +160,26 @@ function actualizarTurno() {
 function aplicarMovimiento(origen, destino, caminoElegido = null) {
     let clave = `${destino[0]},${destino[1]}`;
     let camino;
+
     if (caminoElegido) {
-        camino = caminoElegido;
+        camino = caminoElegido;               // viene elegido del modo ruta
     } else {
-        let caminos = caminosDestino[clave];
-        if (!caminos) return false;
-        if (Array.isArray(caminos)) {
-            if (caminos.length > 1) return false; // necesita elección
-            camino = caminos[0].pasos || caminos[0];
+        let info = caminosDestino[clave];
+        if (!info) return false;
+
+        // Determinar el array de pasos real según el tipo de pieza
+        if (Array.isArray(info)) {
+            if (info.length > 0 && info[0].hasOwnProperty('pasos')) {
+                // Es el caballo (tiene objetos {inter, pasos})
+                if (info.length > 1) return false; // necesita elección previa
+                camino = info[0].pasos;            // tomamos los pasos de la única ruta
+            } else {
+                // Pieza normal: info es ya el array de pasos
+                camino = info;
+            }
         } else {
-            camino = caminos;
+            // info no es array (caso improbable, pero por seguridad)
+            camino = info;
         }
     }
 
@@ -276,7 +284,7 @@ canvas.addEventListener('click', (e) => {
     const fila = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE);
     if (fila < 0 || fila >= FILAS || col < 0 || col >= COLUMNAS) return;
 
-    // Si estamos en modo elección de ruta
+    // Si estamos en modo elección de ruta del caballo
     if (modoRuta) {
         for (let ruta of rutasAlternativas) {
             let [if_, ic] = ruta.inter;
@@ -295,14 +303,13 @@ canvas.addEventListener('click', (e) => {
                 return;
             }
         }
-        // Clic fuera de las opciones: cancelamos
+        // Clic fuera de las opciones de ruta: cancelamos y permitimos seleccionar otra pieza
         modoRuta = false;
         rutasAlternativas = [];
         selectedPiece = null;
         posiblesMovimientos = [];
         caminosDestino = {};
-        dibujarTablero();
-        return;
+        // No retornamos, dejamos que el código seleccione la pieza del clic
     }
 
     // Selección normal de pieza / destino
@@ -319,16 +326,16 @@ canvas.addEventListener('click', (e) => {
         let clave = `${fila},${col}`;
         let esValido = posiblesMovimientos.some(([f, c]) => f === fila && c === col);
         if (esValido) {
-            let caminos = caminosDestino[clave];
-            // Si hay varios caminos, entramos en modo elección
-            if (Array.isArray(caminos) && caminos.length > 1) {
-                rutasAlternativas = caminos;
+            let info = caminosDestino[clave];
+            // Si hay múltiples rutas (caballo), entramos en modo elección
+            if (Array.isArray(info) && info.length > 0 && info[0].hasOwnProperty('pasos') && info.length > 1) {
+                rutasAlternativas = info;
                 destinoRuta = [fila, col];
                 modoRuta = true;
                 dibujarTablero();
                 return;
             }
-            // Un solo camino
+            // En caso contrario, movimiento normal
             if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col])) {
                 turno = 1 - turno;
                 actualizarTurno();
