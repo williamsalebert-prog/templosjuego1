@@ -18,18 +18,15 @@ class F2 extends Pieza {
             let nf = fila + df, nc = col + dc;
             if (nf < 0 || nf >= FILAS || nc < 0 || nc >= COLUMNAS) continue;
             if (!esJugable(nf, nc)) continue;
-            if (board[nf][nc] !== null) continue; // destino debe estar vacío
+            if (board[nf][nc] !== null) continue;
 
-            // Calcular las dos casillas intermedias correctamente
             let inter1f, inter1c, inter2f, inter2c;
             if (Math.abs(df) === 2) {
-                // Movimiento principal de 2 en fila
                 inter1f = fila + Math.sign(df);
                 inter1c = col;
                 inter2f = fila + df - Math.sign(df);
                 inter2c = nc;
             } else {
-                // df = ±1, dc = ±2
                 inter1f = fila;
                 inter1c = col + Math.sign(dc);
                 inter2f = nf;
@@ -40,18 +37,13 @@ class F2 extends Pieza {
             let pieza2 = board[inter2f]?.[inter2c];
             let pasos = [];
 
-            // Revisar primera casilla intermedia
             if (pieza1) {
                 if (pieza1.jugador !== jugador && capturaPermitida(this.tipo, pieza1)) {
-                    // Enemigo capturable → añadir eliminación
                     pasos.push({ tipo: 'removePiece', over: [inter1f, inter1c] });
                 } else if (pieza1.jugador !== jugador && !capturaPermitida(this.tipo, pieza1)) {
-                    continue; // Enemigo no capturable (ej: Trampero para no Rey/Reina)
+                    continue;
                 }
-                // Si es amiga, no se hace nada (se permite saltar)
             }
-
-            // Revisar segunda casilla intermedia
             if (pieza2) {
                 if (pieza2.jugador !== jugador && capturaPermitida(this.tipo, pieza2)) {
                     pasos.push({ tipo: 'removePiece', over: [inter2f, inter2c] });
@@ -59,8 +51,6 @@ class F2 extends Pieza {
                     continue;
                 }
             }
-
-            // Paso final: mover el caballo a la casilla vacía
             pasos.push({ tipo: 'move', to: [nf, nc] });
 
             let clave = `${nf},${nc}`;
