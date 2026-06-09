@@ -357,19 +357,30 @@ function aplicarMovimiento(origen, destino) {
     let camino = caminosDestino[clave];
     if (!camino) return false;
     guardarEstado();
+
     let pieza = board[origen[0]][origen[1]];
     let jugador = pieza.jugador;
     let f = origen[0], c = origen[1];
+
     for (let paso of camino) {
         if (paso.tipo === 'move') {
             let [nf, nc] = paso.to;
             board[f][c] = null;
             board[nf][nc] = pieza;
             f = nf; c = nc;
+        } else if (paso.tipo === 'removePiece') {
+            let [of, oc] = paso.over;
+            let piezaAEliminar = board[of]?.[oc];
+            if (piezaAEliminar && piezaAEliminar.jugador !== jugador) {
+                if (piezaAEliminar.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
+                    carcela.agregar(piezaAEliminar);
+                    board[of][oc] = null;
+                }
+            }
         } else if (paso.tipo === 'captureDirect') {
             let [of, oc] = paso.over;
             let [nf, nc] = paso.to;
-            let piezaObjetivo = board[of][oc];
+            let piezaObjetivo = board[of]?.[oc];
             if (piezaObjetivo && piezaObjetivo.jugador !== jugador) {
                 if (piezaObjetivo.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
                     carcela.agregar(piezaObjetivo);
@@ -382,7 +393,7 @@ function aplicarMovimiento(origen, destino) {
         } else if (paso.tipo === 'jump') {
             let [of, oc] = paso.over;
             let [nf, nc] = paso.to;
-            let piezaSaltada = board[of][oc];
+            let piezaSaltada = board[of]?.[oc];
             if (piezaSaltada && piezaSaltada.jugador !== jugador) {
                 if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F3' && pieza.tipo !== 'F6') {
                     // no se captura
