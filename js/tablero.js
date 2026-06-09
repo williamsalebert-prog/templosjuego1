@@ -131,6 +131,7 @@ function dibujarTablero() {
         }
     }
 
+    // Dibujar destinos (amarillo) solo si no estamos en modo ruta
     if (!modoRuta) {
         for (let [f, c] of posiblesMovimientos) {
             ctx.fillStyle = '#FFFF00AA';
@@ -138,8 +139,9 @@ function dibujarTablero() {
         }
     }
 
+    // Dibujar rutas alternativas (modo elección)
     if (modoRuta && rutasAlternativas.length > 0) {
-        const coloresRuta = ['#AA00AA', '#FF69B4'];
+        const coloresRuta = ['#AA00AA', '#FF69B4']; // morado, rosa
         for (let idx = 0; idx < rutasAlternativas.length; idx++) {
             let ruta = rutasAlternativas[idx];
             let [fInter, cInter] = ruta.inter;
@@ -274,6 +276,7 @@ canvas.addEventListener('click', (e) => {
     const fila = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE);
     if (fila < 0 || fila >= FILAS || col < 0 || col >= COLUMNAS) return;
 
+    // Si estamos en modo elección de ruta
     if (modoRuta) {
         for (let ruta of rutasAlternativas) {
             let [if_, ic] = ruta.inter;
@@ -292,6 +295,7 @@ canvas.addEventListener('click', (e) => {
                 return;
             }
         }
+        // Clic fuera de las opciones: cancelamos
         modoRuta = false;
         rutasAlternativas = [];
         selectedPiece = null;
@@ -301,6 +305,7 @@ canvas.addEventListener('click', (e) => {
         return;
     }
 
+    // Selección normal de pieza / destino
     if (!selectedPiece) {
         let ficha = board[fila][col];
         if (ficha && ficha.jugador === turno) {
@@ -315,6 +320,7 @@ canvas.addEventListener('click', (e) => {
         let esValido = posiblesMovimientos.some(([f, c]) => f === fila && c === col);
         if (esValido) {
             let caminos = caminosDestino[clave];
+            // Si hay varios caminos, entramos en modo elección
             if (Array.isArray(caminos) && caminos.length > 1) {
                 rutasAlternativas = caminos;
                 destinoRuta = [fila, col];
@@ -322,6 +328,7 @@ canvas.addEventListener('click', (e) => {
                 dibujarTablero();
                 return;
             }
+            // Un solo camino
             if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col])) {
                 turno = 1 - turno;
                 actualizarTurno();
