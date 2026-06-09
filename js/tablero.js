@@ -234,8 +234,8 @@ function iniciarJuego() {
     board[7][11] = new F5(1);
     // Columna 12: espejo de columna 0
     board[3][12] = new F4(1);
-    board[4][12] = new F6(1);
-    board[5][12] = new F3(1);
+    board[4][12] = new F3(1);
+    board[5][12] = new F6(1);
     board[6][12] = new F4(1);
 
     turno = 0;
