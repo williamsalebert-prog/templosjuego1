@@ -23,13 +23,11 @@ class F2 extends Pieza {
             // Calcular las dos casillas intermedias (x)
             let inter1f, inter1c, inter2f, inter2c;
             if (Math.abs(df) === 2) {
-                // Movimiento principal de 2 en fila, 1 en columna
-                inter1f = fila + Math.sign(df);   // un paso en la dirección larga
+                inter1f = fila + Math.sign(df);
                 inter1c = col;
-                inter2f = fila + df - Math.sign(df); // el paso restante
+                inter2f = fila + df - Math.sign(df);
                 inter2c = nc;
-            } else {
-                // df = ±1, dc = ±2
+            } else { // df = ±1, dc = ±2
                 inter1f = fila;
                 inter1c = col + Math.sign(dc);
                 inter2f = nf;
@@ -38,44 +36,33 @@ class F2 extends Pieza {
 
             let pieza1 = board[inter1f]?.[inter1c];
             let pieza2 = board[inter2f]?.[inter2c];
+            let pasos = [];
 
-            // Construir lista de piezas enemigas a capturar
-            let capturas = [];
-            if (pieza1 && pieza1.jugador !== jugador && capturaPermitida(this.tipo, pieza1)) {
-                capturas.push({ f: inter1f, c: inter1c });
-            } else if (pieza1 && pieza1.jugador === jugador) {
-                // pieza amiga: se puede saltar, no se captura
-            } else if (pieza1 && pieza1.jugador !== jugador && !capturaPermitida(this.tipo, pieza1)) {
-                continue; // enemiga no capturable (ej: Trampero por no Rey/Reina)
+            // Revisar primera casilla intermedia
+            if (pieza1) {
+                if (pieza1.jugador !== jugador && capturaPermitida(this.tipo, pieza1)) {
+                    pasos.push({ tipo: 'removePiece', over: [inter1f, inter1c] });
+                } else if (pieza1.jugador !== jugador && !capturaPermitida(this.tipo, pieza1)) {
+                    continue; // enemiga no capturable
+                }
+                // Si es amiga, no se hace nada
             }
 
-            if (pieza2 && pieza2.jugador !== jugador && capturaPermitida(this.tipo, pieza2)) {
-                capturas.push({ f: inter2f, c: inter2c });
-            } else if (pieza2 && pieza2.jugador === jugador) {
-                // pieza amiga: se puede saltar
-            } else if (pieza2 && pieza2.jugador !== jugador && !capturaPermitida(this.tipo, pieza2)) {
-                continue;
+            // Revisar segunda casilla intermedia
+            if (pieza2) {
+                if (pieza2.jugador !== jugador && capturaPermitida(this.tipo, pieza2)) {
+                    pasos.push({ tipo: 'removePiece', over: [inter2f, inter2c] });
+                } else if (pieza2.jugador !== jugador && !capturaPermitida(this.tipo, pieza2)) {
+                    continue;
+                }
             }
+
+            // Añadir el movimiento final
+            pasos.push({ tipo: 'move', to: [nf, nc] });
 
             let clave = `${nf},${nc}`;
             destinos.add(clave);
-            if (!caminos[clave]) {
-                if (capturas.length > 0) {
-                    // Hay al menos una captura; construimos un camino con varios saltos
-                    let pasos = [];
-                    for (let cap of capturas) {
-                        pasos.push({
-                            tipo: 'jump',
-                            over: [cap.f, cap.c],
-                            to: [nf, nc]
-                        });
-                    }
-                    caminos[clave] = pasos;
-                } else {
-                    // Movimiento simple
-                    caminos[clave] = [{ tipo: 'move', to: [nf, nc] }];
-                }
-            }
+            if (!caminos[clave]) caminos[clave] = pasos;
         }
 
         let arr = [];
