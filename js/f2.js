@@ -18,46 +18,56 @@ class F2 extends Pieza {
             let nf = fila + df, nc = col + dc;
             if (nf < 0 || nf >= FILAS || nc < 0 || nc >= COLUMNAS) continue;
             if (!esJugable(nf, nc)) continue;
-            if (board[nf][nc] !== null) continue; // el destino debe estar vacío
+            if (board[nf][nc] !== null) continue; // destino vacío obligatorio
 
-            // Determinar las dos casillas intermedias del salto en L
-            let inter1f, inter1c, inter2f, inter2c;
+            // Determinar las CUATRO casillas intermedias posibles
+            let intermedias = [];
             if (Math.abs(df) === 2) {
-                inter1f = fila + Math.sign(df);
-                inter1c = col;
-                inter2f = fila + df - Math.sign(df);
-                inter2c = nc;
+                // Trayectoria priorizando fila: (f+sign(df), c) y (f+2*sign(df), c) 
+                // Pero la segunda es (f+df, c) que puede ser una esquina
+                intermedias.push([fila + Math.sign(df), col]);
+                intermedias.push([fila + df, col]); // esta puede ser (f+2*sign(df),c) o (f-2*sign(df),c)
+                // Trayectoria priorizando columna: (fila, c+sign(dc)) y (fila+sign(df), c+dc) 
+                intermedias.push([fila, col + Math.sign(dc)]);
+                intermedias.push([fila + Math.sign(df), col + dc]);
             } else { // df = ±1, dc = ±2
-                inter1f = fila;
-                inter1c = col + Math.sign(dc);
-                inter2f = nf;
-                inter2c = col + dc - Math.sign(dc);
+                intermedias.push([fila, col + Math.sign(dc)]);
+                intermedias.push([fila, col + dc]); // (f, c+2*sign(dc))
+                intermedias.push([fila + Math.sign(df), col]);
+                intermedias.push([fila + df, col + Math.sign(dc)]);
             }
 
-            let pieza1 = board[inter1f]?.[inter1c];
-            let pieza2 = board[inter2f]?.[inter2c];
+            // Filtrar casillas repetidas y fuera del tablero
+            let unicas = [];
+            let seen = new Set();
+            for (let [f, c] of intermedias) {
+                if (f < 0 || f >= FILAS || c < 0 || c >= COLUMNAS) continue;
+                let key = `${f},${c}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    unicas.push([f, c]);
+                }
+            }
+
             let pasos = [];
+            let movimientoValido = true;
 
-            // Primera casilla intermedia
-            if (pieza1) {
-                if (pieza1.jugador !== jugador && capturaPermitida(this.tipo, pieza1)) {
-                    pasos.push({ tipo: 'removePiece', over: [inter1f, inter1c] });
-                } else if (pieza1.jugador !== jugador && !capturaPermitida(this.tipo, pieza1)) {
-                    continue; // enemiga no capturable (ej. Trampero para no Reina/Rey)
-                }
-                // Si es amiga, no se agrega nada y se continúa
-            }
-
-            // Segunda casilla intermedia
-            if (pieza2) {
-                if (pieza2.jugador !== jugador && capturaPermitida(this.tipo, pieza2)) {
-                    pasos.push({ tipo: 'removePiece', over: [inter2f, inter2c] });
-                } else if (pieza2.jugador !== jugador && !capturaPermitida(this.tipo, pieza2)) {
-                    continue;
+            for (let [fInt, cInt] of unicas) {
+                let pieza = board[fInt]?.[cInt];
+                if (!pieza) continue; // vacía, sin problema
+                if (pieza.jugador === jugador) continue; // amiga, se puede saltar
+                // Enemigo
+                if (capturaPermitida(this.tipo, pieza)) {
+                    pasos.push({ tipo: 'removePiece', over: [fInt, cInt] });
+                } else {
+                    // Enemigo no capturable (ej. Trampero para no Reina/Rey)
+                    movimientoValido = false;
+                    break;
                 }
             }
 
-            // Movimiento final del caballo
+            if (!movimientoValido) continue;
+
             pasos.push({ tipo: 'move', to: [nf, nc] });
 
             let clave = `${nf},${nc}`;
