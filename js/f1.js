@@ -7,17 +7,20 @@ class F1 extends Pieza {
 
     obtenerMovimientos(fila, col, board) {
         const jugador = this.jugador;
-        // Adelante según bando
-        const dirsAdelante = (jugador === 0) ? [
+        // Movimiento simple: misma columna + adelante (5 direcciones, sin retroceso)
+        const dirsMovimiento = (jugador === 0) ? [
             [-1, 0], [1, 0],          // misma columna
-            [-1, 1], [0, 1], [1, 1]   // diagonales y recto adelante
+            [-1, 1], [0, 1], [1, 1]   // diagonales arriba-derecha, derecha, abajo-derecha
         ] : [
             [-1, 0], [1, 0],
             [-1, -1], [0, -1], [1, -1]
         ];
-        const dirsAtras = (jugador === 0) ? [
-            [-1, -1], [0, -1], [1, -1]
+        // Saltos: las mismas 5 + las 3 opuestas (8 direcciones)
+        const dirsSalto = (jugador === 0) ? [
+            [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1],   // adelante + vertical
+            [-1, -1], [0, -1], [1, -1]                  // atrás
         ] : [
+            [-1, 0], [1, 0], [-1, -1], [0, -1], [1, -1],
             [-1, 1], [0, 1], [1, 1]
         ];
 
@@ -25,11 +28,10 @@ class F1 extends Pieza {
         let caminos = {};
         const colInicial = col;
 
-        const explorar = (f, c, tablero, camino, visitados, haSaltado, permitirAtras) => {
+        const explorar = (f, c, tablero, camino, visitados, haSaltado) => {
             // Movimiento simple (solo si no ha saltado)
             if (!haSaltado) {
-                const dirsMov = permitirAtras ? [...dirsAdelante, ...dirsAtras] : dirsAdelante;
-                for (let [df, dc] of dirsMov) {
+                for (let [df, dc] of dirsMovimiento) {
                     let nf = f + df, nc = c + dc;
                     if (nf >= 0 && nf < FILAS && nc >= 0 && nc < COLUMNAS &&
                         tablero[nf][nc] === null && esJugable(nf, nc)) {
@@ -44,8 +46,7 @@ class F1 extends Pieza {
                 }
             }
 
-            // Saltos (adelante siempre, atrás condicional)
-            const dirsSalto = permitirAtras ? [...dirsAdelante, ...dirsAtras] : dirsAdelante;
+            // Saltos (siempre en las 8 direcciones)
             for (let [df, dc] of dirsSalto) {
                 let nf = f + df, nc = c + dc;
                 let jf = f + df * 2, jc = c + dc * 2;
@@ -53,49 +54,55 @@ class F1 extends Pieza {
                     jf >= 0 && jf < FILAS && jc >= 0 && jc < COLUMNAS &&
                     tablero[jf][jc] === null && esJugable(jf, jc)) {
                     let piezaInter = tablero[nf][nc];
+                    // Se puede saltar si es amiga o enemiga capturable
                     if (piezaInter.jugador === jugador || capturaPermitida(this.tipo, piezaInter)) {
                         let clave = `${jf},${jc}`;
                         if (!visitados.has(clave)) {
                             visitados.add(clave);
-                            let nuevoTab = tablero.map(fila => fila.map(celda => {
-                                if (celda === null) return null;
-                                const ClasePieza = piezasRegistradas.get(celda.tipo);
-                                return ClasePieza ? new ClasePieza(celda.jugador) : null;
-                            }));
-                            let ficha = nuevoTab[f][c];
-                            nuevoTab[f][c] = null;
-                            if (piezaInter && piezaInter.jugador !== jugador && capturaPermitida(this.tipo, piezaInter)) {
-                                nuevoTab[nf][nc] = null;
+                            // Solo añadimos el destino si la cadena cumple la condición de avance
+                            // (si aún no se ha saltado, cualquier salto es válido porque es el primero)
+                            // Si ya se ha saltado, debemos verificar que el destino no esté detrás de la columna inicial
+                            let colFinal = jc;
+                            let avanceOk = (jugador === 0) ? (colFinal >= colInicial) : (colFinal <= colInicial);
+                            if (!haSaltado || avanceOk) {
+                                let nuevoTab = tablero.map(fila => fila.map(celda => {
+                                    if (celda === null) return null;
+                                    const ClasePieza = piezasRegistradas.get(celda.tipo);
+                                    return ClasePieza ? new ClasePieza(celda.jugador) : null;
+                                }));
+                                let ficha = nuevoTab[f][c];
+                                nuevoTab[f][c] = null;
+                                if (piezaInter && piezaInter.jugador !== jugador && capturaPermitida(this.tipo, piezaInter)) {
+                                    nuevoTab[nf][nc] = null;
+                                }
+                                nuevoTab[jf][jc] = ficha;
+                                let nuevoCamino = [...camino, { tipo: 'jump', over: [nf, nc], to: [jf, jc] }];
+                                destinos.add(clave);
+                                if (!caminos[clave]) caminos[clave] = nuevoCamino;
+                                explorar(jf, jc, nuevoTab, nuevoCamino, visitados, true);
                             }
-                            nuevoTab[jf][jc] = ficha;
-                            let nuevoCamino = [...camino, { tipo: 'jump', over: [nf, nc], to: [jf, jc] }];
-                            destinos.add(clave);
-                            if (!caminos[clave]) caminos[clave] = nuevoCamino;
-
-                            let nuevaCol = jc;
-                            let avanza = (jugador === 0) ? (nuevaCol >= colInicial) : (nuevaCol <= colInicial);
-                            explorar(jf, jc, nuevoTab, nuevoCamino, visitados, true, !avanza);
                         }
                     }
                 }
             }
 
-            // Captura directa solo en extremos (adelante)
-            for (let [df, dc] of dirsAdelante) {
-                let nf = f + df, nc = c + dc;
-                if (nf >= 0 && nf < FILAS && nc >= 0 && nc < COLUMNAS && esJugable(nf, nc) &&
-                    board[nf][nc] !== null && board[nf][nc].jugador !== jugador) {
-                    let detrasF = nf + df, detrasC = nc + dc;
-                    // Si la casilla detrás NO es jugable → extremo
-                    if (!(detrasF >= 0 && detrasF < FILAS && detrasC >= 0 && detrasC < COLUMNAS &&
-                          esJugable(detrasF, detrasC))) {
-                        let clave = `${nf},${nc}`;
-                        destinos.add(clave);
-                        if (!caminos[clave]) caminos[clave] = [{
-                            tipo: 'captureDirect',
-                            over: [nf, nc],
-                            to: [nf, nc]
-                        }];
+            // Captura directa solo en extremos, usando direcciones de movimiento
+            if (!haSaltado) {
+                for (let [df, dc] of dirsMovimiento) {
+                    let nf = f + df, nc = c + dc;
+                    if (nf >= 0 && nf < FILAS && nc >= 0 && nc < COLUMNAS && esJugable(nf, nc) &&
+                        tablero[nf][nc] !== null && tablero[nf][nc].jugador !== jugador) {
+                        let detrasF = nf + df, detrasC = nc + dc;
+                        if (!(detrasF >= 0 && detrasF < FILAS && detrasC >= 0 && detrasC < COLUMNAS &&
+                              esJugable(detrasF, detrasC))) {
+                            let clave = `${nf},${nc}`;
+                            destinos.add(clave);
+                            if (!caminos[clave]) caminos[clave] = [{
+                                tipo: 'captureDirect',
+                                over: [nf, nc],
+                                to: [nf, nc]
+                            }];
+                        }
                     }
                 }
             }
@@ -103,7 +110,7 @@ class F1 extends Pieza {
 
         let visitados = new Set();
         visitados.add(`${fila},${col}`);
-        explorar(fila, col, board, [], visitados, false, false);
+        explorar(fila, col, board, [], visitados, false);
 
         let arr = [];
         for (let clave of destinos) {
