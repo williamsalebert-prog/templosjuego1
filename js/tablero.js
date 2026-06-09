@@ -1,6 +1,9 @@
-console.log("✅ tablero 2.js cargado");
+console.log("✅ tablero.js cargado");
 const canvas = document.getElementById('tableroCanvas');
 const ctx = canvas.getContext('2d');
+// Ajuste del canvas al nuevo tablero 13×10
+canvas.width = 650;
+canvas.height = 500;
 const btnDeshacer = document.getElementById('btnDeshacer');
 const turnoTexto = document.getElementById('turnoTexto');
 
@@ -61,6 +64,14 @@ function dibujarTablero() {
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             let x = j * CELL_SIZE, y = i * CELL_SIZE;
+            if (esNoJugable(i, j)) {
+                // Pintar las X de negro o gris muy oscuro
+                ctx.fillStyle = '#111111';
+                ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
+                ctx.strokeStyle = '#333333';
+                ctx.strokeRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
+                continue;
+            }
             let zona = getZona(i, j);
             let par = (i + j) % 2 === 0;
             let color = zona === 'vacio' ? colores.vacio.par : (par ? colores[zona].par : colores[zona].impar);
@@ -145,35 +156,32 @@ function aplicarMovimiento(origen, destino) {
         } else if (paso.tipo === 'jump') {
             let [of, oc] = paso.over;
             let [nf, nc] = paso.to;
-            // Capturar la pieza sobre la que se salta si es enemiga
-            let piezaSaltada = board[of][oc];
-            if (piezaSaltada && piezaSaltada.jugador !== jugador) {
-                // F4 solo puede ser capturada por F6
-                if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F6') {
-                    // no se captura
-                } else {
-                    carcela.agregar(piezaSaltada);
-                    board[of][oc] = null;
+            if (of === nf && oc === nc) {
+                // Captura directa (estilo ajedrez) para caballo (F2) o excepciones
+                let piezaSaltada = board[of][oc];
+                if (piezaSaltada && piezaSaltada.jugador !== jugador) {
+                    if (piezaSaltada.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
+                        carcela.agregar(piezaSaltada);
+                        board[of][oc] = null;
+                    }
                 }
-            }
-            board[f][c] = null;
-            board[nf][nc] = pieza;
-            f = nf; c = nc;
-        }
-    }
-
-    // Coronación de F1 al llegar al templo enemigo
-    if (pieza.tipo === 'F1') {
-        let zona = getZona(f, c);
-        if ((jugador === 0 && zona === 'templo2') || (jugador === 1 && zona === 'templo1')) {
-            let eleccion = prompt("Elige coronación:\n2 = F2\n5 = F5");
-            if (eleccion === '2') {
-                board[f][c] = new F2(jugador);
-            } else if (eleccion === '5') {
-                board[f][c] = new F5(jugador);
+                board[f][c] = null;
+                board[nf][nc] = pieza;
+                f = nf; c = nc;
             } else {
-                // Por defecto F2
-                board[f][c] = new F2(jugador);
+                // Salto normal (estilo damas)
+                let piezaSaltada = board[of][oc];
+                if (piezaSaltada && piezaSaltada.jugador !== jugador) {
+                    if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F3' && pieza.tipo !== 'F6') {
+                        // no se captura
+                    } else {
+                        carcela.agregar(piezaSaltada);
+                        board[of][oc] = null;
+                    }
+                }
+                board[f][c] = null;
+                board[nf][nc] = pieza;
+                f = nf; c = nc;
             }
         }
     }
@@ -184,49 +192,37 @@ function aplicarMovimiento(origen, destino) {
 function iniciarJuego() {
     board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
 
-    // Templo izquierdo (jugador 0) - Pirámide 1,3,5,7
-    // Columna 0 (punta): 1 pieza
-    board[7][0] = new F6(0);
-    // Columna 1: 3 piezas
-    board[6][1] = new F5(0);
+    // Templo izquierdo (jugador 0)
+    // Columna 2: filas 1-8 → 8 peones F1
+    for (let f = 1; f <= 8; f++) board[f][2] = new F1(0);
+    // Columna 1: fila 2 F5, fila 3 F2, fila 4 F0, fila 5 F0, fila 6 F2, fila 7 F5
+    board[2][1] = new F5(0);
+    board[3][1] = new F2(0);
+    board[4][1] = new F0(0);
+    board[5][1] = new F0(0);
+    board[6][1] = new F2(0);
     board[7][1] = new F5(0);
-    board[8][1] = new F5(0);
-    // Columna 2: 5 piezas
-    board[5][2] = new F4(0);
-    board[6][2] = new F2(0);
-    board[7][2] = new F2(0);
-    board[8][2] = new F2(0);
-    board[9][2] = new F4(0);
-    // Columna 3 (base): 7 piezas
-    board[4][3] = new F1(0);
-    board[5][3] = new F1(0);
-    board[6][3] = new F1(0);
-    board[7][3] = new F1(0);
-    board[8][3] = new F1(0);
-    board[9][3] = new F1(0);
-    board[10][3] = new F1(0);
+    // Columna 0: fila 3 F4, fila 4 F6, fila 5 F3, fila 6 F4
+    board[3][0] = new F4(0);
+    board[4][0] = new F6(0);
+    board[5][0] = new F3(0);
+    board[6][0] = new F4(0);
 
-    // Templo derecho (jugador 1) - Pirámide 1,3,5,7
-    // Columna 22 (punta): 1 pieza
-    board[7][22] = new F6(1);
-    // Columna 21: 3 piezas
-    board[6][21] = new F5(1);
-    board[7][21] = new F5(1);
-    board[8][21] = new F5(1);
-    // Columna 20: 5 piezas
-    board[5][20] = new F4(1);
-    board[6][20] = new F2(1);
-    board[7][20] = new F2(1);
-    board[8][20] = new F2(1);
-    board[9][20] = new F4(1);
-    // Columna 19 (base): 7 piezas
-    board[4][19] = new F1(1);
-    board[5][19] = new F1(1);
-    board[6][19] = new F1(1);
-    board[7][19] = new F1(1);
-    board[8][19] = new F1(1);
-    board[9][19] = new F1(1);
-    board[10][19] = new F1(1);
+    // Templo derecho (jugador 1)
+    // Columna 10: filas 1-8 → 8 peones F1
+    for (let f = 1; f <= 8; f++) board[f][10] = new F1(1);
+    // Columna 11: espejo de columna 1
+    board[2][11] = new F5(1);
+    board[3][11] = new F2(1);
+    board[4][11] = new F0(1);
+    board[5][11] = new F0(1);
+    board[6][11] = new F2(1);
+    board[7][11] = new F5(1);
+    // Columna 12: espejo de columna 0
+    board[3][12] = new F4(1);
+    board[4][12] = new F6(1);
+    board[5][12] = new F3(1);
+    board[6][12] = new F4(1);
 
     turno = 0;
     selectedPiece = null;
