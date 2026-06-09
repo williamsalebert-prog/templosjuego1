@@ -327,15 +327,33 @@ canvas.addEventListener('click', (e) => {
         let esValido = posiblesMovimientos.some(([f, c]) => f === fila && c === col);
         if (esValido) {
             let info = caminosDestino[clave];
-            // Si hay múltiples rutas (caballo), entramos en modo elección
+            // Detectar múltiples rutas (caballo)
             if (Array.isArray(info) && info.length > 0 && info[0].hasOwnProperty('pasos') && info.length > 1) {
-                rutasAlternativas = info;
-                destinoRuta = [fila, col];
-                modoRuta = true;
-                dibujarTablero();
-                return;
+                // Hay varias rutas: solo preguntamos si ALGUNA contiene un enemigo capturable
+                let algunaConEnemigo = info.some(ruta => ruta.tieneEnemigo);
+                if (algunaConEnemigo) {
+                    // Activar modo elección de ruta
+                    rutasAlternativas = info;
+                    destinoRuta = [fila, col];
+                    modoRuta = true;
+                    dibujarTablero();
+                    return;
+                } else {
+                    // No hay enemigos en ninguna ruta: elegimos la primera automáticamente
+                    let rutaElegida = info[0].pasos;
+                    if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaElegida)) {
+                        turno = 1 - turno;
+                        actualizarTurno();
+                    }
+                    selectedPiece = null;
+                    posiblesMovimientos = [];
+                    caminosDestino = {};
+                    modoRuta = false;
+                    dibujarTablero();
+                    return;
+                }
             }
-            // En caso contrario, movimiento normal
+            // Movimiento normal (una sola ruta o pieza estándar)
             if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col])) {
                 turno = 1 - turno;
                 actualizarTurno();
