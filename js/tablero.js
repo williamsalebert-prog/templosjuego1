@@ -352,7 +352,7 @@ function actualizarTurno() {
     turnoTexto.innerText = `Turno: Jugador ${turno + 1}`;
 }
 
-function aplicarMovimiento(origen, destino) {
+ffunction aplicarMovimiento(origen, destino) {
     let clave = `${destino[0]},${destino[1]}`;
     let camino = caminosDestino[clave];
     if (!camino) return false;
