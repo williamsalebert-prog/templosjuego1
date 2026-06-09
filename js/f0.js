@@ -1,6 +1,6 @@
 console.log("✅ f0.js cargado");
 
-class F1 extends Pieza {
+class F0 extends Pieza {
     constructor(jugador) {
         super('F0', jugador);
     }
