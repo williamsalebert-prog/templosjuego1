@@ -8,63 +8,67 @@ class F3 extends Pieza {
     obtenerMovimientos(fila, col, board) {
         const jugador = this.jugador;
         const dirs = [
-            [-1,0],[1,0],[0,-1],[0,1],
-            [-1,-1],[-1,1],[1,-1],[1,1]
+            [-1,0], [1,0], [0,-1], [0,1],
+            [-1,-1], [-1,1], [1,-1], [1,1]
         ];
         let destinos = new Set();
         let caminos = {};
 
-        const explorar = (f, c, tablero, camino, visitados, haSaltado) => {
-            if (!haSaltado) {
-                for (let [df, dc] of dirs) {
-                    let nf = f+df, nc = c+dc;
-                    if (nf>=0 && nf<FILAS && nc>=0 && nc<COLUMNAS &&
-                        tablero[nf][nc]===null && esJugable(nf, nc)) {
-                        let clave = `${nf},${nc}`;
-                        if (!visitados.has(clave)) {
-                            visitados.add(clave);
-                            let nuevoCamino = [...camino, {tipo:'move', to:[nf,nc]}];
+        for (let [df, dc] of dirs) {
+            let f = fila + df;
+            let c = col + dc;
+            while (f >= 0 && f < FILAS && c >= 0 && c < COLUMNAS && esJugable(f, c)) {
+                if (board[f][c] === null) {
+                    // Casilla vacía
+                    let clave = `${f},${c}`;
+                    destinos.add(clave);
+                    if (!caminos[clave]) caminos[clave] = [{ tipo: 'move', to: [f, c] }];
+                } else {
+                    let piezaEncontrada = board[f][c];
+                    if (piezaEncontrada.jugador !== jugador) {
+                        // Enemiga: intentar salto o captura directa si no hay detrás
+                        let detrasF = f + df, detrasC = c + dc;
+                        if (detrasF >= 0 && detrasF < FILAS && detrasC >= 0 && detrasC < COLUMNAS &&
+                            board[detrasF][detrasC] === null && esJugable(detrasF, detrasC)) {
+                            // Salto normal
+                            let clave = `${detrasF},${detrasC}`;
                             destinos.add(clave);
-                            if (!caminos[clave]) caminos[clave] = nuevoCamino;
+                            if (!caminos[clave]) caminos[clave] = [{
+                                tipo: 'jump',
+                                over: [f, c],
+                                to: [detrasF, detrasC]
+                            }];
+                        } else {
+                            // Extremo: captura directa
+                            let clave = `${f},${c}`;
+                            destinos.add(clave);
+                            if (!caminos[clave]) caminos[clave] = [{
+                                tipo: 'captureDirect',
+                                over: [f, c],
+                                to: [f, c]
+                            }];
+                        }
+                    } else {
+                        // Pieza amiga: puede saltarla (apoyo)
+                        let detrasF = f + df, detrasC = c + dc;
+                        if (detrasF >= 0 && detrasF < FILAS && detrasC >= 0 && detrasC < COLUMNAS &&
+                            board[detrasF][detrasC] === null && esJugable(detrasF, detrasC)) {
+                            let clave = `${detrasF},${detrasC}`;
+                            destinos.add(clave);
+                            if (!caminos[clave]) caminos[clave] = [{
+                                tipo: 'jump',
+                                over: [f, c],
+                                to: [detrasF, detrasC]
+                            }];
                         }
                     }
+                    // La reina se detiene al encontrar cualquier pieza (no puede seguir deslizándose)
+                    break;
                 }
+                f += df;
+                c += dc;
             }
-            for (let [df, dc] of dirs) {
-                let nf = f+df, nc = c+dc;
-                let jf = f+df*2, jc = c+dc*2;
-                if (nf>=0 && nf<FILAS && nc>=0 && nc<COLUMNAS && tablero[nf][nc]!==null &&
-                    jf>=0 && jf<FILAS && jc>=0 && jc<COLUMNAS &&
-                    tablero[jf][jc]===null && esJugable(jf, jc)) {
-                    let piezaInter = tablero[nf][nc];
-                    if (piezaInter.tipo === 'F4' && piezaInter.jugador !== jugador && this.tipo !== 'F6') continue;
-                    let clave = `${jf},${jc}`;
-                    if (!visitados.has(clave)) {
-                        visitados.add(clave);
-                        let nuevoTab = tablero.map(fila => fila.map(celda => {
-                            if (celda === null) return null;
-                            const ClasePieza = piezasRegistradas.get(celda.tipo);
-                            return ClasePieza ? new ClasePieza(celda.jugador) : null;
-                        }));
-                        let ficha = nuevoTab[f][c];
-                        nuevoTab[f][c] = null;
-                        if (piezaInter && piezaInter.jugador !== jugador && capturaPermitida(this.tipo, piezaInter)) {
-                            nuevoTab[nf][nc] = null;
-                        }
-                        nuevoTab[jf][jc] = ficha;
-                        let nuevoCamino = [...camino, {tipo:'jump', over:[nf,nc], to:[jf,jc]}];
-                        destinos.add(clave);
-                        if (!caminos[clave]) caminos[clave] = nuevoCamino;
-                        explorar(jf, jc, nuevoTab, nuevoCamino, visitados, true);
-                    }
-                }
-            }
-        };
-
-        let visitados = new Set();
-        visitados.add(`${fila},${col}`);
-        explorar(fila, col, board, [], visitados, false);
-
+        }
         let arr = [];
         for (let clave of destinos) {
             let [f, c] = clave.split(',').map(Number);
