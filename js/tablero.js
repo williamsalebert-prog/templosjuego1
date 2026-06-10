@@ -85,37 +85,29 @@ function dibujarTablero() {
             ctx.fillStyle = color;
             ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
 
-            // --- Textura decorativa (debajo de las piezas) ---
+            // --- Textura decorativa (solo en zonas jugables) ---
             ctx.save();
             let cx = x + CELL_SIZE/2;
             let cy = y + CELL_SIZE/2;
             if (par) {
-                // Brillo circular blanco semitransparente
-                ctx.globalAlpha = 0.2;
-                let grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, CELL_SIZE*0.18);
+                // Brillo circular blanco suave y difuminado
+                ctx.globalAlpha = 0.12;
+                let grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, CELL_SIZE*0.2);
                 grad.addColorStop(0, '#FFFFFF');
                 grad.addColorStop(1, 'rgba(255,255,255,0)');
                 ctx.fillStyle = grad;
                 ctx.beginPath();
-                ctx.arc(cx, cy, CELL_SIZE*0.18, 0, 2*Math.PI);
+                ctx.arc(cx, cy, CELL_SIZE*0.2, 0, 2*Math.PI);
                 ctx.fill();
-                       } else {
-                // Cuadrado con efecto biselado
-                ctx.globalAlpha = 0.25;
-                let tam = CELL_SIZE * 0.35;
-                let cx = x + CELL_SIZE/2;
-                let cy = y + CELL_SIZE/2;
-                let gradCuad = ctx.createLinearGradient(cx - tam/2, cy - tam/2, cx + tam/2, cy + tam/2);
-                gradCuad.addColorStop(0, '#FFFFFF');
-                gradCuad.addColorStop(0.5, '#CCCCCC');
-                gradCuad.addColorStop(1, '#666666');
-                ctx.fillStyle = gradCuad;
-                ctx.beginPath();
-                ctx.rect(cx - tam/2, cy - tam/2, tam, tam);
-                ctx.fill();
-                ctx.strokeStyle = '#444444';
-                ctx.lineWidth = 0.8;
-                ctx.stroke();
+            } else {
+                // Cuadrado difuminado con borde suave
+                ctx.globalAlpha = 0.10;
+                let tam = CELL_SIZE * 0.25;
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(cx - tam/2, cy - tam/2, tam, tam);
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = 0.5;
+                ctx.strokeRect(cx - tam/2, cy - tam/2, tam, tam);
             }
             ctx.restore();
 
