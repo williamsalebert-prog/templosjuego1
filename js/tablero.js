@@ -75,9 +75,10 @@ function dibujarTablero() {
         for (let j = 0; j < COLUMNAS; j++) {
             let x = j * CELL_SIZE, y = i * CELL_SIZE;
             if (esNoJugable(i, j)) {
+                console.log(`⬛ Pintando NO jugable en (${i},${j})`);
                 ctx.fillStyle = '#000000';
                 ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
-                continue;
+                continue; // Se salta cualquier otra decoración
             }
             let zona = getZona(i, j);
             let par = (i + j) % 2 === 0;
@@ -85,11 +86,12 @@ function dibujarTablero() {
             ctx.fillStyle = color;
             ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
 
-            // Texturas decorativas (solo en jugables)
+            // --- Textura decorativa (solo en zonas jugables) ---
             ctx.save();
             let cx = x + CELL_SIZE/2;
             let cy = y + CELL_SIZE/2;
             if (par) {
+                // Brillo circular blanco suave y difuminado
                 ctx.globalAlpha = 0.12;
                 let grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, CELL_SIZE*0.2);
                 grad.addColorStop(0, '#FFFFFF');
@@ -99,6 +101,7 @@ function dibujarTablero() {
                 ctx.arc(cx, cy, CELL_SIZE*0.2, 0, 2*Math.PI);
                 ctx.fill();
             } else {
+                // Cuadrado difuminado con borde suave
                 ctx.globalAlpha = 0.10;
                 let tam = CELL_SIZE * 0.25;
                 ctx.fillStyle = '#FFFFFF';
@@ -108,12 +111,10 @@ function dibujarTablero() {
                 ctx.strokeRect(cx - tam/2, cy - tam/2, tam, tam);
             }
             ctx.restore();
-
-            // Sin borde dorado (para no rozar las zonas negras)
         }
     }
 
-    // Piezas
+    // Piezas (encima)
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             let pieza = board[i][j];
@@ -190,6 +191,7 @@ function dibujarTablero() {
     }
 }
 
+// (resto de funciones sin cambios)
 function validarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
     if (enroqueRealizado[jugador]) return false;
     const pieza = board[piezaFila][piezaCol];
@@ -232,9 +234,8 @@ function ejecutarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
 function aplicarMovimiento(origen, destino, caminoElegido = null) {
     let clave = `${destino[0]},${destino[1]}`;
     let camino;
-    if (caminoElegido) {
-        camino = caminoElegido;
-    } else {
+    if (caminoElegido) camino = caminoElegido;
+    else {
         let info = caminosDestino[clave];
         if (!info) return false;
         if (Array.isArray(info)) {
