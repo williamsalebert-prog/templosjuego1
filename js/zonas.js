@@ -57,8 +57,8 @@ function capturaPermitida(tipoAtacante, piezaObjetivo) {
 
 // 🎨 Paleta mexicana
 const colores = {
-    templo1: { par: '#FFDAB9', impar: '#C0392B' },   // Melocotón / Rojo óxido
-    templo2: { par: '#D6EAF8', impar: '#1A5276' },   // Azul claro / Azul petróleo
-    jardin:  { par: '#F9E79F', impar: '#117A65' },   // Amarillo claro / Verde jade
-    vacio:   { par: '#2C3E50', impar: '#2C3E50' }    // Negro azulado para las X
+    templo1: { par: '#FFF176', impar: '#E53935' },   // amarillo brillante / rojo intenso
+    templo2: { par: '#90CAF9', impar: '#1565C0' },   // azul cielo / azul eléctrico
+    jardin:  { par: '#A5D6A7', impar: '#2E7D32' },   // verde claro / verde bosque
+    vacio:   { par: '#000000', impar: '#000000' }    // negro puro para las X
 };
