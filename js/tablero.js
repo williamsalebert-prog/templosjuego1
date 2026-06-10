@@ -1,4 +1,4 @@
-console.log("✅ tablero.js cargado");
+console.log("✅ tablero 2.js cargado");
 const canvas = document.getElementById('tableroCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = 650;
@@ -10,17 +10,14 @@ let selectedPiece = null;
 let posiblesMovimientos = [];
 let caminosDestino = {};
 
-// --- variables para elección de ruta del caballo ---
 let modoRuta = false;
 let rutasAlternativas = [];
 let destinoRuta = null;
 
-// --- menú de coronación ---
 const menuCoronacion = document.getElementById('menuCoronacion');
 const opcionesCoronacion = document.getElementById('opcionesCoronacion');
 let coronacionPendiente = null;
 
-// --- enroque ---
 let enroqueRealizado = [false, false];
 
 const imagenesPiezas = {};
@@ -78,7 +75,6 @@ function dibujarTablero() {
         for (let j = 0; j < COLUMNAS; j++) {
             let x = j * CELL_SIZE, y = i * CELL_SIZE;
             if (esNoJugable(i, j)) {
-                // Completamente negro, sin bordes
                 ctx.fillStyle = '#000000';
                 ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
                 continue;
@@ -88,9 +84,34 @@ function dibujarTablero() {
             let color = zona === 'vacio' ? colores.vacio.par : (par ? colores[zona].par : colores[zona].impar);
             ctx.fillStyle = color;
             ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
-            // Bordes suaves para dar relieve
-            ctx.strokeStyle = '#d4a373';
-            ctx.lineWidth = 1.5;
+
+            // --- Texturas decorativas ---
+            ctx.save();
+            ctx.globalAlpha = 0.15;
+            let cx = x + CELL_SIZE/2;
+            let cy = y + CELL_SIZE/2;
+            if (par) {
+                // Brillo circular blanco en casillas claras
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.arc(cx, cy, CELL_SIZE * 0.18, 0, 2 * Math.PI);
+                ctx.fill();
+            } else {
+                // X en casillas oscuras
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(x + 4, y + 4);
+                ctx.lineTo(x + CELL_SIZE - 5, y + CELL_SIZE - 5);
+                ctx.moveTo(x + CELL_SIZE - 5, y + 4);
+                ctx.lineTo(x + 4, y + CELL_SIZE - 5);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // Borde de relieve
+            ctx.strokeStyle = '#FFD54F';
+            ctx.lineWidth = 1.8;
             ctx.strokeRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
         }
     }
@@ -138,7 +159,6 @@ function dibujarTablero() {
         }
     }
 
-    // Dibujar movimientos posibles (amarillo) y enroques (morado)
     if (!modoRuta) {
         for (let mov of posiblesMovimientos) {
             let f, c;
@@ -156,7 +176,6 @@ function dibujarTablero() {
         }
     }
 
-    // Rutas del caballo (morado)
     if (modoRuta && rutasAlternativas.length > 0) {
         for (let idx = 0; idx < rutasAlternativas.length; idx++) {
             let ruta = rutasAlternativas[idx];
@@ -171,9 +190,6 @@ function dibujarTablero() {
     }
 }
 
-// ----------------------------------------------------------
-// VALIDACIÓN DE ENROQUE
-// ----------------------------------------------------------
 function validarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
     if (enroqueRealizado[jugador]) return false;
     const pieza = board[piezaFila][piezaCol];
@@ -227,9 +243,6 @@ function ejecutarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
     return true;
 }
 
-// ----------------------------------------------------------
-// APLICAR MOVIMIENTO
-// ----------------------------------------------------------
 function aplicarMovimiento(origen, destino, caminoElegido = null) {
     let clave = `${destino[0]},${destino[1]}`;
     let camino;
@@ -301,7 +314,6 @@ function aplicarMovimiento(origen, destino, caminoElegido = null) {
         }
     }
 
-    // Coronación
     if (pieza.tipo === 'F1') {
         let zona = getZona(f, c);
         if ((jugador === 0 && zona === 'templo2') || (jugador === 1 && zona === 'templo1')) {
@@ -399,9 +411,6 @@ function iniciarJuego() {
     dibujarTablero();
 }
 
-// ----------------------------------------------------------
-// EVENTO CLICK
-// ----------------------------------------------------------
 canvas.addEventListener('click', (e) => {
     if (coronacionPendiente) return;
     const rect = canvas.getBoundingClientRect();
@@ -574,9 +583,6 @@ canvas.addEventListener('click', (e) => {
     dibujarTablero();
 });
 
-// ----------------------------------------------------------
-// CTRL+Z para deshacer
-// ----------------------------------------------------------
 document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'z') {
         e.preventDefault();
