@@ -71,26 +71,24 @@ function deshacerMovimiento() {
 
 function dibujarTablero() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 1. Dibujar todas las casillas jugables (con sus texturas)
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             let x = j * CELL_SIZE, y = i * CELL_SIZE;
-            if (esNoJugable(i, j)) {
-                ctx.fillStyle = '#000000';
-                ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
-                continue;
-            }
+            if (esNoJugable(i, j)) continue; // Las negras las pintamos después
+            
             let zona = getZona(i, j);
             let par = (i + j) % 2 === 0;
             let color = zona === 'vacio' ? colores.vacio.par : (par ? colores[zona].par : colores[zona].impar);
             ctx.fillStyle = color;
             ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
 
-            // --- Textura decorativa (solo en zonas jugables) ---
+            // Texturas decorativas (brillo y cuadrado)
             ctx.save();
             let cx = x + CELL_SIZE/2;
             let cy = y + CELL_SIZE/2;
             if (par) {
-                // Brillo circular blanco suave y difuminado
                 ctx.globalAlpha = 0.12;
                 let grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, CELL_SIZE*0.2);
                 grad.addColorStop(0, '#FFFFFF');
@@ -100,7 +98,6 @@ function dibujarTablero() {
                 ctx.arc(cx, cy, CELL_SIZE*0.2, 0, 2*Math.PI);
                 ctx.fill();
             } else {
-                // Cuadrado difuminado con borde suave
                 ctx.globalAlpha = 0.10;
                 let tam = CELL_SIZE * 0.25;
                 ctx.fillStyle = '#FFFFFF';
@@ -113,17 +110,21 @@ function dibujarTablero() {
         }
     }
 
-    // 🔁 Repasar las casillas no jugables para eliminar cualquier textura que haya podido invadirlas
+    // 2. Pintar las zonas NO jugables con un rectángulo NEGRO EXTRAGRANDE que se solapa 1px en todas direcciones
+    ctx.fillStyle = '#000000';
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             if (esNoJugable(i, j)) {
-                ctx.fillStyle = '#000000';
-                ctx.fillRect(j * CELL_SIZE, i * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                let x = j * CELL_SIZE - 1;
+                let y = i * CELL_SIZE - 1;
+                let w = CELL_SIZE + 2;
+                let h = CELL_SIZE + 2;
+                ctx.fillRect(x, y, w, h);
             }
         }
     }
 
-    // Piezas (encima)
+    // 3. Dibujar las piezas (encima de todo)
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             let pieza = board[i][j];
@@ -167,7 +168,7 @@ function dibujarTablero() {
         }
     }
 
-    // Movimientos posibles y enroques
+    // 4. Indicadores de movimiento, enroque y rutas (igual que antes)
     if (!modoRuta) {
         for (let mov of posiblesMovimientos) {
             let f, c;
@@ -185,7 +186,6 @@ function dibujarTablero() {
         }
     }
 
-    // Rutas del caballo
     if (modoRuta && rutasAlternativas.length > 0) {
         for (let idx = 0; idx < rutasAlternativas.length; idx++) {
             let ruta = rutasAlternativas[idx];
