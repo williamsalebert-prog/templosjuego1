@@ -1,4 +1,4 @@
-console.log("✅ tablero 2.js cargado");
+console.log("✅ tablero.js cargado");
 const canvas = document.getElementById('tableroCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = 650;
@@ -85,37 +85,48 @@ function dibujarTablero() {
             ctx.fillStyle = color;
             ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
 
-            // --- Texturas decorativas ---
+            // --- Textura decorativa (debajo de las piezas) ---
             ctx.save();
-            ctx.globalAlpha = 0.15;
             let cx = x + CELL_SIZE/2;
             let cy = y + CELL_SIZE/2;
             if (par) {
-                // Brillo circular blanco en casillas claras
-                ctx.fillStyle = '#FFFFFF';
+                // Brillo circular blanco semitransparente
+                ctx.globalAlpha = 0.2;
+                let grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, CELL_SIZE*0.18);
+                grad.addColorStop(0, '#FFFFFF');
+                grad.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = grad;
                 ctx.beginPath();
-                ctx.arc(cx, cy, CELL_SIZE * 0.18, 0, 2 * Math.PI);
+                ctx.arc(cx, cy, CELL_SIZE*0.18, 0, 2*Math.PI);
                 ctx.fill();
-            } else {
-                // X en casillas oscuras
-                ctx.strokeStyle = '#FFFFFF';
-                ctx.lineWidth = 1.2;
+                       } else {
+                // Cuadrado con efecto biselado
+                ctx.globalAlpha = 0.25;
+                let tam = CELL_SIZE * 0.35;
+                let cx = x + CELL_SIZE/2;
+                let cy = y + CELL_SIZE/2;
+                let gradCuad = ctx.createLinearGradient(cx - tam/2, cy - tam/2, cx + tam/2, cy + tam/2);
+                gradCuad.addColorStop(0, '#FFFFFF');
+                gradCuad.addColorStop(0.5, '#CCCCCC');
+                gradCuad.addColorStop(1, '#666666');
+                ctx.fillStyle = gradCuad;
                 ctx.beginPath();
-                ctx.moveTo(x + 4, y + 4);
-                ctx.lineTo(x + CELL_SIZE - 5, y + CELL_SIZE - 5);
-                ctx.moveTo(x + CELL_SIZE - 5, y + 4);
-                ctx.lineTo(x + 4, y + CELL_SIZE - 5);
+                ctx.rect(cx - tam/2, cy - tam/2, tam, tam);
+                ctx.fill();
+                ctx.strokeStyle = '#444444';
+                ctx.lineWidth = 0.8;
                 ctx.stroke();
             }
             ctx.restore();
 
-            // Borde de relieve
+            // Borde de casilla
             ctx.strokeStyle = '#FFD54F';
             ctx.lineWidth = 1.8;
             ctx.strokeRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
         }
     }
 
+    // Piezas (se dibujan después, por lo tanto, encima)
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             let pieza = board[i][j];
@@ -159,6 +170,7 @@ function dibujarTablero() {
         }
     }
 
+    // Movimientos posibles y enroques
     if (!modoRuta) {
         for (let mov of posiblesMovimientos) {
             let f, c;
@@ -176,6 +188,7 @@ function dibujarTablero() {
         }
     }
 
+    // Rutas del caballo
     if (modoRuta && rutasAlternativas.length > 0) {
         for (let idx = 0; idx < rutasAlternativas.length; idx++) {
             let ruta = rutasAlternativas[idx];
