@@ -75,10 +75,9 @@ function dibujarTablero() {
         for (let j = 0; j < COLUMNAS; j++) {
             let x = j * CELL_SIZE, y = i * CELL_SIZE;
             if (esNoJugable(i, j)) {
-                console.log(`⬛ Pintando NO jugable en (${i},${j})`);
                 ctx.fillStyle = '#000000';
                 ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
-                continue; // Se salta cualquier otra decoración
+                continue;
             }
             let zona = getZona(i, j);
             let par = (i + j) % 2 === 0;
@@ -111,6 +110,16 @@ function dibujarTablero() {
                 ctx.strokeRect(cx - tam/2, cy - tam/2, tam, tam);
             }
             ctx.restore();
+        }
+    }
+
+    // 🔁 Repasar las casillas no jugables para eliminar cualquier textura que haya podido invadirlas
+    for (let i = 0; i < FILAS; i++) {
+        for (let j = 0; j < COLUMNAS; j++) {
+            if (esNoJugable(i, j)) {
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(j * CELL_SIZE, i * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            }
         }
     }
 
@@ -191,7 +200,6 @@ function dibujarTablero() {
     }
 }
 
-// (resto de funciones sin cambios)
 function validarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
     if (enroqueRealizado[jugador]) return false;
     const pieza = board[piezaFila][piezaCol];
