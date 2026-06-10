@@ -71,60 +71,25 @@ function deshacerMovimiento() {
 
 function dibujarTablero() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // 1. Dibujar todas las casillas jugables (con sus texturas)
+
+    // 1. Dibujar las casillas (colores planos)
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             let x = j * CELL_SIZE, y = i * CELL_SIZE;
-            if (esNoJugable(i, j)) continue; // Las negras las pintamos después
-            
+            if (esNoJugable(i, j)) {
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                continue;
+            }
             let zona = getZona(i, j);
             let par = (i + j) % 2 === 0;
             let color = zona === 'vacio' ? colores.vacio.par : (par ? colores[zona].par : colores[zona].impar);
             ctx.fillStyle = color;
             ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
-
-            // Texturas decorativas (brillo y cuadrado)
-            ctx.save();
-            let cx = x + CELL_SIZE/2;
-            let cy = y + CELL_SIZE/2;
-            if (par) {
-                ctx.globalAlpha = 0.12;
-                let grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, CELL_SIZE*0.2);
-                grad.addColorStop(0, '#FFFFFF');
-                grad.addColorStop(1, 'rgba(255,255,255,0)');
-                ctx.fillStyle = grad;
-                ctx.beginPath();
-                ctx.arc(cx, cy, CELL_SIZE*0.2, 0, 2*Math.PI);
-                ctx.fill();
-            } else {
-                ctx.globalAlpha = 0.10;
-                let tam = CELL_SIZE * 0.25;
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(cx - tam/2, cy - tam/2, tam, tam);
-                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-                ctx.lineWidth = 0.5;
-                ctx.strokeRect(cx - tam/2, cy - tam/2, tam, tam);
-            }
-            ctx.restore();
         }
     }
 
-    // 2. Pintar las zonas NO jugables con un rectángulo NEGRO EXTRAGRANDE que se solapa 1px en todas direcciones
-    ctx.fillStyle = '#000000';
-    for (let i = 0; i < FILAS; i++) {
-        for (let j = 0; j < COLUMNAS; j++) {
-            if (esNoJugable(i, j)) {
-                let x = j * CELL_SIZE - 1;
-                let y = i * CELL_SIZE - 1;
-                let w = CELL_SIZE + 2;
-                let h = CELL_SIZE + 2;
-                ctx.fillRect(x, y, w, h);
-            }
-        }
-    }
-
-    // 3. Dibujar las piezas (encima de todo)
+    // 2. Piezas
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             let pieza = board[i][j];
@@ -168,7 +133,7 @@ function dibujarTablero() {
         }
     }
 
-    // 4. Indicadores de movimiento, enroque y rutas (igual que antes)
+    // 3. Movimientos posibles y enroques
     if (!modoRuta) {
         for (let mov of posiblesMovimientos) {
             let f, c;
@@ -186,6 +151,7 @@ function dibujarTablero() {
         }
     }
 
+    // 4. Rutas del caballo
     if (modoRuta && rutasAlternativas.length > 0) {
         for (let idx = 0; idx < rutasAlternativas.length; idx++) {
             let ruta = rutasAlternativas[idx];
