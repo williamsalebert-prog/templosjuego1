@@ -19,7 +19,7 @@ class F2 extends Pieza {
 
             let contenido = board[nf][nc];
 
-            // --- Caso 1: Destino ocupado por enemigo (solo extremo) ---
+            // Caso 1: destino ocupado enemigo (solo extremo)
             if (contenido !== null) {
                 if (contenido.jugador !== jugador && capturaPermitida(this.tipo, contenido)) {
                     let detrasF = nf + Math.sign(df);
@@ -33,51 +33,53 @@ class F2 extends Pieza {
                 continue;
             }
 
-            // --- Caso 2: Destino vacío → verificar las dos casillas intermedias ---
-            // Casilla intermedia 1: un paso en la dirección de la fila
-            let inter1f = fila + Math.sign(df);
-            let inter1c = col;
-            // Casilla intermedia 2: un paso en la dirección de la columna
-            let inter2f = fila;
-            let inter2c = col + Math.sign(dc);
+            // Caso 2: destino vacío → verificar todas las casillas intermedias posibles
+            let intermedias = new Set(); // usaremos string "f,c"
+
+            // Trayectoria A: primero todo el largo, luego el corto
+            if (Math.abs(df) === 2) {
+                intermedias.add(`${fila + Math.sign(df)},${col}`);
+                intermedias.add(`${fila + 2*Math.sign(df)},${col}`);
+            } else {
+                intermedias.add(`${fila},${col + Math.sign(dc)}`);
+                intermedias.add(`${fila},${col + 2*Math.sign(dc)}`);
+            }
+
+            // Trayectoria B: primero el corto, luego el largo
+            if (Math.abs(df) === 2) {
+                intermedias.add(`${fila},${col + Math.sign(dc)}`);
+                intermedias.add(`${fila + Math.sign(df)},${col + Math.sign(dc)}`);
+            } else {
+                intermedias.add(`${fila + Math.sign(df)},${col}`);
+                intermedias.add(`${fila + Math.sign(df)},${col + Math.sign(dc)}`);
+            }
 
             let rutasValidas = [];
 
-            // Ruta pasando por inter1
-            if (inter1f >= 0 && inter1f < FILAS && inter1c >= 0 && inter1c < COLUMNAS) {
-                let p1 = board[inter1f][inter1c];
-                let enemigo1 = p1 && p1.jugador !== jugador && capturaPermitida(this.tipo, p1);
-                if (p1 && p1.jugador !== jugador && !capturaPermitida(this.tipo, p1)) {
-                    // enemigo no capturable, esta ruta no vale
-                } else {
-                    let pasos = [];
-                    if (enemigo1) pasos.push({ tipo: 'removePiece', over: [inter1f, inter1c] });
-                    pasos.push({ tipo: 'move', to: [nf, nc] });
-                    rutasValidas.push({
-                        inter: [inter1f, inter1c],
-                        pasos,
-                        tieneEnemigo: !!enemigo1
-                    });
+            // Convertir a arrays y filtrar dentro del tablero
+            let casillas = [];
+            for (let clave of intermedias) {
+                let [ff, cc] = clave.split(',').map(Number);
+                if (ff >= 0 && ff < FILAS && cc >= 0 && cc < COLUMNAS) {
+                    casillas.push([ff, cc]);
                 }
             }
 
-            // Ruta pasando por inter2
-            if (inter2f >= 0 && inter2f < FILAS && inter2c >= 0 && inter2c < COLUMNAS) {
-                let p2 = board[inter2f][inter2c];
-                let enemigo2 = p2 && p2.jugador !== jugador && capturaPermitida(this.tipo, p2);
-                if (p2 && p2.jugador !== jugador && !capturaPermitida(this.tipo, p2)) {
-                    // inválida
-                } else {
-                    let pasos = [];
-                    if (enemigo2) pasos.push({ tipo: 'removePiece', over: [inter2f, inter2c] });
-                    pasos.push({ tipo: 'move', to: [nf, nc] });
-                    if (!rutasValidas.some(r => r.inter[0] === inter2f && r.inter[1] === inter2c)) {
-                        rutasValidas.push({
-                            inter: [inter2f, inter2c],
-                            pasos,
-                            tieneEnemigo: !!enemigo2
-                        });
-                    }
+            // Para cada casilla intermedia distinta, crear una ruta si es válida
+            for (let [fInt, cInt] of casillas) {
+                let pieza = board[fInt][cInt];
+                let enemigo = pieza && pieza.jugador !== jugador && capturaPermitida(this.tipo, pieza);
+                if (pieza && pieza.jugador !== jugador && !capturaPermitida(this.tipo, pieza)) continue; // enemigo no capturable
+                let pasos = [];
+                if (enemigo) pasos.push({ tipo: 'removePiece', over: [fInt, cInt] });
+                pasos.push({ tipo: 'move', to: [nf, nc] });
+                // Evitar duplicados (misma casilla intermedia)
+                if (!rutasValidas.some(r => r.inter[0] === fInt && r.inter[1] === cInt)) {
+                    rutasValidas.push({
+                        inter: [fInt, cInt],
+                        pasos,
+                        tieneEnemigo: !!enemigo
+                    });
                 }
             }
 
