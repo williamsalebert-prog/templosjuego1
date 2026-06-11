@@ -5,7 +5,10 @@ class F2 extends Pieza {
 
     obtenerMovimientos(fila, col, board) {
         const jugador = this.jugador;
-        const saltosL = [[-2,-1],[-2,1],[2,-1],[2,1],[-1,-2],[-1,2],[1,-2],[1,2]];
+        const saltosL = [
+            [-2, -1], [-2, 1], [2, -1], [2, 1],
+            [-1, -2], [-1, 2], [1, -2], [1, 2]
+        ];
         let destinos = new Set();
         let caminos = {};
 
@@ -30,52 +33,59 @@ class F2 extends Pieza {
                 continue;
             }
 
-            // --- Caso 2: Destino vacío → calcular las dos rutas posibles ---
-            // Las dos casillas intermedias (las que el caballo "sobrevuela")
-            let inter1f, inter1c, inter2f, inter2c;
-            if (Math.abs(df) === 2) {
-                inter1f = fila + Math.sign(df);  // primer paso largo
-                inter1c = col;
-                inter2f = fila;                  // primer paso corto
-                inter2c = col + Math.sign(dc);
-            } else { // |dc| == 2
-                inter1f = fila + Math.sign(df);
-                inter1c = col;
-                inter2f = fila;
-                inter2c = col + Math.sign(dc);
+            // --- Caso 2: Destino vacío → calcular las dos rutas ---
+            // Para cada salto en L, hay dos trayectorias diferentes.
+            // Cada trayectoria tiene dos casillas intermedias (aunque solo una puede contener pieza).
+            // Vamos a definirlas explícitamente.
+            let rutas = []; // cada ruta será un array de {f, c} de las casillas intermedias
+
+            if (Math.abs(df) === 2 && Math.abs(dc) === 1) {
+                // Trayectoria A: avanzar 1 en la dirección larga, luego 1 en la corta, luego 1 en la larga
+                rutas.push([ [fila + Math.sign(df), col], [fila + df, col] ]);
+                // Trayectoria B: avanzar 1 en la corta, luego 1 en la larga
+                rutas.push([ [fila, col + Math.sign(dc)], [fila + Math.sign(df), col + Math.sign(dc)] ]);
+            } else { // |df| == 1, |dc| == 2
+                // Trayectoria A: avanzar 1 en la larga (dc), luego 1 en la corta (df)
+                rutas.push([ [fila, col + Math.sign(dc)], [fila, col + dc] ]);
+                // Trayectoria B: avanzar 1 en la corta, luego 1 en la larga
+                rutas.push([ [fila + Math.sign(df), col], [fila + Math.sign(df), col + Math.sign(dc)] ]);
             }
 
             let rutasValidas = [];
 
-            // Ruta 1 (pasa por inter1)
-            if (inter1f >= 0 && inter1f < FILAS && inter1c >= 0 && inter1c < COLUMNAS) {
-                let pieza1 = board[inter1f][inter1c];
-                let enemigo1 = pieza1 && pieza1.jugador !== jugador && capturaPermitida(this.tipo, pieza1);
-                if (pieza1 && pieza1.jugador !== jugador && !capturaPermitida(this.tipo, pieza1)) {
-                    // enemiga no capturable → ruta inválida
-                } else {
-                    let pasos = [];
-                    if (enemigo1) pasos.push({ tipo: 'removePiece', over: [inter1f, inter1c] });
-                    pasos.push({ tipo: 'move', to: [nf, nc] });
-                    rutasValidas.push({ inter: [inter1f, inter1c], pasos, tieneEnemigo: !!enemigo1 });
-                }
-            }
+            for (let ruta of rutas) {
+                let [cas1, cas2] = ruta;
+                // Verificar que ambas casillas intermedias están dentro del tablero y son jugables
+                if (cas1[0] < 0 || cas1[0] >= FILAS || cas1[1] < 0 || cas1[1] >= COLUMNAS) continue;
+                if (cas2[0] < 0 || cas2[0] >= FILAS || cas2[1] < 0 || cas2[1] >= COLUMNAS) continue;
+                // Solo nos importa si hay pieza en alguna de las dos casillas intermedias
+                // (el caballo salta por encima, así que pueden estar ocupadas)
+                let pieza1 = board[cas1[0]][cas1[1]];
+                let pieza2 = board[cas2[0]][cas2[1]];
+                let enemigo = null;
 
-            // Ruta 2 (pasa por inter2)
-            if (inter2f >= 0 && inter2f < FILAS && inter2c >= 0 && inter2c < COLUMNAS) {
-                let pieza2 = board[inter2f][inter2c];
-                let enemigo2 = pieza2 && pieza2.jugador !== jugador && capturaPermitida(this.tipo, pieza2);
-                if (pieza2 && pieza2.jugador !== jugador && !capturaPermitida(this.tipo, pieza2)) {
-                    // inválida
-                } else {
-                    let pasos = [];
-                    if (enemigo2) pasos.push({ tipo: 'removePiece', over: [inter2f, inter2c] });
-                    pasos.push({ tipo: 'move', to: [nf, nc] });
-                    // Evitar duplicados si por alguna razón las dos casillas son la misma
-                    if (!rutasValidas.some(r => r.inter[0] === inter2f && r.inter[1] === inter2c)) {
-                        rutasValidas.push({ inter: [inter2f, inter2c], pasos, tieneEnemigo: !!enemigo2 });
-                    }
+                if (pieza1 && pieza1.jugador !== jugador && capturaPermitida(this.tipo, pieza1)) {
+                    enemigo = cas1;
+                } else if (pieza1 && pieza1.jugador !== jugador && !capturaPermitida(this.tipo, pieza1)) {
+                    continue; // enemigo no capturable, ruta inválida
+                } else if (pieza2 && pieza2.jugador !== jugador && capturaPermitida(this.tipo, pieza2)) {
+                    enemigo = cas2;
+                } else if (pieza2 && pieza2.jugador !== jugador && !capturaPermitida(this.tipo, pieza2)) {
+                    continue;
                 }
+                // Si hay pieza amiga en alguna casilla, no bloquea (se puede saltar)
+
+                let pasos = [];
+                if (enemigo) {
+                    pasos.push({ tipo: 'removePiece', over: [enemigo[0], enemigo[1]] });
+                }
+                pasos.push({ tipo: 'move', to: [nf, nc] });
+
+                rutasValidas.push({
+                    inter: ruta[0], // la primera casilla intermedia se usa como referencia visual
+                    pasos,
+                    tieneEnemigo: !!enemigo
+                });
             }
 
             if (rutasValidas.length > 0) {
