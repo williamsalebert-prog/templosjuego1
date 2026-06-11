@@ -7,42 +7,31 @@
         body { background: #1a472a; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Segoe UI', sans-serif; margin: 0; }
         .game-container { background: #2c5e2e; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; position: relative; }
         canvas { display: block; margin: 0 auto; box-shadow: 0 0 0 4px #c9a87b, 0 0 0 8px #6b3e1c; border-radius: 8px; cursor: pointer; }
-        /* Solo se mantiene el menú de coronación, oculto por defecto */
+        .info { margin-top: 15px; color: #f9e0a0; background: #2d2b1fcc; padding: 8px; border-radius: 16px; font-size: 0.9rem; }
+        .botones-empate { margin-top: 10px; }
+        .botones-empate button { padding: 8px 16px; margin: 0 5px; background: #c9a87b; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; }
+        .botones-empate button:hover { background: #dbb87c; }
         .menu-coronacion {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.85);
-            padding: 15px;
-            border-radius: 15px;
-            display: none;
-            z-index: 10;
-            text-align: center;
-            color: white;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85); padding: 15px; border-radius: 15px; display: none; z-index: 10;
+            text-align: center; color: white;
         }
-        .menu-coronacion button {
-            margin: 8px;
-            padding: 10px;
-            background: #c9a87b;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: bold;
-            width: 80px;
-        }
-        .menu-coronacion button img {
-            width: 40px;
-            height: 40px;
-            display: block;
-            margin: 0 auto 5px;
-        }
+        .menu-coronacion button { margin: 8px; padding: 10px; background: #c9a87b; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; width: 80px; }
+        .menu-coronacion button img { width: 40px; height: 40px; display: block; margin: 0 auto 5px; }
     </style>
 </head>
 <body>
 <div class="game-container">
-    <canvas id="tableroCanvas" width="650" height="500"></canvas>
-    <!-- Menú de coronación (oculto hasta que se active) -->
+    <canvas id="tableroCanvas" width="900" height="600"></canvas>
+    <div class="info">
+        <div id="turnoTexto">Turno: Jugador 1</div>
+        <div id="estadoJuego"></div>
+    </div>
+    <div class="botones-empate">
+        <button id="btnOfrecerEmpate">🤝 Ofrecer Tablas</button>
+        <button id="btnAceptarEmpate" disabled>Aceptar Tablas</button>
+        <button id="btnRechazarEmpate" disabled>Rechazar</button>
+    </div>
     <div id="menuCoronacion" class="menu-coronacion">
         <p>Elige coronación:</p>
         <div id="opcionesCoronacion"></div>
