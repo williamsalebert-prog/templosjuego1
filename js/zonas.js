@@ -4,7 +4,6 @@ const FILAS = 10;
 const COLUMNAS = 13;
 const CELL_SIZE = 50;
 
-// Esquinas inutilizables (X)
 function esNoJugable(f, c) {
     return (f === 0 && c === 0) ||
            (f === 0 && c === 12) ||
@@ -12,7 +11,6 @@ function esNoJugable(f, c) {
            (f === 9 && c === 12);
 }
 
-// Templo izquierdo (columnas 0‑2)
 function esTemploIzquierdo(f, c) {
     if (esNoJugable(f, c)) return false;
     if (c === 2 && f >= 1 && f <= 8) return true;
@@ -21,7 +19,6 @@ function esTemploIzquierdo(f, c) {
     return false;
 }
 
-// Templo derecho (columnas 10‑12)
 function esTemploDerecho(f, c) {
     if (esNoJugable(f, c)) return false;
     if (c === 10 && f >= 1 && f <= 8) return true;
@@ -30,7 +27,6 @@ function esTemploDerecho(f, c) {
     return false;
 }
 
-// Jardín (centro, columnas 3‑9)
 function esJardin(f, c) {
     if (esNoJugable(f, c)) return false;
     return c >= 3 && c <= 9 && f >= 1 && f <= 8;
@@ -47,7 +43,6 @@ function esJugable(f, c) {
     return getZona(f, c) !== 'vacio' && !esNoJugable(f, c);
 }
 
-// Permiso de captura (solo Reina y Rey pueden capturar Trampero)
 function capturaPermitida(tipoAtacante, piezaObjetivo) {
     if (piezaObjetivo && piezaObjetivo.tipo === 'F4') {
         return tipoAtacante === 'F3' || tipoAtacante === 'F6';
@@ -55,10 +50,10 @@ function capturaPermitida(tipoAtacante, piezaObjetivo) {
     return true;
 }
 
-// 🎨 Paleta mexicana
+// 🎨 Paleta café (madera)
 const colores = {
-    templo1: { par: '#FFF176', impar: '#E53935' },   // amarillo brillante / rojo intenso
-    templo2: { par: '#90CAF9', impar: '#1565C0' },   // azul cielo / azul eléctrico
-    jardin:  { par: '#A5D6A7', impar: '#2E7D32' },   // verde claro / verde bosque
-    vacio:   { par: '#000000', impar: '#000000' }    // negro puro para las X
+    templo1: { par: '#D2B48C', impar: '#8B4513' },   // tan / saddle brown
+    templo2: { par: '#D2B48C', impar: '#8B4513' },
+    jardin:  { par: '#F5DEB3', impar: '#A0522D' },   // wheat / sienna
+    vacio:   { par: '#000000', impar: '#000000' }
 };
