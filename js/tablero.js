@@ -21,7 +21,39 @@ let coronacionPendiente = null;
 let enroqueRealizado = [false, false];
 
 const imagenesPiezas = {};
-const colorBordeEquipo = ['#CC0000', '#1E3A8A'];
+const colorBordeEquipo = ['#8B0000', '#00008B']; // rojo oscuro, azul oscuro
+
+// 🔊 Sistema de sonido
+let audioCtx = null;
+function getAudioContext() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+}
+function playTone(frecuencia, duracion, tipo = 'square') {
+    try {
+        const ctx = getAudioContext();
+        const osc = ctx.createOscillator();
+        const ganancia = ctx.createGain();
+        osc.type = tipo;
+        osc.frequency.value = frecuencia;
+        ganancia.gain.setValueAtTime(0.15, ctx.currentTime);
+        ganancia.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duracion);
+        osc.connect(ganancia);
+        ganancia.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + duracion);
+    } catch(e) {}
+}
+function sonidoMovimiento() { playTone(250, 0.08, 'triangle'); }
+function sonidoSalto() { playTone(500, 0.12, 'square'); }
+function sonidoEnroque() { playTone(300, 0.2, 'sine'); playTone(400, 0.2, 'sine'); }
+
+// 🎬 Animación
+let animando = false;
+let colaAnimacion = [];
+let origenAnimacion = null;
+let piezaAnimacion = null;
 
 function precargarImagenes() {
     const extensiones = ['.jpg', '.jpeg', '.png'];
@@ -53,6 +85,7 @@ function guardarEstado() {
 }
 
 function deshacerMovimiento() {
+    if (animando) return;
     if (!historial.puedeDeshacer()) return;
     let estado = historial.deshacer();
     board = estado.board;
@@ -72,7 +105,6 @@ function deshacerMovimiento() {
 function dibujarTablero() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. Dibujar las casillas (colores planos)
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             let x = j * CELL_SIZE, y = i * CELL_SIZE;
@@ -86,10 +118,12 @@ function dibujarTablero() {
             let color = zona === 'vacio' ? colores.vacio.par : (par ? colores[zona].par : colores[zona].impar);
             ctx.fillStyle = color;
             ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
         }
     }
 
-    // 2. Piezas
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             let pieza = board[i][j];
@@ -133,8 +167,7 @@ function dibujarTablero() {
         }
     }
 
-    // 3. Movimientos posibles y enroques
-    if (!modoRuta) {
+    if (!modoRuta && !animando) {
         for (let mov of posiblesMovimientos) {
             let f, c;
             if (mov.hasOwnProperty('f')) {
@@ -143,20 +176,19 @@ function dibujarTablero() {
                 f = mov[0]; c = mov[1];
             }
             if (mov.tipoMov === 'enroque') {
-                ctx.fillStyle = '#AA00AA';
+                ctx.fillStyle = '#800080';
             } else {
-                ctx.fillStyle = '#FFFF00AA';
+                ctx.fillStyle = '#FFD700AA';
             }
             ctx.fillRect(c * CELL_SIZE, f * CELL_SIZE, CELL_SIZE - 1, CELL_SIZE - 1);
         }
     }
 
-    // 4. Rutas del caballo
-    if (modoRuta && rutasAlternativas.length > 0) {
+    if (modoRuta && !animando && rutasAlternativas.length > 0) {
         for (let idx = 0; idx < rutasAlternativas.length; idx++) {
             let ruta = rutasAlternativas[idx];
             let [fInter, cInter] = ruta.inter;
-            ctx.fillStyle = '#AA00AA';
+            ctx.fillStyle = '#800080';
             ctx.fillRect(cInter * CELL_SIZE, fInter * CELL_SIZE, CELL_SIZE - 1, CELL_SIZE - 1);
         }
         let [df, dc] = destinoRuta;
@@ -199,10 +231,138 @@ function ejecutarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
     guardarEstado();
     let piezaEliminada = board[piezaFila][piezaCol];
     carcela.agregar(piezaEliminada);
-    board[piezaFila][piezaCol] = board[reyFila][reyCol];
+    // Animación del enroque
+    sonidoEnroque();
+    let rey = board[reyFila][reyCol];
     board[reyFila][reyCol] = null;
+    board[piezaFila][piezaCol] = rey;
     enroqueRealizado[jugador] = true;
-    return true;
+    dibujarTablero();
+}
+
+// 🔄 Animación
+function iniciarAnimacion(origen, camino) {
+    animando = true;
+    colaAnimacion = [...camino];
+    origenAnimacion = origen;
+    piezaAnimacion = board[origen[0]][origen[1]];
+    board[origen[0]][origen[1]] = null;
+    procesarSiguientePaso();
+}
+
+function procesarSiguientePaso() {
+    if (colaAnimacion.length === 0) {
+        finalizarAnimacion();
+        return;
+    }
+    const paso = colaAnimacion.shift();
+    let [fromF, fromC] = origenAnimacion;
+    let toF, toC;
+
+    if (paso.tipo === 'move') {
+        [toF, toC] = paso.to;
+        sonidoMovimiento();
+    } else if (paso.tipo === 'jump') {
+        [toF, toC] = paso.to;
+        sonidoSalto();
+        let [of, oc] = paso.over;
+        let piezaSaltada = board[of]?.[oc];
+        if (piezaSaltada && piezaSaltada.jugador !== piezaAnimacion.jugador) {
+            if (piezaSaltada.tipo === 'F4' && piezaAnimacion.tipo !== 'F3' && piezaAnimacion.tipo !== 'F6') {
+                // no capturar
+            } else {
+                carcela.agregar(piezaSaltada);
+                board[of][oc] = null;
+            }
+        }
+    } else if (paso.tipo === 'captureDirect') {
+        [toF, toC] = paso.to;
+        sonidoSalto();
+        let [of, oc] = paso.over;
+        let piezaObj = board[of]?.[oc];
+        if (piezaObj && piezaObj.jugador !== piezaAnimacion.jugador) {
+            if (piezaObj.tipo !== 'F4' || piezaAnimacion.tipo === 'F3' || piezaAnimacion.tipo === 'F6') {
+                carcela.agregar(piezaObj);
+                board[of][oc] = null;
+            }
+        }
+    } else if (paso.tipo === 'removePiece') {
+        let [of, oc] = paso.over;
+        let piezaEliminar = board[of]?.[oc];
+        if (piezaEliminar) {
+            carcela.agregar(piezaEliminar);
+            board[of][oc] = null;
+        }
+        procesarSiguientePaso();
+        return;
+    }
+
+    const inicio = performance.now();
+    const duracion = 200;
+    const origenX = fromC * CELL_SIZE + CELL_SIZE/2;
+    const origenY = fromF * CELL_SIZE + CELL_SIZE/2;
+    const destinoX = toC * CELL_SIZE + CELL_SIZE/2;
+    const destinoY = toF * CELL_SIZE + CELL_SIZE/2;
+
+    function animarPaso(timestamp) {
+        const progreso = Math.min((timestamp - inicio) / duracion, 1.0);
+        const x = origenX + (destinoX - origenX) * progreso;
+        const y = origenY + (destinoY - origenY) * progreso + (paso.tipo === 'jump' ? Math.sin(progreso * Math.PI) * 15 : 0);
+        dibujarTablero();
+        ctx.save();
+        let radio = CELL_SIZE * 0.4;
+        ctx.strokeStyle = colorBordeEquipo[piezaAnimacion.jugador];
+        ctx.lineWidth = 2.5;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(x, y, radio, 0, 2*Math.PI);
+        ctx.fill();
+        ctx.stroke();
+        let img = imagenesPiezas[piezaAnimacion.tipo];
+        if (img && img.complete && img.naturalWidth > 0) {
+            ctx.beginPath();
+            ctx.arc(x, y, radio-2, 0, 2*Math.PI);
+            ctx.clip();
+            ctx.drawImage(img, x - radio + 2, y - radio + 2, (radio-2)*2, (radio-2)*2);
+        } else {
+            ctx.fillStyle = '#000000';
+            ctx.font = `bold ${CELL_SIZE*0.3}px monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(piezaAnimacion.tipo, x, y);
+        }
+        ctx.restore();
+
+        if (progreso < 1.0) {
+            requestAnimationFrame(animarPaso);
+        } else {
+            board[toF][toC] = piezaAnimacion;
+            origenAnimacion = [toF, toC];
+            procesarSiguientePaso();
+        }
+    }
+    requestAnimationFrame(animarPaso);
+}
+
+function finalizarAnimacion() {
+    animando = false;
+    let [ff, cc] = origenAnimacion;
+    let pieza = board[ff][cc];
+    if (pieza && pieza.tipo === 'F1') {
+        let zona = getZona(ff, cc);
+        if ((pieza.jugador === 0 && zona === 'templo2') || (pieza.jugador === 1 && zona === 'templo1')) {
+            coronacionPendiente = { jugador: pieza.jugador, f: ff, c: cc };
+            mostrarMenuCoronacion();
+        }
+    }
+    turno = 1 - turno;
+    selectedPiece = null;
+    posiblesMovimientos = [];
+    caminosDestino = {};
+    modoRuta = false;
+    rutasAlternativas = [];
+    destinoRuta = null;
+    dibujarTablero();
 }
 
 function aplicarMovimiento(origen, destino, caminoElegido = null) {
@@ -218,65 +378,7 @@ function aplicarMovimiento(origen, destino, caminoElegido = null) {
         } else camino = info;
     }
     guardarEstado();
-
-    let pieza = board[origen[0]][origen[1]];
-    let jugador = pieza.jugador;
-    let f = origen[0], c = origen[1];
-
-    for (let paso of camino) {
-        if (paso.tipo === 'move') {
-            let [nf, nc] = paso.to;
-            board[f][c] = null;
-            board[nf][nc] = pieza;
-            f = nf; c = nc;
-        } else if (paso.tipo === 'removePiece') {
-            let [of, oc] = paso.over;
-            let piezaAEliminar = board[of]?.[oc];
-            if (piezaAEliminar && piezaAEliminar.jugador !== jugador) {
-                if (piezaAEliminar.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
-                    carcela.agregar(piezaAEliminar);
-                    board[of][oc] = null;
-                }
-            }
-        } else if (paso.tipo === 'captureDirect') {
-            let [of, oc] = paso.over;
-            let [nf, nc] = paso.to;
-            let piezaObjetivo = board[of]?.[oc];
-            if (piezaObjetivo && piezaObjetivo.jugador !== jugador) {
-                if (piezaObjetivo.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6') {
-                    carcela.agregar(piezaObjetivo);
-                    board[of][oc] = null;
-                }
-            }
-            board[f][c] = null;
-            board[nf][nc] = pieza;
-            f = nf; c = nc;
-        } else if (paso.tipo === 'jump') {
-            let [of, oc] = paso.over;
-            let [nf, nc] = paso.to;
-            let piezaSaltada = board[of]?.[oc];
-            if (piezaSaltada && piezaSaltada.jugador !== jugador) {
-                if (piezaSaltada.tipo === 'F4' && pieza.tipo !== 'F3' && pieza.tipo !== 'F6') {
-                    // no se captura
-                } else {
-                    carcela.agregar(piezaSaltada);
-                    board[of][oc] = null;
-                }
-            }
-            board[f][c] = null;
-            board[nf][nc] = pieza;
-            f = nf; c = nc;
-        }
-    }
-
-    if (pieza.tipo === 'F1') {
-        let zona = getZona(f, c);
-        if ((jugador === 0 && zona === 'templo2') || (jugador === 1 && zona === 'templo1')) {
-            coronacionPendiente = { jugador, f, c };
-            mostrarMenuCoronacion();
-            return true;
-        }
-    }
+    iniciarAnimacion(origen, camino);
     return true;
 }
 
@@ -360,7 +462,7 @@ function iniciarJuego() {
 }
 
 canvas.addEventListener('click', (e) => {
-    if (coronacionPendiente) return;
+    if (coronacionPendiente || animando) return;
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -393,11 +495,9 @@ canvas.addEventListener('click', (e) => {
             let [if_, ic] = ruta.inter;
             if (if_ === fila && ic === col) {
                 let caminoElegido = ruta.pasos;
-                if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], destinoRuta, caminoElegido))
-                    turno = 1 - turno;
+                aplicarMovimiento([selectedPiece.fila, selectedPiece.col], destinoRuta, caminoElegido);
                 modoRuta = false; rutasAlternativas = []; selectedPiece = null;
                 posiblesMovimientos = []; caminosDestino = {};
-                dibujarTablero();
                 return;
             }
         }
@@ -431,8 +531,8 @@ canvas.addEventListener('click', (e) => {
 
     let movEnroque = posiblesMovimientos.find(m => m.tipoMov === 'enroque' && m.f === fila && m.c === col);
     if (movEnroque) {
-        if (ejecutarEnroque(selectedPiece.fila, selectedPiece.col, fila, col, turno))
-            turno = 1 - turno;
+        ejecutarEnroque(selectedPiece.fila, selectedPiece.col, fila, col, turno);
+        turno = 1 - turno;
         selectedPiece = null; posiblesMovimientos = []; caminosDestino = {};
         dibujarTablero();
         return;
@@ -455,24 +555,22 @@ canvas.addEventListener('click', (e) => {
                     return;
                 } else {
                     let rutaElegida = info[0].pasos;
-                    if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaElegida))
-                        turno = 1 - turno;
+                    aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaElegida);
+                    selectedPiece = null; posiblesMovimientos = []; caminosDestino = {};
+                    modoRuta = false;
+                    return;
                 }
             } else {
                 let rutaUnica = info[0].pasos;
-                if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaUnica))
-                    turno = 1 - turno;
+                aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], rutaUnica);
+                selectedPiece = null; posiblesMovimientos = []; caminosDestino = {};
+                modoRuta = false;
+                return;
             }
-            selectedPiece = null; posiblesMovimientos = []; caminosDestino = {};
-            modoRuta = false;
-            dibujarTablero();
-            return;
         }
-        if (aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col]))
-            turno = 1 - turno;
+        aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col]);
         selectedPiece = null; posiblesMovimientos = []; caminosDestino = {};
         modoRuta = false;
-        dibujarTablero();
         return;
     }
 
