@@ -21,7 +21,7 @@ let coronacionPendiente = null;
 let enroqueRealizado = [false, false];
 
 const imagenesPiezas = {};
-const colorBordeEquipo = ['#8B0000', '#00008B']; // rojo oscuro, azul oscuro
+const colorBordeEquipo = ['#8B0000', '#00008B'];
 
 // 🔊 Sistema de sonido
 let audioCtx = null;
@@ -30,24 +30,44 @@ function getAudioContext() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
 }
-function playTone(frecuencia, duracion, tipo = 'square') {
+function sonidoMadera() {
+    // Sonido de madera: ruido corto o tono bajo
+    try {
+        const ctx = getAudioContext();
+        const bufferSize = ctx.sampleRate * 0.05; // 50ms
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 3);
+        }
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+        source.connect(gain);
+        gain.connect(ctx.destination);
+        source.start();
+    } catch(e) {}
+}
+function sonidoEnroque() {
+    playTone(300, 0.15, 'triangle'); playTone(400, 0.15, 'triangle');
+}
+function playTone(frec, dur, tipo) {
     try {
         const ctx = getAudioContext();
         const osc = ctx.createOscillator();
-        const ganancia = ctx.createGain();
+        const gain = ctx.createGain();
         osc.type = tipo;
-        osc.frequency.value = frecuencia;
-        ganancia.gain.setValueAtTime(0.15, ctx.currentTime);
-        ganancia.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duracion);
-        osc.connect(ganancia);
-        ganancia.connect(ctx.destination);
+        osc.frequency.value = frec;
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
         osc.start();
-        osc.stop(ctx.currentTime + duracion);
+        osc.stop(ctx.currentTime + dur);
     } catch(e) {}
 }
-function sonidoMovimiento() { playTone(250, 0.08, 'triangle'); }
-function sonidoSalto() { playTone(500, 0.12, 'square'); }
-function sonidoEnroque() { playTone(300, 0.2, 'sine'); playTone(400, 0.2, 'sine'); }
 
 // 🎬 Animación
 let animando = false;
@@ -104,7 +124,6 @@ function deshacerMovimiento() {
 
 function dibujarTablero() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             let x = j * CELL_SIZE, y = i * CELL_SIZE;
@@ -198,6 +217,7 @@ function dibujarTablero() {
     }
 }
 
+// ... validarEnroque, ejecutarEnroque (sin cambios)
 function validarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
     if (enroqueRealizado[jugador]) return false;
     const pieza = board[piezaFila][piezaCol];
@@ -205,16 +225,13 @@ function validarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
     if (pieza.jugador !== jugador) return false;
     if (!['F3', 'F0', 'F5'].includes(pieza.tipo)) return false;
     if (reyFila === piezaFila && reyCol === piezaCol) return false;
-
     let df = piezaFila - reyFila;
     let dc = piezaCol - reyCol;
     let dirF = df === 0 ? 0 : df / Math.abs(df);
     let dirC = dc === 0 ? 0 : dc / Math.abs(dc);
-
     if (pieza.tipo === 'F0' && df !== 0 && dc !== 0) return false;
     if (pieza.tipo === 'F5' && Math.abs(df) !== Math.abs(dc)) return false;
     if (pieza.tipo === 'F3' && !(df === 0 || dc === 0 || Math.abs(df) === Math.abs(dc))) return false;
-
     let fichasAmigas = 0;
     let f = reyFila + dirF, c = reyCol + dirC;
     while (f !== piezaFila || c !== piezaCol) {
@@ -231,22 +248,20 @@ function ejecutarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
     guardarEstado();
     let piezaEliminada = board[piezaFila][piezaCol];
     carcela.agregar(piezaEliminada);
-    // Animación del enroque
-    sonidoEnroque();
-    let rey = board[reyFila][reyCol];
+    board[piezaFila][piezaCol] = board[reyFila][reyCol];
     board[reyFila][reyCol] = null;
-    board[piezaFila][piezaCol] = rey;
     enroqueRealizado[jugador] = true;
+    sonidoEnroque();
     dibujarTablero();
 }
 
-// 🔄 Animación
+// 🔄 Animación corregida: la pieza NO se coloca en el tablero hasta el final
 function iniciarAnimacion(origen, camino) {
     animando = true;
     colaAnimacion = [...camino];
     origenAnimacion = origen;
     piezaAnimacion = board[origen[0]][origen[1]];
-    board[origen[0]][origen[1]] = null;
+    board[origen[0]][origen[1]] = null; // fuera del tablero durante toda la animación
     procesarSiguientePaso();
 }
 
@@ -261,10 +276,10 @@ function procesarSiguientePaso() {
 
     if (paso.tipo === 'move') {
         [toF, toC] = paso.to;
-        sonidoMovimiento();
+        sonidoMadera();
     } else if (paso.tipo === 'jump') {
         [toF, toC] = paso.to;
-        sonidoSalto();
+        sonidoMadera();
         let [of, oc] = paso.over;
         let piezaSaltada = board[of]?.[oc];
         if (piezaSaltada && piezaSaltada.jugador !== piezaAnimacion.jugador) {
@@ -277,7 +292,7 @@ function procesarSiguientePaso() {
         }
     } else if (paso.tipo === 'captureDirect') {
         [toF, toC] = paso.to;
-        sonidoSalto();
+        sonidoMadera();
         let [of, oc] = paso.over;
         let piezaObj = board[of]?.[oc];
         if (piezaObj && piezaObj.jugador !== piezaAnimacion.jugador) {
@@ -293,7 +308,7 @@ function procesarSiguientePaso() {
             carcela.agregar(piezaEliminar);
             board[of][oc] = null;
         }
-        procesarSiguientePaso();
+        procesarSiguientePaso(); // siguiente paso inmediato
         return;
     }
 
@@ -307,7 +322,7 @@ function procesarSiguientePaso() {
     function animarPaso(timestamp) {
         const progreso = Math.min((timestamp - inicio) / duracion, 1.0);
         const x = origenX + (destinoX - origenX) * progreso;
-        const y = origenY + (destinoY - origenY) * progreso + (paso.tipo === 'jump' ? Math.sin(progreso * Math.PI) * 15 : 0);
+        const y = origenY + (destinoY - origenY) * progreso + (paso.tipo === 'jump' ? Math.sin(progreso * Math.PI) * 12 : 0);
         dibujarTablero();
         ctx.save();
         let radio = CELL_SIZE * 0.4;
@@ -336,7 +351,7 @@ function procesarSiguientePaso() {
         if (progreso < 1.0) {
             requestAnimationFrame(animarPaso);
         } else {
-            board[toF][toC] = piezaAnimacion;
+            // No colocar en el tablero aún, solo actualizar la posición lógica
             origenAnimacion = [toF, toC];
             procesarSiguientePaso();
         }
@@ -345,8 +360,10 @@ function procesarSiguientePaso() {
 }
 
 function finalizarAnimacion() {
-    animando = false;
+    // Colocar la pieza en su posición final
     let [ff, cc] = origenAnimacion;
+    board[ff][cc] = piezaAnimacion;
+    animando = false;
     let pieza = board[ff][cc];
     if (pieza && pieza.tipo === 'F1') {
         let zona = getZona(ff, cc);
@@ -461,6 +478,7 @@ function iniciarJuego() {
     dibujarTablero();
 }
 
+// Evento clic (adaptado para animación)
 canvas.addEventListener('click', (e) => {
     if (coronacionPendiente || animando) return;
     const rect = canvas.getBoundingClientRect();
