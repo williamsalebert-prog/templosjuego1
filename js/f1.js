@@ -5,13 +5,11 @@ class F1 extends Pieza {
 
     obtenerMovimientos(fila, col, board) {
         const jugador = this.jugador;
-        // Movimiento simple: solo 3 direcciones de avance
         const dirsMovimiento = (jugador === 0) ? [
             [-1, 1], [0, 1], [1, 1]
         ] : [
             [-1, -1], [0, -1], [1, -1]
         ];
-        // Saltos: 8 direcciones
         const dirsSalto = [
             [-1, 0], [1, 0], [0, -1], [0, 1],
             [-1, -1], [-1, 1], [1, -1], [1, 1]
@@ -23,6 +21,7 @@ class F1 extends Pieza {
         const colInicial = col;
 
         const explorar = (f, c, tablero, camino, visitados, haSaltado) => {
+            // Movimiento simple (solo si no ha saltado)
             if (!haSaltado) {
                 for (let [df, dc] of dirsMovimiento) {
                     let nf = f + df, nc = c + dc;
@@ -32,6 +31,7 @@ class F1 extends Pieza {
                         if (!visitados.has(clave)) {
                             visitados.add(clave);
                             let nuevoCamino = [...camino, { tipo: 'move', to: [nf, nc] }];
+                            // El movimiento simple siempre avanza porque las direcciones son de avance
                             destinos.add(clave);
                             if (!caminos[clave]) caminos[clave] = nuevoCamino;
                         }
@@ -39,6 +39,7 @@ class F1 extends Pieza {
                 }
             }
 
+            // Saltos (cualquier dirección, en cualquier orden)
             for (let [df, dc] of dirsSalto) {
                 let nf = f + df, nc = c + dc;
                 let jf = f + df * 2, jc = c + dc * 2;
@@ -65,17 +66,19 @@ class F1 extends Pieza {
                             let nuevoCamino = [...camino, { tipo: 'jump', over: [nf, nc], to: [jf, jc] }];
 
                             let colFinal = jc;
-                            let avanceOk = (jugador === 0) ? (colFinal > colInicial) : (colFinal < colInicial);
-                            if (avanceOk) {
+                            let avance = (jugador === 0) ? (colFinal > colInicial) : (colFinal < colInicial);
+                            if (avance) {
                                 destinos.add(clave);
                                 if (!caminos[clave]) caminos[clave] = nuevoCamino;
-                                explorar(jf, jc, nuevoTab, nuevoCamino, visitados, true);
                             }
+                            // Siempre seguir explorando, incluso si este destino no avanza
+                            explorar(jf, jc, nuevoTab, nuevoCamino, visitados, true);
                         }
                     }
                 }
             }
 
+            // Captura directa en extremos (solo en direcciones de movimiento simple)
             if (!haSaltado) {
                 for (let [df, dc] of dirsMovimiento) {
                     let nf = f + df, nc = c + dc;
