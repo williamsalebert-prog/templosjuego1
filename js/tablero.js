@@ -92,7 +92,7 @@ function deshacerMovimiento() {
     dibujarTablero();
 }
 
-// ---------- FUNCIONES DE JAQUE (nuevas, integradas sin romper) ----------
+// ---------- FUNCIONES DE JAQUE ----------
 function obtenerPosicionRey(jugador) {
     for (let i = 0; i < FILAS; i++)
         for (let j = 0; j < COLUMNAS; j++)
@@ -111,6 +111,28 @@ function esJaque(jugador, tablero = board) {
             let pieza = tablero[i][j];
             if (pieza && pieza.jugador === enemigo) {
                 if (pieza.puedeAtacarRey(i, j, rf, rc, tablero)) return true;
+            }
+        }
+    }
+    return false;
+}
+
+function hayMovimientoLegal(jugador) {
+    for (let i = 0; i < FILAS; i++) {
+        for (let j = 0; j < COLUMNAS; j++) {
+            let pieza = board[i][j];
+            if (!pieza || pieza.jugador !== jugador) continue;
+            let res = pieza.obtenerMovimientos(i, j, board);
+            for (let dest of res.destinos) {
+                let clave = `${dest[0]},${dest[1]}`;
+                let caminos = res.caminos[clave];
+                if (!caminos) continue;
+                let caminoReal = Array.isArray(caminos) ? (caminos[0].pasos || caminos[0]) : caminos;
+                if (!caminoReal) continue;
+                let copia = copiarBoard();
+                if (simularMovimiento(copia, i, j, dest, caminoReal, jugador)) {
+                    if (!esJaque(jugador, copia)) return true;
+                }
             }
         }
     }
@@ -144,18 +166,8 @@ function filtrarMovimientosJaque() {
         let f, c;
         if (mov.hasOwnProperty('f')) { f = mov.f; c = mov.c; }
         else { f = mov[0]; c = mov[1]; }
-
-        // Enroque: se permite si resuelve el jaque (ya validado en validarEnroque)
-        if (mov.tipoMov === 'enroque') {
-            if (enroqueResuelveJaque(selectedPiece.fila, selectedPiece.col, f, c, turno)) {
-                nuevosMovs.push(mov);
-            }
-            continue;
-        }
-
-        // Movimiento normal
         let clave = `${f},${c}`;
-        let caminos = caminosDestino[clave];
+        let caminos = mov.caminos || caminosDestino[clave];
         if (!caminos) continue;
         let caminoReal = Array.isArray(caminos) ? (caminos[0].pasos || caminos[0]) : caminos;
         if (!caminoReal) continue;
@@ -169,13 +181,6 @@ function filtrarMovimientosJaque() {
     }
     posiblesMovimientos = nuevosMovs;
     caminosDestino = nuevosCaminos;
-}
-
-function enroqueResuelveJaque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
-    let copia = copiarBoard();
-    copia[piezaFila][piezaCol] = copia[reyFila][reyCol];
-    copia[reyFila][reyCol] = null;
-    return !esJaque(jugador, copia);
 }
 
 // ---------- DIBUJO ----------
@@ -265,7 +270,15 @@ function dibujarTablero() {
     }
 }
 
-// ---------- ENROQUE ----------
+// ---------- ENROQUE (permitido para escapar de jaque) ----------
+function enroqueResuelveJaque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
+    let copia = copiarBoard();
+    // Intercambiar en la copia
+    copia[piezaFila][piezaCol] = copia[reyFila][reyCol];
+    copia[reyFila][reyCol] = null;
+    return !esJaque(jugador, copia);
+}
+
 function validarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
     if (enroqueRealizado[jugador]) return false;
     const pieza = board[piezaFila][piezaCol];
