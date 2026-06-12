@@ -1,8 +1,8 @@
 console.log("✅ tablero.js cargado");
-const canvasElement = document.getElementById('tableroCanvas');
-const ctx = canvasElement.getContext('2d');
-canvasElement.width = COLUMNAS * CELL_SIZE;
-canvasElement.height = FILAS * CELL_SIZE;
+const canvas = document.getElementById('tableroCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = COLUMNAS * CELL_SIZE;
+canvas.height = FILAS * CELL_SIZE;
 
 let board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
 let turno = 0;
@@ -25,7 +25,7 @@ let enJaque = false;
 const imagenesPiezas = {};
 const colorBordeEquipo = ['#8B0000', '#00008B'];
 
-// 🔊 Sonido (sin cambios)
+// Sonido
 let audioCtx = null;
 function getAudioContext() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -92,7 +92,7 @@ function deshacerMovimiento() {
     dibujarTablero();
 }
 
-// ---------- FUNCIONES DE JAQUE ----------
+// ---------- FUNCIONES DE JAQUE (nuevas, integradas sin romper) ----------
 function obtenerPosicionRey(jugador) {
     for (let i = 0; i < FILAS; i++)
         for (let j = 0; j < COLUMNAS; j++)
@@ -145,6 +145,7 @@ function filtrarMovimientosJaque() {
         if (mov.hasOwnProperty('f')) { f = mov.f; c = mov.c; }
         else { f = mov[0]; c = mov[1]; }
 
+        // Enroque: se permite si resuelve el jaque (ya validado en validarEnroque)
         if (mov.tipoMov === 'enroque') {
             if (enroqueResuelveJaque(selectedPiece.fila, selectedPiece.col, f, c, turno)) {
                 nuevosMovs.push(mov);
@@ -152,6 +153,7 @@ function filtrarMovimientosJaque() {
             continue;
         }
 
+        // Movimiento normal
         let clave = `${f},${c}`;
         let caminos = caminosDestino[clave];
         if (!caminos) continue;
@@ -178,7 +180,7 @@ function enroqueResuelveJaque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
 
 // ---------- DIBUJO ----------
 function dibujarTablero() {
-    ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             let x = j * CELL_SIZE, y = i * CELL_SIZE;
@@ -285,6 +287,7 @@ function validarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
         f += dirF; c += dirC;
     }
     if (fichasAmigas > 1) return false;
+    // El enroque solo se permite si tras ejecutarlo el rey no queda en jaque
     return enroqueResuelveJaque(reyFila, reyCol, piezaFila, piezaCol, jugador);
 }
 
@@ -470,11 +473,11 @@ function iniciarJuego() {
     dibujarTablero();
 }
 
-canvasElement.addEventListener('click', (e) => {
+canvas.addEventListener('click', (e) => {
     if (coronacionPendiente || animando) return;
-    const rect = canvasElement.getBoundingClientRect();
-    const scaleX = canvasElement.width / rect.width;
-    const scaleY = canvasElement.height / rect.height;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
     const col = Math.floor(((e.clientX - rect.left) * scaleX) / CELL_SIZE);
     const fila = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE);
     if (fila < 0 || fila >= FILAS || col < 0 || col >= COLUMNAS) return;
