@@ -13,7 +13,12 @@ class F5 extends Pieza {
             if (board[f]?.[c] !== null) return false;
             f += dirF; c += dirC;
         }
-        return true;
+        let detrasF = reyF + dirF, detrasC = reyC + dirC;
+        if (detrasF >= 0 && detrasF < FILAS && detrasC >= 0 && detrasC < COLUMNAS && esJugable(detrasF, detrasC)) {
+            return board[detrasF][detrasC] === null;
+        } else {
+            return true;
+        }
     }
 
     obtenerMovimientos(fila, col, board) {
