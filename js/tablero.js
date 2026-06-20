@@ -21,8 +21,6 @@ let coronacionPendiente = null;
 
 let enroqueRealizado = [false, false];
 
-const btnDeshacer = document.getElementById('btnDeshacer'); // aunque lo ocultamos, mantenemos la lógica Ctrl+Z
-
 const imagenesPiezas = {};
 const colorBordeEquipo = ['#8B0000', '#00008B'];
 
@@ -126,7 +124,7 @@ function simularMovimiento(tablero, fromF, fromC, dest, camino, jugador) {
 }
 
 // ----------------------------------------------------------
-// PRECARGA Y DIBUJO
+// PRECARGA Y DIBUJO (sin cambios relevantes)
 // ----------------------------------------------------------
 function precargarImagenes() {
     const extensiones = ['.jpg', '.jpeg', '.png'];
@@ -238,7 +236,7 @@ function dibujarTablero() {
 }
 
 // ----------------------------------------------------------
-// VALIDACIÓN ENROQUE
+// VALIDACIÓN ENROQUE (sin cambios)
 // ----------------------------------------------------------
 function validarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
     if (enroqueRealizado[jugador]) return false;
@@ -275,7 +273,7 @@ function ejecutarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
 }
 
 // ----------------------------------------------------------
-// ANIMACIÓN
+// ANIMACIÓN (sin cambios)
 // ----------------------------------------------------------
 function iniciarAnimacion(origen, camino) {
     animando = true;
@@ -384,11 +382,47 @@ function aplicarMovimiento(origen, destino, caminoElegido = null) {
     return true;
 }
 
-function mostrarMenuCoronacion() { /* ... igual que antes ... */ }
-function coronar(tipo) { /* ... igual que antes ... */ }
+function mostrarMenuCoronacion() {
+    if (!coronacionPendiente) return;
+    const opciones = [
+        { tipo: 'F0', nombre: 'Torre' }, { tipo: 'F2', nombre: 'Caballo' },
+        { tipo: 'F4', nombre: 'Trampero' }, { tipo: 'F5', nombre: 'Alfil' }
+    ];
+    opcionesCoronacion.innerHTML = '';
+    opciones.forEach(op => {
+        const btn = document.createElement('button');
+        const img = document.createElement('img');
+        img.src = `img/${op.tipo.toLowerCase()}.jpg`;
+        img.onerror = () => { img.style.display = 'none'; btn.textContent = op.tipo; };
+        img.onload = () => { btn.textContent = ''; btn.appendChild(img); };
+        btn.appendChild(img);
+        btn.onclick = () => coronar(op.tipo);
+        opcionesCoronacion.appendChild(btn);
+    });
+    menuCoronacion.style.display = 'block';
+}
+
+function coronar(tipo) {
+    if (!coronacionPendiente) return;
+    const { jugador, f, c } = coronacionPendiente;
+    let nuevaPieza;
+    switch (tipo) {
+        case 'F0': nuevaPieza = new F0(jugador); break;
+        case 'F2': nuevaPieza = new F2(jugador); break;
+        case 'F4': nuevaPieza = new F4(jugador); break;
+        case 'F5': nuevaPieza = new F5(jugador); break;
+        default: return;
+    }
+    board[f][c] = nuevaPieza;
+    menuCoronacion.style.display = 'none';
+    coronacionPendiente = null;
+    turno = 1 - turno;
+    selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
+    dibujarTablero();
+}
 
 // ----------------------------------------------------------
-// INICIO Y EVENTOS
+// INICIO Y EVENTOS (con selección corregida para jaque)
 // ----------------------------------------------------------
 function iniciarJuego() {
     board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
@@ -499,25 +533,48 @@ function seleccionarNuevaPieza(fila, col) {
                     if (!piezaObj || piezaObj.jugador !== turno) continue;
                     if (!['F0','F3','F5'].includes(piezaObj.tipo)) continue;
                     if (validarEnroque(selectedPiece.fila, selectedPiece.col, i, j, turno))
-                        posiblesMovimientos.push({ f: i, c: j, tipoMov: 'enroque' });
+                        posiblesMovimientos.push({ f: i, c: j, tipoMov: 'enroque', caminos: null });
                 }
         }
 
-        // Si el jugador está en jaque, filtrar movimientos que no salvan
+        // ⚠️ Filtro de jaque MEJORADO
         if (esJaque(turno)) {
             let nuevosMovs = [];
             let nuevosCaminos = {};
             for (let mov of posiblesMovimientos) {
-                let f, c;
-                if (mov.hasOwnProperty('f')) { f = mov.f; c = mov.c; }
-                else { f = mov[0]; c = mov[1]; }
-                let copia = copiarBoard();
-                let claveMov = `${f},${c}`;
+                let fDest, cDest;
+                if (mov.hasOwnProperty('f')) { fDest = mov.f; cDest = mov.c; }
+                else { fDest = mov[0]; cDest = mov[1]; }
+
+                // Para enroque, simulamos el intercambio
+                if (mov.tipoMov === 'enroque') {
+                    let copia = copiarBoard();
+                    // Simular enroque: mover rey a (fDest,cDest) y eliminar pieza en esa casilla
+                    let reyPos = obtenerPosicionRey(turno);
+                    if (reyPos) {
+                        let [reyF, reyC] = reyPos;
+                        copia[fDest][cDest] = copia[reyF][reyC];
+                        copia[reyF][reyC] = null;
+                        // La pieza intercambiada se elimina (no se considera para el jaque)
+                        // Verificar si el rey sigue en jaque después del enroque
+                        if (!esJaque(turno, copia)) {
+                            nuevosMovs.push(mov);
+                            // No hay caminos asociados a enroque, se maneja aparte
+                            if (!nuevosCaminos[`${fDest},${cDest}`]) nuevosCaminos[`${fDest},${cDest}`] = null;
+                        }
+                    }
+                    continue;
+                }
+
+                // Para movimientos normales, simulamos el camino completo
+                let claveMov = `${fDest},${cDest}`;
                 let caminosMov = mov.caminos || caminosDestino[claveMov];
                 if (!caminosMov) continue;
                 let caminoReal = Array.isArray(caminosMov) ? (caminosMov[0].pasos || caminosMov[0]) : caminosMov;
                 if (!caminoReal) continue;
-                if (simularMovimiento(copia, selectedPiece.fila, selectedPiece.col, [f,c], caminoReal, turno)) {
+
+                let copia = copiarBoard();
+                if (simularMovimiento(copia, selectedPiece.fila, selectedPiece.col, [fDest, cDest], caminoReal, turno)) {
                     if (!esJaque(turno, copia)) {
                         nuevosMovs.push(mov);
                         nuevosCaminos[claveMov] = caminosMov;
@@ -525,7 +582,12 @@ function seleccionarNuevaPieza(fila, col) {
                 }
             }
             posiblesMovimientos = nuevosMovs;
-            caminosDestino = nuevosCaminos;
+            // Para enroque, los caminos no se almacenan en caminosDestino, por eso no se actualizan
+            // Solo actualizamos los caminos de movimientos no enroque
+            for (let clave in caminosDestino) {
+                if (!nuevosCaminos[clave]) delete caminosDestino[clave];
+                else caminosDestino[clave] = nuevosCaminos[clave];
+            }
         }
 
         dibujarTablero();
