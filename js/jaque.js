@@ -1,15 +1,17 @@
 console.log("✅ jaque.js cargado");
 
-function obtenerPosicionRey(jugador) {
+// Obtiene la posición del rey de un jugador
+function obtenerPosicionRey(jugador, tablero = board) {
     for (let i = 0; i < FILAS; i++)
         for (let j = 0; j < COLUMNAS; j++)
-            if (board[i][j] && board[i][j].tipo === 'F6' && board[i][j].jugador === jugador)
+            if (tablero[i][j] && tablero[i][j].tipo === 'F6' && tablero[i][j].jugador === jugador)
                 return [i, j];
     return null;
 }
 
+// Verifica si un jugador está en jaque
 function esJaque(jugador, tablero = board) {
-    let reyPos = obtenerPosicionRey(jugador);
+    let reyPos = obtenerPosicionRey(jugador, tablero);
     if (!reyPos) return false;
     let enemigo = 1 - jugador;
     for (let i = 0; i < FILAS; i++) {
@@ -22,6 +24,7 @@ function esJaque(jugador, tablero = board) {
     return false;
 }
 
+// Clona un tablero para simulaciones
 function clonarTablero(tablero) {
     return tablero.map(fila => fila.map(celda => {
         if (celda === null) return null;
@@ -30,6 +33,7 @@ function clonarTablero(tablero) {
     }));
 }
 
+// Simula un movimiento en un tablero clonado
 function simularMovimiento(tablero, fromF, fromC, destino, camino) {
     if (!Array.isArray(camino)) return false;
     let copia = clonarTablero(tablero);
@@ -53,9 +57,9 @@ function simularMovimiento(tablero, fromF, fromC, destino, camino) {
     return copia;
 }
 
-// ✅ Función que filtra los movimientos bajo jaque (incluidos enroques)
+// Filtra los movimientos para que solo queden los que evitan el jaque (incluye enroques)
 function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDestino) {
-    // Si no estamos en jaque, devolvemos todo sin cambios
+    // Si no estamos en jaque, no filtrar
     if (!esJaque(turno)) {
         return { posiblesMovimientos, caminosDestino };
     }
@@ -68,11 +72,12 @@ function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDest
         if (mov.hasOwnProperty('f')) { fDest = mov.f; cDest = mov.c; }
         else { fDest = mov[0]; cDest = mov[1]; }
 
-        // Evaluar enroque
+        // ---- ENROQUE ----
         if (mov.tipoMov === 'enroque') {
-            // Simular enroque: clonar, intercambiar rey y pieza
+            // Simular el enroque: intercambiar rey y pieza
             let copia = clonarTablero(board);
-            let [reyF, reyC] = [selectedPiece.fila, selectedPiece.col];
+            let [reyF, reyC] = [selectedPiece.fila, selectedPiece.col]; // selectedPiece es la pieza rey
+            // Mover el rey a la posición de la pieza, eliminar la pieza original
             copia[fDest][cDest] = copia[reyF][reyC];
             copia[reyF][reyC] = null;
             if (!esJaque(turno, copia)) {
@@ -83,14 +88,15 @@ function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDest
             continue;
         }
 
-        // Movimientos normales (incluyendo los que tienen múltiples rutas)
+        // ---- MOVIMIENTOS NORMALES ----
         let claveMov = `${fDest},${cDest}`;
         let infoCamino = mov.caminos || caminosDestino[claveMov];
         if (!infoCamino) continue;
 
+        // Determinar todas las rutas posibles para este destino
         let rutas = [];
         if (Array.isArray(infoCamino) && infoCamino.length > 0 && infoCamino[0].hasOwnProperty('pasos')) {
-            rutas = infoCamino; // caballo con varias rutas
+            rutas = infoCamino; // múltiples rutas (caballo)
         } else {
             if (Array.isArray(infoCamino)) rutas = [{ pasos: infoCamino }];
             else rutas = [{ pasos: infoCamino }];
