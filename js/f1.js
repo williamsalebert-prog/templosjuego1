@@ -7,7 +7,14 @@ class F1 extends Pieza {
         const dirs = (this.jugador === 0) ? [[-1,1],[0,1],[1,1]] : [[-1,-1],[0,-1],[1,-1]];
         for (let [df, dc] of dirs) {
             let nf = fila + df, nc = col + dc;
-            if (nf === reyF && nc === reyC && esJugable(nf, nc)) return true;
+            if (nf === reyF && nc === reyC) {
+                let detrasF = nf + df, detrasC = nc + dc;
+                if (detrasF >= 0 && detrasF < FILAS && detrasC >= 0 && detrasC < COLUMNAS && esJugable(detrasF, detrasC)) {
+                    return board[detrasF][detrasC] === null;
+                } else {
+                    return true;
+                }
+            }
         }
         return false;
     }
