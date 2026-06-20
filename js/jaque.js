@@ -53,9 +53,8 @@ function simularMovimiento(tablero, fromF, fromC, destino, camino) {
     return copia;
 }
 
-// ✅ Función que filtra movimientos bajo jaque (debe llamarse desde tablero.js)
 function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDestino) {
-    if (!esJaque(turno)) return { posiblesMovimientos, caminosDestino }; // no en jaque, sin cambios
+    if (!esJaque(turno)) return { posiblesMovimientos, caminosDestino };
 
     let movsSeguros = [];
     let nuevosCaminos = {};
@@ -69,6 +68,7 @@ function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDest
         if (mov.tipoMov === 'enroque') {
             let copia = clonarTablero(board);
             let [reyF, reyC] = [selectedPiece.fila, selectedPiece.col];
+            // Simular enroque: mover rey a la casilla destino, eliminar pieza intercambiada
             copia[fDest][cDest] = copia[reyF][reyC];
             copia[reyF][reyC] = null;
             if (!esJaque(turno, copia)) {
@@ -82,13 +82,10 @@ function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDest
         let infoCamino = mov.caminos || caminosDestino[claveMov];
         if (!infoCamino) continue;
 
-        // Determinar todas las rutas posibles para este destino
         let rutas = [];
         if (Array.isArray(infoCamino) && infoCamino.length > 0 && infoCamino[0].hasOwnProperty('pasos')) {
-            // Caballo: varias rutas
             rutas = infoCamino;
         } else {
-            // Pieza normal: el camino es infoCamino directamente (array de pasos)
             if (Array.isArray(infoCamino)) rutas = [{ pasos: infoCamino }];
             else rutas = [{ pasos: infoCamino }];
         }
@@ -100,7 +97,7 @@ function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDest
             let nuevoTab = simularMovimiento(board, selectedPiece.fila, selectedPiece.col, [fDest, cDest], caminoReal);
             if (nuevoTab && !esJaque(turno, nuevoTab)) {
                 movimientoSeguro = true;
-                nuevosCaminos[claveMov] = infoCamino; // guardar la estructura original
+                nuevosCaminos[claveMov] = infoCamino;
                 break;
             }
         }
@@ -109,7 +106,6 @@ function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDest
         }
     }
 
-    // Reconstruir caminosDestino solo con los movimientos seguros
     let tempCaminos = {};
     for (let mov of movsSeguros) {
         let fDest, cDest;
