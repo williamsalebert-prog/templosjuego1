@@ -3,6 +3,15 @@ console.log("✅ f1.js cargado");
 class F1 extends Pieza {
     constructor(jugador) { super('F1', jugador); }
 
+    puedeAtacarRey(fila, col, reyF, reyC, board) {
+        const dirs = (this.jugador === 0) ? [[-1,1],[0,1],[1,1]] : [[-1,-1],[0,-1],[1,-1]];
+        for (let [df, dc] of dirs) {
+            let nf = fila + df, nc = col + dc;
+            if (nf === reyF && nc === reyC && esJugable(nf, nc)) return true;
+        }
+        return false;
+    }
+
     obtenerMovimientos(fila, col, board) {
         const jugador = this.jugador;
         const dirsMovimiento = (jugador === 0) ? [
@@ -21,7 +30,6 @@ class F1 extends Pieza {
         const colInicial = col;
 
         const explorar = (f, c, tablero, camino, visitados, haSaltado) => {
-            // Movimiento simple (solo si no ha saltado)
             if (!haSaltado) {
                 for (let [df, dc] of dirsMovimiento) {
                     let nf = f + df, nc = c + dc;
@@ -31,7 +39,6 @@ class F1 extends Pieza {
                         if (!visitados.has(clave)) {
                             visitados.add(clave);
                             let nuevoCamino = [...camino, { tipo: 'move', to: [nf, nc] }];
-                            // El movimiento simple siempre avanza porque las direcciones son de avance
                             destinos.add(clave);
                             if (!caminos[clave]) caminos[clave] = nuevoCamino;
                         }
@@ -39,7 +46,6 @@ class F1 extends Pieza {
                 }
             }
 
-            // Saltos (cualquier dirección, en cualquier orden)
             for (let [df, dc] of dirsSalto) {
                 let nf = f + df, nc = c + dc;
                 let jf = f + df * 2, jc = c + dc * 2;
@@ -71,14 +77,12 @@ class F1 extends Pieza {
                                 destinos.add(clave);
                                 if (!caminos[clave]) caminos[clave] = nuevoCamino;
                             }
-                            // Siempre seguir explorando, incluso si este destino no avanza
                             explorar(jf, jc, nuevoTab, nuevoCamino, visitados, true);
                         }
                     }
                 }
             }
 
-            // Captura directa en extremos (solo en direcciones de movimiento simple)
             if (!haSaltado) {
                 for (let [df, dc] of dirsMovimiento) {
                     let nf = f + df, nc = c + dc;
