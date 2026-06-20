@@ -77,68 +77,32 @@ function esJaque(jugador, tablero = board) {
     return false;
 }
 
-function esJaqueMate(jugador) {
-    if (!esJaque(jugador)) return false;
-    return !hayMovimientoLegal(jugador);
-}
-
-function hayMovimientoLegal(jugador) {
-    for (let i = 0; i < FILAS; i++) {
-        for (let j = 0; j < COLUMNAS; j++) {
-            let pieza = board[i][j];
-            if (!pieza || pieza.jugador !== jugador) continue;
-            let res = pieza.obtenerMovimientos(i, j, board);
-            for (let dest of res.destinos) {
-                let clave = `${dest[0]},${dest[1]}`;
-                let caminos = res.caminos[clave];
-                if (!caminos) continue;
-                // Para enroque no hay camino (se maneja aparte), pero aquí no se considera enroque
-                let caminoReal = Array.isArray(caminos) ? (caminos[0].pasos || caminos[0]) : caminos;
-                if (!Array.isArray(caminoReal)) continue;
-                let copia = copiarBoard();
-                if (simularMovimiento(copia, i, j, dest, caminoReal, jugador)) {
-                    if (!esJaque(jugador, copia)) return true;
-                }
-            }
-        }
-    }
-    // También considerar enroque
-    let reyPos = obtenerPosicionRey(jugador);
-    if (reyPos) {
-        let [reyF, reyC] = reyPos;
-        for (let i = 0; i < FILAS; i++) {
-            for (let j = 0; j < COLUMNAS; j++) {
-                if (validarEnroque(reyF, reyC, i, j, jugador)) {
-                    let copia = copiarBoard();
-                    copia[i][j] = copia[reyF][reyC];
-                    copia[reyF][reyC] = null;
-                    if (!esJaque(jugador, copia)) return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
-function simularMovimiento(tablero, fromF, fromC, dest, camino, jugador) {
-    if (!Array.isArray(camino)) return false; // seguridad
+// Simulación REAL de un movimiento (usada para filtrar jaques)
+function simularMovimientoReal(tablero, fromF, fromC, destino, camino) {
+    // Clonar el tablero
+    let copia = tablero.map(fila => fila.map(celda => {
+        if (celda === null) return null;
+        const ClasePieza = piezasRegistradas.get(celda.tipo);
+        return ClasePieza ? new ClasePieza(celda.jugador) : null;
+    }));
     let f = fromF, c = fromC;
-    let pieza = tablero[f][c];
+    let pieza = copia[f][c];
+    if (!pieza) return false;
     for (let paso of camino) {
         if (paso.tipo === 'move') {
             let [nf, nc] = paso.to;
-            tablero[f][c] = null; tablero[nf][nc] = pieza; f = nf; c = nc;
+            copia[f][c] = null; copia[nf][nc] = pieza; f = nf; c = nc;
         } else if (paso.tipo === 'jump' || paso.tipo === 'captureDirect') {
             let [of, oc] = paso.over;
             let [nf, nc] = paso.to;
-            if (of !== undefined && oc !== undefined) tablero[of][oc] = null;
-            tablero[f][c] = null; tablero[nf][nc] = pieza; f = nf; c = nc;
+            if (of !== undefined && oc !== undefined) copia[of][oc] = null;
+            copia[f][c] = null; copia[nf][nc] = pieza; f = nf; c = nc;
         } else if (paso.tipo === 'removePiece') {
             let [of, oc] = paso.over;
-            tablero[of][oc] = null;
+            copia[of][oc] = null;
         }
     }
-    return true;
+    return { tablero: copia, reyPos: obtenerPosicionRey(pieza.jugador) };
 }
 
 // ----------------------------------------------------------
@@ -395,7 +359,7 @@ function aplicarMovimiento(origen, destino, caminoElegido = null) {
             else camino = info;
         } else camino = info;
     }
-    if (!Array.isArray(camino)) return false; // seguridad
+    if (!Array.isArray(camino)) return false;
     guardarEstado();
     iniciarAnimacion(origen, camino);
     return true;
@@ -554,7 +518,7 @@ function seleccionarNuevaPieza(fila, col) {
                 }
         }
 
-        // Filtro de jaque
+        // Filtro de jaque MEJORADO
         if (esJaque(turno)) {
             let nuevosMovs = [];
             let nuevosCaminos = {};
@@ -570,7 +534,6 @@ function seleccionarNuevaPieza(fila, col) {
                     copia[reyF][reyC] = null;
                     if (!esJaque(turno, copia)) {
                         nuevosMovs.push(mov);
-                        // No hay caminos para enroque
                     }
                     continue;
                 }
@@ -581,20 +544,18 @@ function seleccionarNuevaPieza(fila, col) {
                 let caminoReal = Array.isArray(caminosMov) ? (caminosMov[0].pasos || caminosMov[0]) : caminosMov;
                 if (!Array.isArray(caminoReal)) continue;
 
-                let copia = copiarBoard();
-                if (simularMovimiento(copia, selectedPiece.fila, selectedPiece.col, [fDest, cDest], caminoReal, turno)) {
-                    if (!esJaque(turno, copia)) {
+                let resultado = simularMovimientoReal(board, selectedPiece.fila, selectedPiece.col, [fDest, cDest], caminoReal);
+                if (resultado) {
+                    if (!esJaque(turno, resultado.tablero)) {
                         nuevosMovs.push(mov);
                         nuevosCaminos[claveMov] = caminosMov;
                     }
                 }
             }
             posiblesMovimientos = nuevosMovs;
-            // Actualizar caminosDestino conservando solo los que están en nuevosCaminos
+            // Actualizar caminosDestino
             let tempCaminos = {};
-            for (let clave in nuevosCaminos) {
-                tempCaminos[clave] = nuevosCaminos[clave];
-            }
+            for (let clave in nuevosCaminos) tempCaminos[clave] = nuevosCaminos[clave];
             caminosDestino = tempCaminos;
         }
 
