@@ -30,30 +30,56 @@ function clonarTablero(tablero) {
     }));
 }
 
+// ✅ Simulación CORREGIDA: respeta las reglas de captura reales
 function simularMovimiento(tablero, fromF, fromC, destino, camino) {
     if (!Array.isArray(camino)) return false;
     let copia = clonarTablero(tablero);
     let f = fromF, c = fromC;
     let pieza = copia[f][c];
     if (!pieza) return false;
+
     for (let paso of camino) {
         if (paso.tipo === 'move') {
             let [nf, nc] = paso.to;
-            copia[f][c] = null; copia[nf][nc] = pieza; f = nf; c = nc;
-        } else if (paso.tipo === 'jump' || paso.tipo === 'captureDirect') {
+            copia[f][c] = null;
+            copia[nf][nc] = pieza;
+            f = nf; c = nc;
+        } else if (paso.tipo === 'jump') {
             let [of, oc] = paso.over;
             let [nf, nc] = paso.to;
-            if (of !== undefined && oc !== undefined) copia[of][oc] = null;
-            copia[f][c] = null; copia[nf][nc] = pieza; f = nf; c = nc;
+            // Solo eliminar la pieza saltada si es enemiga y capturable (como en el juego real)
+            let piezaSaltada = copia[of]?.[oc];
+            if (piezaSaltada && piezaSaltada.jugador !== pieza.jugador && capturaPermitida(pieza.tipo, piezaSaltada)) {
+                copia[of][oc] = null;
+            }
+            copia[f][c] = null;
+            copia[nf][nc] = pieza;
+            f = nf; c = nc;
+        } else if (paso.tipo === 'captureDirect') {
+            let [of, oc] = paso.over;
+            let [nf, nc] = paso.to;
+            // Eliminar la pieza enemiga (siempre que sea legal)
+            let piezaObjetivo = copia[of]?.[oc];
+            if (piezaObjetivo && piezaObjetivo.jugador !== pieza.jugador &&
+                (piezaObjetivo.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6')) {
+                copia[of][oc] = null;
+            }
+            copia[f][c] = null;
+            copia[nf][nc] = pieza;
+            f = nf; c = nc;
         } else if (paso.tipo === 'removePiece') {
             let [of, oc] = paso.over;
-            if (of !== undefined && oc !== undefined) copia[of][oc] = null;
+            // removePiece se usa para eliminar piezas enemigas en el camino (caballo)
+            let piezaAEliminar = copia[of]?.[oc];
+            if (piezaAEliminar && piezaAEliminar.jugador !== pieza.jugador) {
+                copia[of][oc] = null;
+            }
         }
     }
     return copia;
 }
 
-// ✅ Filtro que se aplica SIEMPRE: elimina movimientos que dejan al rey en jaque
+// Filtro de movimientos que dejan al rey en jaque (se aplica siempre)
 function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDestino) {
     let movsSeguros = [];
     let nuevosCaminos = {};
@@ -76,14 +102,13 @@ function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDest
             continue;
         }
 
-        // Movimientos normales
         let claveMov = `${fDest},${cDest}`;
         let infoCamino = mov.caminos || caminosDestino[claveMov];
         if (!infoCamino) continue;
 
         let rutas = [];
         if (Array.isArray(infoCamino) && infoCamino.length > 0 && infoCamino[0].hasOwnProperty('pasos')) {
-            rutas = infoCamino;
+            rutas = infoCamino; // múltiples rutas (caballo)
         } else {
             if (Array.isArray(infoCamino)) rutas = [{ pasos: infoCamino }];
             else rutas = [{ pasos: infoCamino }];
