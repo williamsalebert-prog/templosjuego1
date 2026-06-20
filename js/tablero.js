@@ -1,4 +1,4 @@
-console.log("✅ tablero3.js cargado");
+console.log("✅ tablero.js cargado");
 const canvas = document.getElementById('tableroCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = COLUMNAS * CELL_SIZE;
@@ -145,54 +145,10 @@ function seleccionarNuevaPieza(fila, col) {
                 }
         }
 
-        if (esJaque(turno)) {
-            let movsSeguros = [];
-            let nuevosCaminos = {};
-
-            for (let mov of posiblesMovimientos) {
-                let fDest, cDest;
-                if (mov.hasOwnProperty('f')) { fDest = mov.f; cDest = mov.c; }
-                else { fDest = mov[0]; cDest = mov[1]; }
-
-                if (mov.tipoMov === 'enroque') {
-                    let copia = clonarTablero(board);
-                    let [reyF, reyC] = [selectedPiece.fila, selectedPiece.col];
-                    copia[fDest][cDest] = copia[reyF][reyC];
-                    copia[reyF][reyC] = null;
-                    if (!esJaque(turno, copia)) {
-                        movsSeguros.push(mov);
-                        if (!nuevosCaminos[`${fDest},${cDest}`]) nuevosCaminos[`${fDest},${cDest}`] = null;
-                    }
-                    continue;
-                }
-
-                let claveMov = `${fDest},${cDest}`;
-                let infoCamino = mov.caminos || caminosDestino[claveMov];
-                if (!infoCamino) continue;
-                let caminoReal;
-                if (Array.isArray(infoCamino)) {
-                    if (infoCamino.length > 0 && infoCamino[0].hasOwnProperty('pasos')) {
-                        caminoReal = infoCamino[0].pasos;
-                    } else {
-                        caminoReal = infoCamino;
-                    }
-                } else {
-                    caminoReal = infoCamino;
-                }
-                if (!Array.isArray(caminoReal)) continue;
-
-                let nuevoTab = simularMovimiento(board, selectedPiece.fila, selectedPiece.col, [fDest, cDest], caminoReal);
-                if (nuevoTab && !esJaque(turno, nuevoTab)) {
-                    movsSeguros.push(mov);
-                    nuevosCaminos[claveMov] = infoCamino;
-                }
-            }
-
-            posiblesMovimientos = movsSeguros;
-            let temp = {};
-            for (let clave in nuevosCaminos) temp[clave] = nuevosCaminos[clave];
-            caminosDestino = temp;
-        }
+        // ✅ Aplicar filtro de jaque (ahora en jaque.js)
+        let filtrado = filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDestino);
+        posiblesMovimientos = filtrado.posiblesMovimientos;
+        caminosDestino = filtrado.caminosDestino;
 
         dibujarTablero();
     } else {
