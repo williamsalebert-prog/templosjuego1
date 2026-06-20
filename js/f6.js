@@ -12,6 +12,20 @@ class F6 extends Pieza {
         return false;
     }
 
+    // Comprueba si una casilla está amenazada por piezas enemigas
+    casillaAmenazada(f, c, jugador, tablero) {
+        let enemigo = 1 - jugador;
+        for (let i = 0; i < FILAS; i++) {
+            for (let j = 0; j < COLUMNAS; j++) {
+                let pieza = tablero[i][j];
+                if (pieza && pieza.jugador === enemigo && pieza.puedeAtacarRey(i, j, f, c, tablero)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     obtenerMovimientos(fila, col, board) {
         const jugador = this.jugador;
         const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
@@ -24,6 +38,9 @@ class F6 extends Pieza {
                 for (let [df, dc] of dirs) {
                     let nf = f + df, nc = c + dc;
                     if (nf >= 0 && nf < FILAS && nc >= 0 && nc < COLUMNAS && esJugable(nf, nc)) {
+                        // 🔍 No permitir moverse a casillas amenazadas
+                        if (this.casillaAmenazada(nf, nc, jugador, tablero)) continue;
+
                         let contenido = tablero[nf][nc];
                         if (contenido === null) {
                             let clave = `${nf},${nc}`;
@@ -49,6 +66,7 @@ class F6 extends Pieza {
                     }
                 }
             }
+            // Saltos (encadenados)
             for (let [df, dc] of dirs) {
                 let nf = f + df, nc = c + dc;
                 let jf = f + df*2, jc = c + dc*2;
@@ -72,6 +90,7 @@ class F6 extends Pieza {
                             }
                             nuevoTab[jf][jc] = ficha;
                             let nuevoCamino = [...camino, { tipo: 'jump', over: [nf, nc], to: [jf, jc] }];
+                            // Después de un salto, el destino puede estar amenazado → no se lo impidimos ahora, el filtro de jaque lo comprobará
                             destinos.add(clave);
                             if (!caminos[clave]) caminos[clave] = nuevoCamino;
                             explorar(jf, jc, nuevoTab, nuevoCamino, visitados, true);
