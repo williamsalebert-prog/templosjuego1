@@ -1,8 +1,8 @@
 console.log("✅ tablero.js cargado");
 const canvas = document.getElementById('tableroCanvas');
 const ctx = canvas.getContext('2d');
-canvas.width = COLUMNAS * CELL_SIZE;   // 900
-canvas.height = FILAS * CELL_SIZE;     // 600
+canvas.width = COLUMNAS * CELL_SIZE;
+canvas.height = FILAS * CELL_SIZE;
 
 let board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
 let turno = 0;
@@ -92,9 +92,26 @@ function hayMovimientoLegal(jugador) {
                 let clave = `${dest[0]},${dest[1]}`;
                 let caminos = res.caminos[clave];
                 if (!caminos) continue;
+                // Para enroque no hay camino (se maneja aparte), pero aquí no se considera enroque
                 let caminoReal = Array.isArray(caminos) ? (caminos[0].pasos || caminos[0]) : caminos;
+                if (!Array.isArray(caminoReal)) continue;
                 let copia = copiarBoard();
                 if (simularMovimiento(copia, i, j, dest, caminoReal, jugador)) {
+                    if (!esJaque(jugador, copia)) return true;
+                }
+            }
+        }
+    }
+    // También considerar enroque
+    let reyPos = obtenerPosicionRey(jugador);
+    if (reyPos) {
+        let [reyF, reyC] = reyPos;
+        for (let i = 0; i < FILAS; i++) {
+            for (let j = 0; j < COLUMNAS; j++) {
+                if (validarEnroque(reyF, reyC, i, j, jugador)) {
+                    let copia = copiarBoard();
+                    copia[i][j] = copia[reyF][reyC];
+                    copia[reyF][reyC] = null;
                     if (!esJaque(jugador, copia)) return true;
                 }
             }
@@ -104,6 +121,7 @@ function hayMovimientoLegal(jugador) {
 }
 
 function simularMovimiento(tablero, fromF, fromC, dest, camino, jugador) {
+    if (!Array.isArray(camino)) return false; // seguridad
     let f = fromF, c = fromC;
     let pieza = tablero[f][c];
     for (let paso of camino) {
@@ -124,7 +142,7 @@ function simularMovimiento(tablero, fromF, fromC, dest, camino, jugador) {
 }
 
 // ----------------------------------------------------------
-// PRECARGA Y DIBUJO (sin cambios relevantes)
+// PRECARGA Y DIBUJO (sin cambios)
 // ----------------------------------------------------------
 function precargarImagenes() {
     const extensiones = ['.jpg', '.jpeg', '.png'];
@@ -236,7 +254,7 @@ function dibujarTablero() {
 }
 
 // ----------------------------------------------------------
-// VALIDACIÓN ENROQUE (sin cambios)
+// VALIDACIÓN ENROQUE
 // ----------------------------------------------------------
 function validarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
     if (enroqueRealizado[jugador]) return false;
@@ -273,7 +291,7 @@ function ejecutarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
 }
 
 // ----------------------------------------------------------
-// ANIMACIÓN (sin cambios)
+// ANIMACIÓN
 // ----------------------------------------------------------
 function iniciarAnimacion(origen, camino) {
     animando = true;
@@ -377,6 +395,7 @@ function aplicarMovimiento(origen, destino, caminoElegido = null) {
             else camino = info;
         } else camino = info;
     }
+    if (!Array.isArray(camino)) return false; // seguridad
     guardarEstado();
     iniciarAnimacion(origen, camino);
     return true;
@@ -422,16 +441,14 @@ function coronar(tipo) {
 }
 
 // ----------------------------------------------------------
-// INICIO Y EVENTOS (con selección corregida para jaque)
+// INICIO Y EVENTOS (filtro de jaque corregido)
 // ----------------------------------------------------------
 function iniciarJuego() {
     board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
-    // Templo izquierdo (jugador 0, columnas 1-3)
     for (let f = 1; f <= 8; f++) board[f][3] = new F1(0);
     board[2][2] = new F5(0); board[3][2] = new F2(0); board[4][2] = new F0(0);
     board[5][2] = new F0(0); board[6][2] = new F2(0); board[7][2] = new F5(0);
     board[3][1] = new F4(0); board[4][1] = new F6(0); board[5][1] = new F3(0); board[6][1] = new F4(0);
-    // Templo derecho (jugador 1, columnas 11-13)
     for (let f = 1; f <= 8; f++) board[f][11] = new F1(1);
     board[2][12] = new F5(1); board[3][12] = new F2(1); board[4][12] = new F0(1);
     board[5][12] = new F0(1); board[6][12] = new F2(1); board[7][12] = new F5(1);
@@ -533,11 +550,11 @@ function seleccionarNuevaPieza(fila, col) {
                     if (!piezaObj || piezaObj.jugador !== turno) continue;
                     if (!['F0','F3','F5'].includes(piezaObj.tipo)) continue;
                     if (validarEnroque(selectedPiece.fila, selectedPiece.col, i, j, turno))
-                        posiblesMovimientos.push({ f: i, c: j, tipoMov: 'enroque', caminos: null });
+                        posiblesMovimientos.push({ f: i, c: j, tipoMov: 'enroque' });
                 }
         }
 
-        // ⚠️ Filtro de jaque MEJORADO
+        // Filtro de jaque
         if (esJaque(turno)) {
             let nuevosMovs = [];
             let nuevosCaminos = {};
@@ -546,32 +563,23 @@ function seleccionarNuevaPieza(fila, col) {
                 if (mov.hasOwnProperty('f')) { fDest = mov.f; cDest = mov.c; }
                 else { fDest = mov[0]; cDest = mov[1]; }
 
-                // Para enroque, simulamos el intercambio
                 if (mov.tipoMov === 'enroque') {
                     let copia = copiarBoard();
-                    // Simular enroque: mover rey a (fDest,cDest) y eliminar pieza en esa casilla
-                    let reyPos = obtenerPosicionRey(turno);
-                    if (reyPos) {
-                        let [reyF, reyC] = reyPos;
-                        copia[fDest][cDest] = copia[reyF][reyC];
-                        copia[reyF][reyC] = null;
-                        // La pieza intercambiada se elimina (no se considera para el jaque)
-                        // Verificar si el rey sigue en jaque después del enroque
-                        if (!esJaque(turno, copia)) {
-                            nuevosMovs.push(mov);
-                            // No hay caminos asociados a enroque, se maneja aparte
-                            if (!nuevosCaminos[`${fDest},${cDest}`]) nuevosCaminos[`${fDest},${cDest}`] = null;
-                        }
+                    let [reyF, reyC] = [selectedPiece.fila, selectedPiece.col];
+                    copia[fDest][cDest] = copia[reyF][reyC];
+                    copia[reyF][reyC] = null;
+                    if (!esJaque(turno, copia)) {
+                        nuevosMovs.push(mov);
+                        // No hay caminos para enroque
                     }
                     continue;
                 }
 
-                // Para movimientos normales, simulamos el camino completo
                 let claveMov = `${fDest},${cDest}`;
                 let caminosMov = mov.caminos || caminosDestino[claveMov];
                 if (!caminosMov) continue;
                 let caminoReal = Array.isArray(caminosMov) ? (caminosMov[0].pasos || caminosMov[0]) : caminosMov;
-                if (!caminoReal) continue;
+                if (!Array.isArray(caminoReal)) continue;
 
                 let copia = copiarBoard();
                 if (simularMovimiento(copia, selectedPiece.fila, selectedPiece.col, [fDest, cDest], caminoReal, turno)) {
@@ -582,12 +590,12 @@ function seleccionarNuevaPieza(fila, col) {
                 }
             }
             posiblesMovimientos = nuevosMovs;
-            // Para enroque, los caminos no se almacenan en caminosDestino, por eso no se actualizan
-            // Solo actualizamos los caminos de movimientos no enroque
-            for (let clave in caminosDestino) {
-                if (!nuevosCaminos[clave]) delete caminosDestino[clave];
-                else caminosDestino[clave] = nuevosCaminos[clave];
+            // Actualizar caminosDestino conservando solo los que están en nuevosCaminos
+            let tempCaminos = {};
+            for (let clave in nuevosCaminos) {
+                tempCaminos[clave] = nuevosCaminos[clave];
             }
+            caminosDestino = tempCaminos;
         }
 
         dibujarTablero();
