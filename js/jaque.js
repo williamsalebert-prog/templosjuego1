@@ -53,8 +53,12 @@ function simularMovimiento(tablero, fromF, fromC, destino, camino) {
     return copia;
 }
 
+// ✅ Función que filtra los movimientos bajo jaque (incluidos enroques)
 function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDestino) {
-    if (!esJaque(turno)) return { posiblesMovimientos, caminosDestino };
+    // Si no estamos en jaque, devolvemos todo sin cambios
+    if (!esJaque(turno)) {
+        return { posiblesMovimientos, caminosDestino };
+    }
 
     let movsSeguros = [];
     let nuevosCaminos = {};
@@ -64,27 +68,29 @@ function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDest
         if (mov.hasOwnProperty('f')) { fDest = mov.f; cDest = mov.c; }
         else { fDest = mov[0]; cDest = mov[1]; }
 
-        // Enroque
+        // Evaluar enroque
         if (mov.tipoMov === 'enroque') {
+            // Simular enroque: clonar, intercambiar rey y pieza
             let copia = clonarTablero(board);
             let [reyF, reyC] = [selectedPiece.fila, selectedPiece.col];
-            // Simular enroque: mover rey a la casilla destino, eliminar pieza intercambiada
             copia[fDest][cDest] = copia[reyF][reyC];
             copia[reyF][reyC] = null;
             if (!esJaque(turno, copia)) {
                 movsSeguros.push(mov);
+                // No hay camino asociado al enroque
                 if (!nuevosCaminos[`${fDest},${cDest}`]) nuevosCaminos[`${fDest},${cDest}`] = null;
             }
             continue;
         }
 
+        // Movimientos normales (incluyendo los que tienen múltiples rutas)
         let claveMov = `${fDest},${cDest}`;
         let infoCamino = mov.caminos || caminosDestino[claveMov];
         if (!infoCamino) continue;
 
         let rutas = [];
         if (Array.isArray(infoCamino) && infoCamino.length > 0 && infoCamino[0].hasOwnProperty('pasos')) {
-            rutas = infoCamino;
+            rutas = infoCamino; // caballo con varias rutas
         } else {
             if (Array.isArray(infoCamino)) rutas = [{ pasos: infoCamino }];
             else rutas = [{ pasos: infoCamino }];
@@ -106,6 +112,7 @@ function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDest
         }
     }
 
+    // Reconstruir caminosDestino solo con los movimientos seguros
     let tempCaminos = {};
     for (let mov of movsSeguros) {
         let fDest, cDest;
