@@ -3,12 +3,18 @@ console.log("✅ f2.js cargado");
 class F2 extends Pieza {
     constructor(jugador) { super('F2', jugador); }
 
+    puedeAtacarRey(fila, col, reyF, reyC, board) {
+        const saltosL = [[-2,-1],[-2,1],[2,-1],[2,1],[-1,-2],[-1,2],[1,-2],[1,2]];
+        for (let [df, dc] of saltosL) {
+            let nf = fila + df, nc = col + dc;
+            if (nf === reyF && nc === reyC) return true;
+        }
+        return false;
+    }
+
     obtenerMovimientos(fila, col, board) {
         const jugador = this.jugador;
-        const saltosL = [
-            [-2, -1], [-2, 1], [2, -1], [2, 1],
-            [-1, -2], [-1, 2], [1, -2], [1, 2]
-        ];
+        const saltosL = [[-2,-1],[-2,1],[2,-1],[2,1],[-1,-2],[-1,2],[1,-2],[1,2]];
         let destinos = new Set();
         let caminos = {};
 
@@ -19,7 +25,7 @@ class F2 extends Pieza {
 
             let contenido = board[nf][nc];
 
-            // --- Caso 1: Destino ocupado por enemigo (solo extremo) ---
+            // Caso 1: destino ocupado por enemigo (solo extremo)
             if (contenido !== null) {
                 if (contenido.jugador !== jugador && capturaPermitida(this.tipo, contenido)) {
                     let detrasF = nf + Math.sign(df);
@@ -33,18 +39,16 @@ class F2 extends Pieza {
                 continue;
             }
 
-            // --- Caso 2: Destino vacío → dos rutas, cada una captura todos los enemigos que pisa ---
-            let rutaA = []; // casillas intermedias de la trayectoria A
-            let rutaB = []; // casillas intermedias de la trayectoria B
+            // Caso 2: destino vacío → dos rutas, cada una captura todos los enemigos que pisa
+            let rutaA = [];
+            let rutaB = [];
 
             if (Math.abs(df) === 2) {
-                // Trayectoria A: largo, luego corto
                 rutaA.push([fila + Math.sign(df), col]);
                 rutaA.push([fila + 2*Math.sign(df), col]);
-                // Trayectoria B: corto, luego largo
                 rutaB.push([fila, col + Math.sign(dc)]);
                 rutaB.push([fila + Math.sign(df), col + Math.sign(dc)]);
-            } else { // |dc| == 2
+            } else {
                 rutaA.push([fila, col + Math.sign(dc)]);
                 rutaA.push([fila, col + 2*Math.sign(dc)]);
                 rutaB.push([fila + Math.sign(df), col]);
@@ -55,7 +59,6 @@ class F2 extends Pieza {
 
             for (let ruta of [rutaA, rutaB]) {
                 let [c1, c2] = ruta;
-                // Verificar que ambas casillas están en el tablero
                 if (c1[0] < 0 || c1[0] >= FILAS || c1[1] < 0 || c1[1] >= COLUMNAS) continue;
                 if (c2[0] < 0 || c2[0] >= FILAS || c2[1] < 0 || c2[1] >= COLUMNAS) continue;
 
@@ -64,7 +67,6 @@ class F2 extends Pieza {
                 let pasos = [];
                 let invalida = false;
 
-                // Revisar primera casilla
                 if (p1) {
                     if (p1.jugador !== jugador) {
                         if (capturaPermitida(this.tipo, p1)) {
@@ -74,7 +76,6 @@ class F2 extends Pieza {
                         }
                     }
                 }
-                // Revisar segunda casilla
                 if (p2 && !invalida) {
                     if (p2.jugador !== jugador) {
                         if (capturaPermitida(this.tipo, p2)) {
@@ -88,7 +89,7 @@ class F2 extends Pieza {
                 if (!invalida) {
                     pasos.push({ tipo: 'move', to: [nf, nc] });
                     rutasValidas.push({
-                        inter: c1,   // primera casilla de la ruta para colorear
+                        inter: c1,
                         pasos,
                         tieneEnemigo: pasos.some(p => p.tipo === 'removePiece')
                     });
