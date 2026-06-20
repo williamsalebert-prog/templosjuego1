@@ -52,3 +52,76 @@ function simularMovimiento(tablero, fromF, fromC, destino, camino) {
     }
     return copia;
 }
+
+// ✅ Función que filtra movimientos bajo jaque (debe llamarse desde tablero.js)
+function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDestino) {
+    if (!esJaque(turno)) return { posiblesMovimientos, caminosDestino }; // no en jaque, sin cambios
+
+    let movsSeguros = [];
+    let nuevosCaminos = {};
+
+    for (let mov of posiblesMovimientos) {
+        let fDest, cDest;
+        if (mov.hasOwnProperty('f')) { fDest = mov.f; cDest = mov.c; }
+        else { fDest = mov[0]; cDest = mov[1]; }
+
+        // Enroque
+        if (mov.tipoMov === 'enroque') {
+            let copia = clonarTablero(board);
+            let [reyF, reyC] = [selectedPiece.fila, selectedPiece.col];
+            copia[fDest][cDest] = copia[reyF][reyC];
+            copia[reyF][reyC] = null;
+            if (!esJaque(turno, copia)) {
+                movsSeguros.push(mov);
+                if (!nuevosCaminos[`${fDest},${cDest}`]) nuevosCaminos[`${fDest},${cDest}`] = null;
+            }
+            continue;
+        }
+
+        let claveMov = `${fDest},${cDest}`;
+        let infoCamino = mov.caminos || caminosDestino[claveMov];
+        if (!infoCamino) continue;
+
+        // Determinar todas las rutas posibles para este destino
+        let rutas = [];
+        if (Array.isArray(infoCamino) && infoCamino.length > 0 && infoCamino[0].hasOwnProperty('pasos')) {
+            // Caballo: varias rutas
+            rutas = infoCamino;
+        } else {
+            // Pieza normal: el camino es infoCamino directamente (array de pasos)
+            if (Array.isArray(infoCamino)) rutas = [{ pasos: infoCamino }];
+            else rutas = [{ pasos: infoCamino }];
+        }
+
+        let movimientoSeguro = false;
+        for (let ruta of rutas) {
+            let caminoReal = ruta.pasos;
+            if (!Array.isArray(caminoReal)) continue;
+            let nuevoTab = simularMovimiento(board, selectedPiece.fila, selectedPiece.col, [fDest, cDest], caminoReal);
+            if (nuevoTab && !esJaque(turno, nuevoTab)) {
+                movimientoSeguro = true;
+                nuevosCaminos[claveMov] = infoCamino; // guardar la estructura original
+                break;
+            }
+        }
+        if (movimientoSeguro) {
+            movsSeguros.push(mov);
+        }
+    }
+
+    // Reconstruir caminosDestino solo con los movimientos seguros
+    let tempCaminos = {};
+    for (let mov of movsSeguros) {
+        let fDest, cDest;
+        if (mov.hasOwnProperty('f')) { fDest = mov.f; cDest = mov.c; }
+        else { fDest = mov[0]; cDest = mov[1]; }
+        let claveMov = `${fDest},${cDest}`;
+        if (mov.tipoMov === 'enroque') {
+            tempCaminos[claveMov] = null;
+        } else if (nuevosCaminos[claveMov]) {
+            tempCaminos[claveMov] = nuevosCaminos[claveMov];
+        }
+    }
+
+    return { posiblesMovimientos: movsSeguros, caminosDestino: tempCaminos };
+}
