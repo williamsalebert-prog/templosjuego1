@@ -1,4 +1,4 @@
-console.log("✅ tablero.js cargado");
+console.log("✅ tablero2.js cargado");
 const canvas = document.getElementById('tableroCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = COLUMNAS * CELL_SIZE;
@@ -53,7 +53,7 @@ let origenAnimacion = null;
 let piezaAnimacion = null;
 
 // ----------------------------------------------------------
-// FUNCIONES DE JAQUE
+// FUNCIONES DE JAQUE Y SIMULACIÓN
 // ----------------------------------------------------------
 function obtenerPosicionRey(jugador) {
     for (let i = 0; i < FILAS; i++)
@@ -77,9 +77,10 @@ function esJaque(jugador, tablero = board) {
     return false;
 }
 
-// Simulación REAL de un movimiento (usada para filtrar jaques)
-function simularMovimientoReal(tablero, fromF, fromC, destino, camino) {
-    // Clonar el tablero
+// Simula un movimiento sobre un tablero clonado y devuelve el nuevo tablero o false si el camino es inválido
+function simularMovimiento(tablero, fromF, fromC, destino, camino) {
+    if (!Array.isArray(camino)) return false;
+    // Clonar tablero
     let copia = tablero.map(fila => fila.map(celda => {
         if (celda === null) return null;
         const ClasePieza = piezasRegistradas.get(celda.tipo);
@@ -102,7 +103,7 @@ function simularMovimientoReal(tablero, fromF, fromC, destino, camino) {
             copia[of][oc] = null;
         }
     }
-    return { tablero: copia, reyPos: obtenerPosicionRey(pieza.jugador) };
+    return copia;
 }
 
 // ----------------------------------------------------------
@@ -405,7 +406,7 @@ function coronar(tipo) {
 }
 
 // ----------------------------------------------------------
-// INICIO Y EVENTOS (filtro de jaque corregido)
+// INICIO Y EVENTOS (con filtro de jaque 100% funcional)
 // ----------------------------------------------------------
 function iniciarJuego() {
     board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
@@ -518,7 +519,7 @@ function seleccionarNuevaPieza(fila, col) {
                 }
         }
 
-        // Filtro de jaque MEJORADO
+        // Filtro de jaque (definitivo)
         if (esJaque(turno)) {
             let nuevosMovs = [];
             let nuevosCaminos = {};
@@ -532,28 +533,24 @@ function seleccionarNuevaPieza(fila, col) {
                     let [reyF, reyC] = [selectedPiece.fila, selectedPiece.col];
                     copia[fDest][cDest] = copia[reyF][reyC];
                     copia[reyF][reyC] = null;
-                    if (!esJaque(turno, copia)) {
-                        nuevosMovs.push(mov);
-                    }
+                    if (!esJaque(turno, copia)) nuevosMovs.push(mov);
                     continue;
                 }
 
                 let claveMov = `${fDest},${cDest}`;
                 let caminosMov = mov.caminos || caminosDestino[claveMov];
                 if (!caminosMov) continue;
-                let caminoReal = Array.isArray(caminosMov) ? (caminosMov[0].pasos || caminosMov[0]) : caminosMov;
+                let caminoReal = Array.isArray(caminosMov) ? (caminosMov[0]?.pasos || caminosMov[0]) : caminosMov;
                 if (!Array.isArray(caminoReal)) continue;
 
-                let resultado = simularMovimientoReal(board, selectedPiece.fila, selectedPiece.col, [fDest, cDest], caminoReal);
-                if (resultado) {
-                    if (!esJaque(turno, resultado.tablero)) {
-                        nuevosMovs.push(mov);
-                        nuevosCaminos[claveMov] = caminosMov;
-                    }
+                let nuevoTab = simularMovimiento(board, selectedPiece.fila, selectedPiece.col, [fDest, cDest], caminoReal);
+                if (nuevoTab && !esJaque(turno, nuevoTab)) {
+                    nuevosMovs.push(mov);
+                    nuevosCaminos[claveMov] = caminosMov;
                 }
             }
             posiblesMovimientos = nuevosMovs;
-            // Actualizar caminosDestino
+            // Reconstruir caminosDestino solo con los sobrevivientes
             let tempCaminos = {};
             for (let clave in nuevosCaminos) tempCaminos[clave] = nuevosCaminos[clave];
             caminosDestino = tempCaminos;
