@@ -1,126 +1,8 @@
-console.log("✅ tablero2.js cargado");
+console.log("✅ tablero3.js cargado");
 const canvas = document.getElementById('tableroCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = COLUMNAS * CELL_SIZE;
 canvas.height = FILAS * CELL_SIZE;
-
-let board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
-let turno = 0;
-let selectedPiece = null;
-let posiblesMovimientos = [];
-let caminosDestino = {};
-let piezasAmenazadas = [];
-
-let modoRuta = false;
-let rutasAlternativas = [];
-let destinoRuta = null;
-
-const menuCoronacion = document.getElementById('menuCoronacion');
-const opcionesCoronacion = document.getElementById('opcionesCoronacion');
-let coronacionPendiente = null;
-
-let enroqueRealizado = [false, false];
-
-const imagenesPiezas = {};
-const colorBordeEquipo = ['#8B0000', '#00008B'];
-
-// 🔊 Sonido
-let audioCtx = null;
-function getAudioContext() {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    return audioCtx;
-}
-function playTone(frec, dur, tipo = 'triangle', vol = 0.1) {
-    try {
-        const ctx = getAudioContext();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = tipo; osc.frequency.value = frec;
-        gain.gain.setValueAtTime(vol, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(); osc.stop(ctx.currentTime + dur);
-    } catch(e) {}
-}
-function sonidoMovimiento() { playTone(300, 0.1, 'triangle', 0.08); }
-function sonidoSalto() { playTone(500, 0.12, 'square', 0.1); }
-function sonidoEnroque() { playTone(400, 0.2, 'sine', 0.12); playTone(600, 0.2, 'sine', 0.12); }
-
-let animando = false;
-let colaAnimacion = [];
-let origenAnimacion = null;
-let piezaAnimacion = null;
-
-// ----------------------------------------------------------
-// FUNCIONES DE JAQUE Y SIMULACIÓN
-// ----------------------------------------------------------
-function obtenerPosicionRey(jugador) {
-    for (let i = 0; i < FILAS; i++)
-        for (let j = 0; j < COLUMNAS; j++)
-            if (board[i][j] && board[i][j].tipo === 'F6' && board[i][j].jugador === jugador)
-                return [i, j];
-    return null;
-}
-
-function esJaque(jugador, tablero = board) {
-    let reyPos = obtenerPosicionRey(jugador);
-    if (!reyPos) return false;
-    let enemigo = 1 - jugador;
-    for (let i = 0; i < FILAS; i++) {
-        for (let j = 0; j < COLUMNAS; j++) {
-            let pieza = tablero[i][j];
-            if (pieza && pieza.jugador === enemigo && pieza.puedeAtacarRey(i, j, reyPos[0], reyPos[1], tablero))
-                return true;
-        }
-    }
-    return false;
-}
-
-// Simula un movimiento sobre un tablero clonado y devuelve el nuevo tablero o false si el camino es inválido
-function simularMovimiento(tablero, fromF, fromC, destino, camino) {
-    if (!Array.isArray(camino)) return false;
-    // Clonar tablero
-    let copia = tablero.map(fila => fila.map(celda => {
-        if (celda === null) return null;
-        const ClasePieza = piezasRegistradas.get(celda.tipo);
-        return ClasePieza ? new ClasePieza(celda.jugador) : null;
-    }));
-    let f = fromF, c = fromC;
-    let pieza = copia[f][c];
-    if (!pieza) return false;
-    for (let paso of camino) {
-        if (paso.tipo === 'move') {
-            let [nf, nc] = paso.to;
-            copia[f][c] = null; copia[nf][nc] = pieza; f = nf; c = nc;
-        } else if (paso.tipo === 'jump' || paso.tipo === 'captureDirect') {
-            let [of, oc] = paso.over;
-            let [nf, nc] = paso.to;
-            if (of !== undefined && oc !== undefined) copia[of][oc] = null;
-            copia[f][c] = null; copia[nf][nc] = pieza; f = nf; c = nc;
-        } else if (paso.tipo === 'removePiece') {
-            let [of, oc] = paso.over;
-            copia[of][oc] = null;
-        }
-    }
-    return copia;
-}
-
-// ----------------------------------------------------------
-// PRECARGA Y DIBUJO (sin cambios)
-// ----------------------------------------------------------
-function precargarImagenes() {
-    const extensiones = ['.jpg', '.jpeg', '.png'];
-    for (let tipo of piezasRegistradas.keys()) {
-        if (imagenesPiezas[tipo]) continue;
-        extensiones.forEach(ext => {
-            const img = new Image();
-            img.src = `img/${tipo.toLowerCase()}${ext}`;
-            img.onload = () => { imagenesPiezas[tipo] = img; dibujarTablero(); };
-            img.onerror = () => {};
-        });
-    }
-}
 
 function copiarBoard() {
     return board.map(fila => fila.map(celda => {
@@ -132,220 +14,6 @@ function copiarBoard() {
 
 function guardarEstado() {
     historial.guardar({ board: copiarBoard(), turno, enroqueRealizado: [...enroqueRealizado] });
-}
-
-function dibujarTablero() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (let i = 0; i < FILAS; i++) {
-        for (let j = 0; j < COLUMNAS; j++) {
-            let x = j * CELL_SIZE, y = i * CELL_SIZE;
-            if (esNoJugable(i, j)) {
-                ctx.fillStyle = '#000000'; ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
-                continue;
-            }
-            let zona = getZona(i, j);
-            let par = (i + j) % 2 === 0;
-            let color = zona === 'vacio' ? colores.vacio.par : (par ? colores[zona].par : colores[zona].impar);
-            ctx.fillStyle = color; ctx.fillRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
-            ctx.strokeStyle = '#000000'; ctx.lineWidth = 1; ctx.strokeRect(x, y, CELL_SIZE - 1, CELL_SIZE - 1);
-        }
-    }
-    for (let i = 0; i < FILAS; i++) {
-        for (let j = 0; j < COLUMNAS; j++) {
-            let pieza = board[i][j];
-            if (pieza) {
-                let x = j * CELL_SIZE, y = i * CELL_SIZE;
-                let cx = x + CELL_SIZE/2, cy = y + CELL_SIZE/2;
-                let radio = CELL_SIZE * 0.4;
-                ctx.globalAlpha = 1.0;
-                ctx.strokeStyle = colorBordeEquipo[pieza.jugador];
-                ctx.lineWidth = 2.5; ctx.fillStyle = '#FFFFFF';
-                ctx.beginPath(); ctx.arc(cx, cy, radio, 0, 2*Math.PI); ctx.fill(); ctx.stroke();
-                let img = imagenesPiezas[pieza.tipo];
-                if (img && img.complete && img.naturalWidth > 0) {
-                    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, radio-2, 0, 2*Math.PI); ctx.clip();
-                    ctx.drawImage(img, cx - radio + 2, cy - radio + 2, (radio-2)*2, (radio-2)*2);
-                    ctx.restore();
-                } else {
-                    ctx.fillStyle = '#000000'; ctx.font = `bold ${CELL_SIZE*0.3}px monospace`;
-                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(pieza.tipo, cx, cy);
-                }
-                if (selectedPiece && selectedPiece.fila === i && selectedPiece.col === j) {
-                    ctx.strokeStyle = '#FFDD44'; ctx.lineWidth = 3;
-                    ctx.beginPath(); ctx.arc(cx, cy, radio, 0, 2*Math.PI); ctx.stroke();
-                }
-            }
-        }
-    }
-    ctx.globalAlpha = 1.0;
-
-    // Marcador de jaque (rojo)
-    let reyPos = obtenerPosicionRey(turno);
-    if (reyPos && esJaque(turno)) {
-        ctx.fillStyle = 'rgba(255, 50, 50, 0.5)';
-        ctx.fillRect(reyPos[1]*CELL_SIZE, reyPos[0]*CELL_SIZE, CELL_SIZE-1, CELL_SIZE-1);
-    }
-
-    if (!animando) {
-        // Amenazas (naranja)
-        if (selectedPiece && piezasAmenazadas.length > 0 &&
-            !['F2','F4'].includes(board[selectedPiece.fila][selectedPiece.col]?.tipo)) {
-            for (let [af, ac] of piezasAmenazadas) {
-                ctx.fillStyle = 'rgba(255,165,0,0.45)';
-                ctx.fillRect(ac*CELL_SIZE, af*CELL_SIZE, CELL_SIZE-1, CELL_SIZE-1);
-            }
-        }
-        // Movimientos (amarillo) y enroque (morado)
-        for (let mov of posiblesMovimientos) {
-            let f, c;
-            if (mov.hasOwnProperty('f')) { f = mov.f; c = mov.c; }
-            else { f = mov[0]; c = mov[1]; }
-            if (mov.tipoMov === 'enroque') ctx.fillStyle = 'rgba(128,0,128,0.5)';
-            else ctx.fillStyle = 'rgba(255,215,0,0.5)';
-            ctx.fillRect(c*CELL_SIZE, f*CELL_SIZE, CELL_SIZE-1, CELL_SIZE-1);
-        }
-        // Rutas caballo (azul)
-        if (modoRuta && rutasAlternativas.length > 0) {
-            for (let ruta of rutasAlternativas) {
-                let [fInter, cInter] = ruta.inter;
-                ctx.fillStyle = 'rgba(0,100,200,0.5)';
-                ctx.fillRect(cInter*CELL_SIZE, fInter*CELL_SIZE, CELL_SIZE-1, CELL_SIZE-1);
-            }
-            let [df, dc] = destinoRuta;
-            ctx.strokeStyle = '#FFFF00'; ctx.lineWidth = 3;
-            ctx.strokeRect(dc*CELL_SIZE, df*CELL_SIZE, CELL_SIZE-1, CELL_SIZE-1);
-        }
-    }
-}
-
-// ----------------------------------------------------------
-// VALIDACIÓN ENROQUE
-// ----------------------------------------------------------
-function validarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
-    if (enroqueRealizado[jugador]) return false;
-    const pieza = board[piezaFila][piezaCol];
-    if (!pieza || pieza.jugador !== jugador || !['F3','F0','F5'].includes(pieza.tipo)) return false;
-    if (reyFila === piezaFila && reyCol === piezaCol) return false;
-    let df = piezaFila - reyFila, dc = piezaCol - reyCol;
-    let dirF = df === 0 ? 0 : df / Math.abs(df);
-    let dirC = dc === 0 ? 0 : dc / Math.abs(dc);
-    if (pieza.tipo === 'F0' && df !== 0 && dc !== 0) return false;
-    if (pieza.tipo === 'F5' && Math.abs(df) !== Math.abs(dc)) return false;
-    if (pieza.tipo === 'F3' && !(df === 0 || dc === 0 || Math.abs(df) === Math.abs(dc))) return false;
-    let fichasAmigas = 0;
-    let f = reyFila + dirF, c = reyCol + dirC;
-    while (f !== piezaFila || c !== piezaCol) {
-        if (board[f][c]) {
-            if (board[f][c].jugador === jugador) fichasAmigas++;
-            else return false;
-        }
-        f += dirF; c += dirC;
-    }
-    return fichasAmigas <= 1;
-}
-
-function ejecutarEnroque(reyFila, reyCol, piezaFila, piezaCol, jugador) {
-    guardarEstado();
-    let piezaEliminada = board[piezaFila][piezaCol];
-    carcela.agregar(piezaEliminada);
-    board[piezaFila][piezaCol] = board[reyFila][reyCol];
-    board[reyFila][reyCol] = null;
-    enroqueRealizado[jugador] = true;
-    sonidoEnroque();
-    dibujarTablero();
-}
-
-// ----------------------------------------------------------
-// ANIMACIÓN
-// ----------------------------------------------------------
-function iniciarAnimacion(origen, camino) {
-    animando = true;
-    colaAnimacion = [...camino];
-    origenAnimacion = origen;
-    piezaAnimacion = board[origen[0]][origen[1]];
-    board[origen[0]][origen[1]] = null;
-    procesarSiguientePaso();
-}
-
-function procesarSiguientePaso() {
-    if (colaAnimacion.length === 0) { finalizarAnimacion(); return; }
-    const paso = colaAnimacion.shift();
-    let [fromF, fromC] = origenAnimacion;
-    let toF, toC;
-    if (paso.tipo === 'move') { [toF, toC] = paso.to; sonidoMovimiento(); }
-    else if (paso.tipo === 'jump') {
-        [toF, toC] = paso.to; sonidoSalto();
-        let [of, oc] = paso.over;
-        let p = board[of]?.[oc];
-        if (p && p.jugador !== piezaAnimacion.jugador) {
-            if (p.tipo === 'F4' && piezaAnimacion.tipo !== 'F3' && piezaAnimacion.tipo !== 'F6') {}
-            else { carcela.agregar(p); board[of][oc] = null; }
-        }
-    } else if (paso.tipo === 'captureDirect') {
-        [toF, toC] = paso.to; sonidoSalto();
-        let [of, oc] = paso.over;
-        let p = board[of]?.[oc];
-        if (p && p.jugador !== piezaAnimacion.jugador) {
-            if (p.tipo !== 'F4' || piezaAnimacion.tipo === 'F3' || piezaAnimacion.tipo === 'F6') {
-                carcela.agregar(p); board[of][oc] = null;
-            }
-        }
-    } else if (paso.tipo === 'removePiece') {
-        let [of, oc] = paso.over;
-        let p = board[of]?.[oc];
-        if (p) { carcela.agregar(p); board[of][oc] = null; }
-        procesarSiguientePaso(); return;
-    }
-    const inicio = performance.now();
-    const duracion = 200;
-    const origenX = fromC * CELL_SIZE + CELL_SIZE/2;
-    const origenY = fromF * CELL_SIZE + CELL_SIZE/2;
-    const destinoX = toC * CELL_SIZE + CELL_SIZE/2;
-    const destinoY = toF * CELL_SIZE + CELL_SIZE/2;
-    function animarPaso(timestamp) {
-        const progreso = Math.min((timestamp - inicio) / duracion, 1.0);
-        const x = origenX + (destinoX - origenX) * progreso;
-        const y = origenY + (destinoY - origenY) * progreso + (paso.tipo === 'jump' ? Math.sin(progreso * Math.PI) * 15 : 0);
-        dibujarTablero();
-        ctx.save();
-        let radio = CELL_SIZE * 0.4;
-        ctx.strokeStyle = colorBordeEquipo[piezaAnimacion.jugador];
-        ctx.lineWidth = 2.5; ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath(); ctx.arc(x, y, radio, 0, 2*Math.PI); ctx.fill(); ctx.stroke();
-        let img = imagenesPiezas[piezaAnimacion.tipo];
-        if (img && img.complete && img.naturalWidth > 0) {
-            ctx.beginPath(); ctx.arc(x, y, radio-2, 0, 2*Math.PI); ctx.clip();
-            ctx.drawImage(img, x - radio + 2, y - radio + 2, (radio-2)*2, (radio-2)*2);
-        } else {
-            ctx.fillStyle = '#000000'; ctx.font = `bold ${CELL_SIZE*0.3}px monospace`;
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(piezaAnimacion.tipo, x, y);
-        }
-        ctx.restore();
-        if (progreso < 1.0) requestAnimationFrame(animarPaso);
-        else { origenAnimacion = [toF, toC]; procesarSiguientePaso(); }
-    }
-    requestAnimationFrame(animarPaso);
-}
-
-function finalizarAnimacion() {
-    let [ff, cc] = origenAnimacion;
-    board[ff][cc] = piezaAnimacion;
-    animando = false;
-
-    let pieza = board[ff][cc];
-    if (pieza && pieza.tipo === 'F1') {
-        let zona = getZona(ff, cc);
-        if ((pieza.jugador === 0 && zona === 'templo2') || (pieza.jugador === 1 && zona === 'templo1')) {
-            coronacionPendiente = { jugador: pieza.jugador, f: ff, c: cc };
-            mostrarMenuCoronacion();
-            return;
-        }
-    }
-
-    turno = 1 - turno;
-    selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
-    modoRuta = false; rutasAlternativas = []; destinoRuta = null;
-    dibujarTablero();
 }
 
 function aplicarMovimiento(origen, destino, caminoElegido = null) {
@@ -366,48 +34,6 @@ function aplicarMovimiento(origen, destino, caminoElegido = null) {
     return true;
 }
 
-function mostrarMenuCoronacion() {
-    if (!coronacionPendiente) return;
-    const opciones = [
-        { tipo: 'F0', nombre: 'Torre' }, { tipo: 'F2', nombre: 'Caballo' },
-        { tipo: 'F4', nombre: 'Trampero' }, { tipo: 'F5', nombre: 'Alfil' }
-    ];
-    opcionesCoronacion.innerHTML = '';
-    opciones.forEach(op => {
-        const btn = document.createElement('button');
-        const img = document.createElement('img');
-        img.src = `img/${op.tipo.toLowerCase()}.jpg`;
-        img.onerror = () => { img.style.display = 'none'; btn.textContent = op.tipo; };
-        img.onload = () => { btn.textContent = ''; btn.appendChild(img); };
-        btn.appendChild(img);
-        btn.onclick = () => coronar(op.tipo);
-        opcionesCoronacion.appendChild(btn);
-    });
-    menuCoronacion.style.display = 'block';
-}
-
-function coronar(tipo) {
-    if (!coronacionPendiente) return;
-    const { jugador, f, c } = coronacionPendiente;
-    let nuevaPieza;
-    switch (tipo) {
-        case 'F0': nuevaPieza = new F0(jugador); break;
-        case 'F2': nuevaPieza = new F2(jugador); break;
-        case 'F4': nuevaPieza = new F4(jugador); break;
-        case 'F5': nuevaPieza = new F5(jugador); break;
-        default: return;
-    }
-    board[f][c] = nuevaPieza;
-    menuCoronacion.style.display = 'none';
-    coronacionPendiente = null;
-    turno = 1 - turno;
-    selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
-    dibujarTablero();
-}
-
-// ----------------------------------------------------------
-// INICIO Y EVENTOS (con filtro de jaque 100% funcional)
-// ----------------------------------------------------------
 function iniciarJuego() {
     board = Array(FILAS).fill().map(() => Array(COLUMNAS).fill(null));
     for (let f = 1; f <= 8; f++) board[f][3] = new F1(0);
@@ -519,41 +145,53 @@ function seleccionarNuevaPieza(fila, col) {
                 }
         }
 
-        // Filtro de jaque (definitivo)
         if (esJaque(turno)) {
-            let nuevosMovs = [];
+            let movsSeguros = [];
             let nuevosCaminos = {};
+
             for (let mov of posiblesMovimientos) {
                 let fDest, cDest;
                 if (mov.hasOwnProperty('f')) { fDest = mov.f; cDest = mov.c; }
                 else { fDest = mov[0]; cDest = mov[1]; }
 
                 if (mov.tipoMov === 'enroque') {
-                    let copia = copiarBoard();
+                    let copia = clonarTablero(board);
                     let [reyF, reyC] = [selectedPiece.fila, selectedPiece.col];
                     copia[fDest][cDest] = copia[reyF][reyC];
                     copia[reyF][reyC] = null;
-                    if (!esJaque(turno, copia)) nuevosMovs.push(mov);
+                    if (!esJaque(turno, copia)) {
+                        movsSeguros.push(mov);
+                        if (!nuevosCaminos[`${fDest},${cDest}`]) nuevosCaminos[`${fDest},${cDest}`] = null;
+                    }
                     continue;
                 }
 
                 let claveMov = `${fDest},${cDest}`;
-                let caminosMov = mov.caminos || caminosDestino[claveMov];
-                if (!caminosMov) continue;
-                let caminoReal = Array.isArray(caminosMov) ? (caminosMov[0]?.pasos || caminosMov[0]) : caminosMov;
+                let infoCamino = mov.caminos || caminosDestino[claveMov];
+                if (!infoCamino) continue;
+                let caminoReal;
+                if (Array.isArray(infoCamino)) {
+                    if (infoCamino.length > 0 && infoCamino[0].hasOwnProperty('pasos')) {
+                        caminoReal = infoCamino[0].pasos;
+                    } else {
+                        caminoReal = infoCamino;
+                    }
+                } else {
+                    caminoReal = infoCamino;
+                }
                 if (!Array.isArray(caminoReal)) continue;
 
                 let nuevoTab = simularMovimiento(board, selectedPiece.fila, selectedPiece.col, [fDest, cDest], caminoReal);
                 if (nuevoTab && !esJaque(turno, nuevoTab)) {
-                    nuevosMovs.push(mov);
-                    nuevosCaminos[claveMov] = caminosMov;
+                    movsSeguros.push(mov);
+                    nuevosCaminos[claveMov] = infoCamino;
                 }
             }
-            posiblesMovimientos = nuevosMovs;
-            // Reconstruir caminosDestino solo con los sobrevivientes
-            let tempCaminos = {};
-            for (let clave in nuevosCaminos) tempCaminos[clave] = nuevosCaminos[clave];
-            caminosDestino = tempCaminos;
+
+            posiblesMovimientos = movsSeguros;
+            let temp = {};
+            for (let clave in nuevosCaminos) temp[clave] = nuevosCaminos[clave];
+            caminosDestino = temp;
         }
 
         dibujarTablero();
