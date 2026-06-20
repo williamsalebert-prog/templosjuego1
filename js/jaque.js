@@ -8,15 +8,46 @@ function obtenerPosicionRey(jugador, tablero = board) {
     return null;
 }
 
+// ✅ NUEVA DETECCIÓN DE JAQUE: revisa todos los movimientos posibles de cada enemigo,
+// incluyendo saltos encadenados (F1, F6) y múltiples rutas (F2).
 function esJaque(jugador, tablero = board) {
     let reyPos = obtenerPosicionRey(jugador, tablero);
     if (!reyPos) return false;
     let enemigo = 1 - jugador;
+
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
             let pieza = tablero[i][j];
-            if (pieza && pieza.jugador === enemigo && pieza.puedeAtacarRey(i, j, reyPos[0], reyPos[1], tablero))
-                return true;
+            if (!pieza || pieza.jugador !== enemigo) continue;
+
+            // Obtener todos los destinos posibles de esta pieza enemiga
+            let movimientos = pieza.obtenerMovimientos(i, j, tablero);
+            for (let dest of movimientos.destinos) {
+                let fDest = Array.isArray(dest) ? dest[0] : dest.f;
+                let cDest = Array.isArray(dest) ? dest[1] : dest.c;
+                if (fDest === reyPos[0] && cDest === reyPos[1]) {
+                    // Si la pieza puede mover al rey, es jaque.
+                    // Pero hay que verificar que la captura sea posible (reglas de extremo, etc.)
+                    // Para eso, comprobamos si el destino es accesible según las reglas reales.
+                    let claveDest = `${fDest},${cDest}`;
+                    let caminos = movimientos.caminos[claveDest];
+                    if (!caminos) continue;
+
+                    // Si la pieza es el caballo (F2), sus caminos pueden ser múltiples rutas.
+                    // Si alguna de ellas es válida, es jaque.
+                    if (Array.isArray(caminos) && caminos.length > 0 && caminos[0].hasOwnProperty('pasos')) {
+                        // Caballo
+                        return true; // El caballo captura sin importar el camino
+                    } else if (Array.isArray(caminos)) {
+                        // Pieza normal con camino único
+                        let camino = caminos;
+                        // Verificar que el camino es legal (no hay piezas amigas bloqueando en el último paso)
+                        // Como esto es una comprobación de jaque, podemos asumir que si el destino es accesible, es jaque.
+                        // La comprobación fina de extremos ya la hace obtenerMovimientos.
+                        return true;
+                    }
+                }
+            }
         }
     }
     return false;
@@ -30,7 +61,7 @@ function clonarTablero(tablero) {
     }));
 }
 
-// ✅ Simulación CORREGIDA: respeta las reglas de captura reales
+// Simula un movimiento completo (usada en el filtro de seguridad)
 function simularMovimiento(tablero, fromF, fromC, destino, camino) {
     if (!Array.isArray(camino)) return false;
     let copia = clonarTablero(tablero);
@@ -47,7 +78,6 @@ function simularMovimiento(tablero, fromF, fromC, destino, camino) {
         } else if (paso.tipo === 'jump') {
             let [of, oc] = paso.over;
             let [nf, nc] = paso.to;
-            // Solo eliminar la pieza saltada si es enemiga y capturable (como en el juego real)
             let piezaSaltada = copia[of]?.[oc];
             if (piezaSaltada && piezaSaltada.jugador !== pieza.jugador && capturaPermitida(pieza.tipo, piezaSaltada)) {
                 copia[of][oc] = null;
@@ -58,7 +88,6 @@ function simularMovimiento(tablero, fromF, fromC, destino, camino) {
         } else if (paso.tipo === 'captureDirect') {
             let [of, oc] = paso.over;
             let [nf, nc] = paso.to;
-            // Eliminar la pieza enemiga (siempre que sea legal)
             let piezaObjetivo = copia[of]?.[oc];
             if (piezaObjetivo && piezaObjetivo.jugador !== pieza.jugador &&
                 (piezaObjetivo.tipo !== 'F4' || pieza.tipo === 'F3' || pieza.tipo === 'F6')) {
@@ -69,7 +98,6 @@ function simularMovimiento(tablero, fromF, fromC, destino, camino) {
             f = nf; c = nc;
         } else if (paso.tipo === 'removePiece') {
             let [of, oc] = paso.over;
-            // removePiece se usa para eliminar piezas enemigas en el camino (caballo)
             let piezaAEliminar = copia[of]?.[oc];
             if (piezaAEliminar && piezaAEliminar.jugador !== pieza.jugador) {
                 copia[of][oc] = null;
@@ -79,7 +107,7 @@ function simularMovimiento(tablero, fromF, fromC, destino, camino) {
     return copia;
 }
 
-// Filtro de movimientos que dejan al rey en jaque (se aplica siempre)
+// Filtro de movimientos que dejan al rey en jaque (se aplica SIEMPRE)
 function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDestino) {
     let movsSeguros = [];
     let nuevosCaminos = {};
@@ -108,7 +136,7 @@ function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDest
 
         let rutas = [];
         if (Array.isArray(infoCamino) && infoCamino.length > 0 && infoCamino[0].hasOwnProperty('pasos')) {
-            rutas = infoCamino; // múltiples rutas (caballo)
+            rutas = infoCamino;
         } else {
             if (Array.isArray(infoCamino)) rutas = [{ pasos: infoCamino }];
             else rutas = [{ pasos: infoCamino }];
