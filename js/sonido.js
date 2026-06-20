@@ -21,5 +21,5 @@ function playTone(frec, dur, tipo = 'triangle', vol = 0.1) {
 }
 
 function sonidoMovimiento() { playTone(300, 0.1, 'triangle', 0.08); }
-function sonidoSalto() { playTone(500, 0.12, 'square', 0.1); }
+function sonidoSalto() { playTone(300, 0.1, 'triangle', 0.08); }
 function sonidoEnroque() { playTone(400, 0.2, 'sine', 0.12); playTone(600, 0.2, 'sine', 0.12); }
