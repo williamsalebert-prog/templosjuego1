@@ -316,6 +316,45 @@
     </div>
 </div>
 
+<script>
+// ===== Estado de habilitación del tablero + countdown de inicio =====
+// IMPORTANTE: este bloque tiene que ejecutarse ANTES de cargar js/tablero.js (y
+// js/sync.js), porque iniciarJuego() llama a window.arrancarCountdown() de forma
+// SÍNCRONA en cuanto se carga tablero.js. Si esta definición estuviera más abajo
+// (como antes), tablero.js la encontraría "undefined" y el tablero quedaba
+// bloqueado para siempre (no se podían mover fichas en ningún modo).
+window.tableroHabilitado = false;
+
+window.arrancarCountdown = function(cb) {
+    window.tableroHabilitado = false;
+    const overlay = document.getElementById('countdownOverlay');
+    const num = document.getElementById('countdownNum');
+    overlay.classList.add('mostrar');
+
+    let n = 3;
+    num.textContent = n;
+
+    function siguiente() {
+        n--;
+        if (n < 0) {
+            // Fase silenciosa extra antes de habilitar el tablero (≈2s) y arrancar
+            setTimeout(() => {
+                overlay.classList.remove('mostrar');
+                window.tableroHabilitado = true;
+                if (typeof sonidoInicio === 'function') sonidoInicio();
+                if (cb) cb();
+            }, 2000);
+        } else {
+            num.textContent = n > 0 ? n : '...';
+            num.style.animation = 'none';
+            void num.offsetWidth;
+            num.style.animation = '';
+            setTimeout(siguiente, 1000);
+        }
+    }
+    setTimeout(siguiente, 1000);
+};
+</script>
 <script src="js/zonas.js"></script>
 <script src="js/pieza.js"></script>
 <script src="js/f0.js"></script>
@@ -368,7 +407,7 @@ menuOverlay.addEventListener('click', cerrarMenu);
 document.getElementById('menuMusica').addEventListener('click', () => {
     cerrarMenu();
     if (typeof toggleMusica === 'function') toggleMusica();
-    else if (typeof window.musica !== 'undefined') window.musica.toggle();
+    else if (typeof alternarMusica === 'function') alternarMusica();
 });
 document.getElementById('menuExportar').addEventListener('click', () => {
     cerrarMenu();
@@ -410,72 +449,6 @@ function mostrarDesconexion(msg) {
     document.getElementById('panelDesconexion').classList.add('mostrar');
 }
 window.mostrarDesconexion = mostrarDesconexion;
-
-// ===== COUNTDOWN DE INICIO =====
-let tableroHabilitado = false;
-window.tableroHabilitado = false;
-
-function lanzarCountdown(cb) {
-    const overlay = document.getElementById('countdownOverlay');
-    const num = document.getElementById('countdownNum');
-    overlay.classList.add('mostrar');
-    let n = 3;
-    num.textContent = n;
-
-    const tick = () => {
-        n--;
-        if (n <= 0) {
-            overlay.classList.remove('mostrar');
-            tableroHabilitado = true;
-            window.tableroHabilitado = true;
-            // Pitido de inicio
-            if (typeof sonidoInicio === 'function') sonidoInicio();
-            if (cb) cb();
-        } else {
-            num.textContent = n;
-            // Reiniciar animación
-            num.style.animation = 'none';
-            void num.offsetWidth;
-            num.style.animation = '';
-            setTimeout(tick, 1000);
-        }
-    };
-    setTimeout(tick, 1000);
-}
-
-// Se llama desde tablero.js después de iniciarJuego()
-window.arrancarCountdown = function(cb) {
-    tableroHabilitado = false;
-    window.tableroHabilitado = false;
-    // 3s bloqueado, luego 2s más, luego habilitar + pitido
-    const overlay = document.getElementById('countdownOverlay');
-    const num = document.getElementById('countdownNum');
-    overlay.classList.add('mostrar');
-
-    let n = 3;
-    num.textContent = n;
-
-    function siguiente() {
-        n--;
-        if (n < 0) {
-            // Fase silenciosa 2s extra luego pitido y habilitar
-            setTimeout(() => {
-                overlay.classList.remove('mostrar');
-                tableroHabilitado = true;
-                window.tableroHabilitado = true;
-                if (typeof sonidoInicio === 'function') sonidoInicio();
-                if (cb) cb();
-            }, 2000);
-        } else {
-            num.textContent = n > 0 ? n : '...';
-            num.style.animation = 'none';
-            void num.offsetWidth;
-            num.style.animation = '';
-            setTimeout(siguiente, 1000);
-        }
-    }
-    setTimeout(siguiente, 1000);
-};
 </script>
 </body>
 </html>

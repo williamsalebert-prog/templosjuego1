@@ -163,10 +163,6 @@ button:active { transform: translateY(0); filter: brightness(1.15); }
 
     <div class="seccion" id="seccionTiempo">
         <h3>Temporizador</h3>
-        <label class="toggle-reloj">
-            <input type="checkbox" id="chkTemporizador">
-            Usar reloj de partida
-        </label>
         <div class="grid-tiempo" id="gridTiempo">
             <div class="opcion-tiempo" data-modo="bala"><b>Bala</b>1 min</div>
             <div class="opcion-tiempo" data-modo="blitz5"><b>Blitz 5</b>5 min</div>
@@ -229,20 +225,20 @@ let peerIndex = null;
 let codigoSalaActual = null;
 let modoTiempoSeleccionado = 'blitz5';
 
-// Temporizador
+// Temporizador (siempre hay uno activo: un reloj con cuenta atrás, o el modo
+// "Infinito" que es un cronómetro ascendente sin límite. Por eso ya no existe
+// un interruptor para "desactivar" el reloj.)
 document.querySelectorAll('.opcion-tiempo').forEach(el => {
     el.addEventListener('click', () => {
         document.querySelectorAll('.opcion-tiempo').forEach(o => o.classList.remove('activa'));
         el.classList.add('activa');
         modoTiempoSeleccionado = el.dataset.modo;
-        document.getElementById('chkTemporizador').checked = true;
     });
 });
 document.querySelector('.opcion-tiempo[data-modo="blitz5"]').classList.add('activa');
 
 function construirParametrosTiempo() {
-    const timer = document.getElementById('chkTemporizador').checked ? 1 : 0;
-    return `&timer=${timer}&timerMode=${modoTiempoSeleccionado}`;
+    return `&timer=1&timerMode=${modoTiempoSeleccionado}`;
 }
 
 function mostrarDificultad() {
