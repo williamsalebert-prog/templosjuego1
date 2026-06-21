@@ -1,44 +1,148 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Templos - Juego</title>
-    <style>
-        body { background: #1a472a; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Segoe UI', sans-serif; margin: 0; }
-        .game-container { background: #2c5e2e; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; position: relative; }
-        canvas { display: block; margin: 0 auto; box-shadow: 0 0 0 4px #c9a87b, 0 0 0 8px #6b3e1c; border-radius: 8px; cursor: pointer; }
-        .info { margin-top: 15px; color: #f9e0a0; background: #2d2b1fcc; padding: 8px; border-radius: 16px; font-size: 0.9rem; }
-        .botones-empate { margin-top: 10px; }
-        .botones-empate button { padding: 8px 16px; margin: 0 5px; background: #c9a87b; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; }
-        .botones-empate button:hover { background: #dbb87c; }
-        .menu-coronacion {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.85); padding: 15px; border-radius: 15px; display: none; z-index: 10;
-            text-align: center; color: white;
-        }
-        .menu-coronacion button { margin: 8px; padding: 10px; background: #c9a87b; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; width: 80px; }
-        .menu-coronacion button img { width: 40px; height: 40px; display: block; margin: 0 auto 5px; }
-    </style>
+<meta charset="UTF-8">
+<title>Templos - Juego</title>
+<style>
+    :root{
+        --rojo:#b5302f; --azul:#2b4f9e; --oro:#cda86b; --oro-claro:#e7cf9c;
+        --madera-osc:#241712; --madera:#3b261c; --panel:#1e1410;
+    }
+    * { box-sizing: border-box; }
+    body {
+        background: radial-gradient(ellipse at center, #18120d 0%, #0c0907 100%);
+        display: flex; justify-content: center; align-items: center; min-height: 100vh;
+        font-family: 'Segoe UI', Georgia, serif; margin: 0; color: var(--oro-claro);
+    }
+    .game-container {
+        background: linear-gradient(160deg, #2a1d15, #1a120c);
+        padding: 22px; border-radius: 18px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.65), inset 0 0 40px rgba(0,0,0,0.5);
+        text-align: center; position: relative;
+        border: 1px solid #4a3424;
+    }
+    .top-bar { display:flex; justify-content: space-between; align-items:center; margin-bottom: 10px; gap: 10px; }
+    canvas {
+        display: block; margin: 0 auto;
+        box-shadow: 0 0 0 5px var(--oro), 0 0 0 9px var(--madera), 0 12px 30px rgba(0,0,0,0.6);
+        border-radius: 6px; cursor: pointer;
+    }
+    .panel-juego { display:flex; gap:14px; margin-top:14px; align-items:stretch; flex-wrap: wrap; justify-content:center; }
+    .info {
+        background: linear-gradient(160deg, #2d2118, #1a130d);
+        padding: 10px 18px; border-radius: 14px; font-size: 1rem;
+        border: 1px solid #4a3424; min-width: 220px;
+        box-shadow: inset 0 0 12px rgba(0,0,0,0.5);
+    }
+    #turnoTexto { font-weight: bold; font-size: 1.1rem; padding: 4px 10px; border-radius: 8px; display:inline-block; transition: all .2s; }
+    #turnoTexto.turno-rojo { color:#fff; background: linear-gradient(135deg, var(--rojo), #7a1f1e); box-shadow: 0 0 14px rgba(181,48,47,0.7); }
+    #turnoTexto.turno-azul { color:#fff; background: linear-gradient(135deg, var(--azul), #1c356b); box-shadow: 0 0 14px rgba(43,79,158,0.7); }
+    #estadoJuego { margin-top:6px; color:#ffb84d; font-weight:bold; min-height: 1.2em; }
+    #contadorJugadas { margin-top:6px; font-size:0.85rem; color:#cbb892; }
+
+    .panel-capturadas { background: linear-gradient(160deg,#2d2118,#1a130d); border:1px solid #4a3424; border-radius:14px; padding:8px 12px; min-width:140px; box-shadow: inset 0 0 12px rgba(0,0,0,0.5); }
+    .panel-capturadas h4 { margin:0 0 6px; font-size:0.75rem; letter-spacing:1px; color:#a98a5a; text-transform:uppercase; }
+    .tira-capturadas { display:flex; flex-wrap:wrap; gap:4px; min-height: 26px; }
+    .pieza-capturada {
+        display:inline-flex; align-items:center; justify-content:center;
+        width:22px; height:22px; border-radius:50%; font-size:0.65rem; font-weight:bold;
+        background:#fff; color:#111;
+    }
+    .cap-rojo { border:2px solid var(--rojo); }
+    .cap-azul { border:2px solid var(--azul); }
+
+    #panelRelojes { display:none; gap:8px; flex-direction:column; background: linear-gradient(160deg,#2d2118,#1a130d); border:1px solid #4a3424; border-radius:14px; padding:8px 14px; min-width:110px; }
+    .reloj { font-family: 'Courier New', monospace; font-size:1.3rem; text-align:center; padding:4px 6px; border-radius:8px; background:#100b08; }
+    .reloj-activo { box-shadow: 0 0 10px #ffd166; }
+    .reloj-bajo { color:#ff5050; }
+
+    .botones-juego { margin-top: 14px; display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+    .botones-juego button, .modal-salida button {
+        padding: 9px 16px; border: 1px solid #6b4c2c; border-radius: 12px; cursor: pointer; font-weight: bold;
+        background: linear-gradient(160deg, var(--oro-claro), var(--oro));
+        color: #2a1c10; box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+        transition: transform .1s;
+    }
+    .botones-juego button:hover, .modal-salida button:hover { transform: translateY(-2px); filter:brightness(1.07); }
+    .botones-juego button.peligro { background: linear-gradient(160deg,#c75b5b,#7a1f1e); color:#fff; }
+
+    .menu-coronacion, .modal-salida, .banner-fin {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        background: rgba(10,7,5,0.92); padding: 18px; border-radius: 16px; display: none; z-index: 20;
+        text-align: center; color: #f4e3c4; border:1px solid var(--oro);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.7);
+    }
+    .menu-coronacion button { margin: 8px; padding: 10px; background: var(--oro); border: none; border-radius: 10px; cursor: pointer; font-weight: bold; width: 80px; }
+    .menu-coronacion button img { width: 40px; height: 40px; display: block; margin: 0 auto 5px; }
+
+    .banner-fin { min-width: 320px; }
+    .banner-fin.mostrar { display:flex; flex-direction:column; align-items:center; gap:10px; }
+    .banner-fin h2 { margin:0; font-size:1.4rem; }
+    .banner-fin.victoria.jugador0 h2, .banner-fin.victoria.jugador0 #bannerFinTexto { color: var(--rojo); }
+    .banner-fin.victoria.jugador1 h2, .banner-fin.victoria.jugador1 #bannerFinTexto { color: var(--azul); }
+    .banner-fin.tablas #bannerFinTexto { color: #8fcf8f; }
+    #bannerFinTexto { font-size: 1.2rem; font-weight: bold; }
+    .banner-fin button { padding:8px 18px; border-radius:10px; border:none; background: var(--oro); font-weight:bold; cursor:pointer; }
+
+    .modal-salida p { margin:0 0 14px; font-size:1.05rem; }
+</style>
 </head>
 <body>
 <div class="game-container">
+    <div class="top-bar">
+        <button id="btnVolverMenu" class="boton-volver" style="padding:8px 14px;border-radius:10px;border:1px solid #6b4c2c;background:linear-gradient(160deg,#3a2a1c,#241712);color:#e7cf9c;cursor:pointer;font-weight:bold;">⬅ Menú</button>
+        <div id="estadoJuego" style="flex:1;"></div>
+    </div>
+
     <canvas id="tableroCanvas" width="900" height="600"></canvas>
-    <div class="info">
-        <div id="turnoTexto">Turno: Jugador 1</div>
-        <div id="estadoJuego"></div>
+
+    <div class="panel-juego">
+        <div class="panel-capturadas">
+            <h4>Capturas Rojo</h4>
+            <div class="tira-capturadas" id="capturadasJ0"></div>
+        </div>
+
+        <div class="info">
+            <div id="turnoTexto" class="turno-rojo">Turno: Jugador 1</div>
+            <div id="contadorJugadas">Jugada: 0</div>
+        </div>
+
+        <div class="panel-capturadas">
+            <h4>Capturas Azul</h4>
+            <div class="tira-capturadas" id="capturadasJ1"></div>
+        </div>
+
+        <div id="panelRelojes">
+            <div class="reloj" id="relojJ0">5:00</div>
+            <div class="reloj" id="relojJ1">5:00</div>
+        </div>
     </div>
-    <div class="botones-empate">
-        <button id="btnOfrecerEmpate">🤝 Ofrecer Tablas</button>
-        <button id="btnAceptarEmpate" disabled>Aceptar Tablas</button>
-        <button id="btnRechazarEmpate" disabled>Rechazar</button>
+
+    <div class="botones-juego">
+        <button id="btnMusica">🎵 Música</button>
+        <button id="btnExportarPartida">💾 Exportar partida</button>
+        <button id="btnImportarPartida">📂 Importar partida</button>
+        <input type="file" id="inputImportarPartida" accept=".json" style="display:none;">
     </div>
+
     <div id="menuCoronacion" class="menu-coronacion">
         <p>Elige coronación:</p>
         <div id="opcionesCoronacion"></div>
     </div>
+
+    <div id="bannerFin" class="banner-fin">
+        <h2>Fin de la partida</h2>
+        <div id="bannerFinTexto"></div>
+        <button onclick="document.getElementById('bannerFin').classList.remove('mostrar')">Cerrar</button>
+    </div>
+
+    <div id="modalConfirmarSalida" class="modal-salida">
+        <p>¿Seguro que quieres volver al menú principal?<br>Se perderá la partida actual si no la exportaste.</p>
+        <button id="btnConfirmarSalida" class="peligro" style="background:#7a1f1e;color:#fff;">Sí, salir</button>
+        <button id="btnCancelarSalida">Cancelar</button>
+    </div>
 </div>
 
-html
 <script src="js/zonas.js"></script>
 <script src="js/pieza.js"></script>
 <!-- piezas -->
@@ -49,7 +153,7 @@ html
 <script src="js/f4.js"></script>
 <script src="js/f5.js"></script>
 <script src="js/f6.js"></script>
-<!-- módulos nuevos -->
+<!-- módulos base -->
 <script src="js/config.js"></script>
 <script src="js/carcela.js"></script>
 <script src="js/historial.js"></script>
@@ -57,8 +161,15 @@ html
 <script src="js/animacion.js"></script>
 <script src="js/dibujo.js"></script>
 <script src="js/jaque.js"></script>
+<script src="js/jaquemate.js"></script>
+<script src="js/ahogado.js"></script>
 <script src="js/enroque.js"></script>
 <script src="js/coronacion.js"></script>
+<script src="js/interfaz.js"></script>
+<script src="js/relojes.js"></script>
+<script src="js/finjuego.js"></script>
+<script src="js/ia.js"></script>
+<script src="js/partida.js"></script>
 <!-- orquestador -->
 <script src="js/tablero.js"></script>
 <script src="js/musica.js"></script>
