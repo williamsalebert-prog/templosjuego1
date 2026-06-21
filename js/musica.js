@@ -110,22 +110,36 @@ function iniciarMusica() {
     reproducirCicloMusical();
 }
 
+// El usuario puede pausar la música manualmente con el botón; esto es independiente
+// de la pausa "de sistema" que se usa al terminar la partida (jaque mate / tablas).
+let musicaPausadaPorUsuario = false;
+let musicaPausadaPorSistema = false;
+
 function alternarMusica() {
-    musicaActiva = !musicaActiva;
+    if (!musicaIniciada) { iniciarMusica(); musicaPausadaPorUsuario = false; }
+    else musicaPausadaPorUsuario = !musicaPausadaPorUsuario;
+    musicaActiva = !musicaPausadaPorUsuario && !musicaPausadaPorSistema;
     const btn = document.getElementById('btnMusica');
     if (btn) btn.textContent = musicaActiva ? '🎵 Música' : '🔇 Música';
 }
 
-// Botón opcional para silenciar/activar, junto a los botones ya existentes del tablero
+// Botón opcional para silenciar/activar. Puede ya existir en el HTML (tablero.html lo
+// incluye), en cuyo caso solo le conectamos el evento; si no existe, lo creamos.
 function crearBotonMusica() {
-    const contenedor = document.querySelector('.botones-empate');
-    if (!contenedor || document.getElementById('btnMusica')) return;
-    const btn = document.createElement('button');
-    btn.id = 'btnMusica';
-    btn.type = 'button';
-    btn.textContent = '🎵 Música';
-    btn.addEventListener('click', alternarMusica);
-    contenedor.appendChild(btn);
+    let btn = document.getElementById('btnMusica');
+    if (!btn) {
+        const contenedor = document.querySelector('.botones-juego') || document.querySelector('.botones-empate');
+        if (!contenedor) return;
+        btn = document.createElement('button');
+        btn.id = 'btnMusica';
+        btn.type = 'button';
+        btn.textContent = '🎵 Música';
+        contenedor.appendChild(btn);
+    }
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation(); // evita que el manejador global de "primera interacción" pelee con el toggle
+        alternarMusica();
+    });
 }
 crearBotonMusica();
 
@@ -138,3 +152,36 @@ function manejarPrimeraInteraccion() {
 }
 document.addEventListener('click', manejarPrimeraInteraccion);
 document.addEventListener('keydown', manejarPrimeraInteraccion);
+
+// ------------------------------------------------------------------
+// Música especial de fin de partida: una más alegre/triunfal para la
+// victoria por jaque mate, y otra más serena/neutra para las tablas.
+// Pausan el ciclo normal (musicaPausadaPorSistema) y suenan una sola vez.
+// ------------------------------------------------------------------
+function pausarMusicaNormal() {
+    musicaPausadaPorSistema = true;
+    musicaActiva = false;
+}
+
+function reanudarMusicaNormal() {
+    musicaPausadaPorSistema = false;
+    musicaActiva = !musicaPausadaPorUsuario;
+}
+
+function reproducirVictoria() {
+    pausarMusicaNormal();
+    const ctx = obtenerContextoMusica();
+    const fanfarria = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
+    let t = 0;
+    fanfarria.forEach((frec, i) => {
+        setTimeout(() => tocarNotaMelodia(frec, 0.5, 0.12), t);
+        t += i === fanfarria.length - 2 ? 120 : 220;
+    });
+}
+
+function reproducirTablas() {
+    pausarMusicaNormal();
+    const acorde = [349.23, 415.30, 523.25]; // Fa menor, sobrio/neutro
+    acorde.forEach((frec, i) => setTimeout(() => tocarNotaPad(frec, 2.2, 0.08), i * 200));
+    setTimeout(() => tocarNotaMelodia(349.23, 1.4, 0.07), 900);
+}
