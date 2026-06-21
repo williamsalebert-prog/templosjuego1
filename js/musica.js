@@ -3,10 +3,13 @@ console.log("✅ musica.js cargado");
 // 🎵 Música de fondo tranquila y continua durante toda la partida.
 // Generada de forma procedural con Web Audio API (no hay archivos de audio en el repo),
 // con el mismo estilo de osciladores que sonido.js. Reutiliza su AudioContext si existe.
+// Registro medio-agudo (sin graves) y todo pasa por un compresor para que nunca distorsione,
+// aunque se superpongan varias notas a la vez.
 
 let musicaIniciada = false;
 let musicaActiva = true;
 let acordeIndex = 0;
+let nodoCompresorMusica = null;
 
 function obtenerContextoMusica() {
     if (typeof getAudioContext === 'function') return getAudioContext();
@@ -15,15 +18,31 @@ function obtenerContextoMusica() {
     return window._musicaCtx;
 }
 
-// Escala pentatónica suave (Do mayor) para la melodía ambiental
-const ESCALA_CALMA = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
+// Salida compartida: un compresor suave evita que la suma de varias notas sature/distorsione
+// los parlantes, aunque se acumulen acordes y melodía al mismo tiempo.
+function obtenerSalidaMusica() {
+    const ctx = obtenerContextoMusica();
+    if (!nodoCompresorMusica || nodoCompresorMusica.context !== ctx) {
+        nodoCompresorMusica = ctx.createDynamicsCompressor();
+        nodoCompresorMusica.threshold.value = -24;
+        nodoCompresorMusica.knee.value = 30;
+        nodoCompresorMusica.ratio.value = 6;
+        nodoCompresorMusica.attack.value = 0.01;
+        nodoCompresorMusica.release.value = 0.25;
+        nodoCompresorMusica.connect(ctx.destination);
+    }
+    return nodoCompresorMusica;
+}
 
-// Acordes graves para el "pad" de fondo, en rotación lenta
+// Escala pentatónica mayor, en un registro medio-agudo, alegre y sin nada de grave
+const ESCALA_CALMA = [392.00, 440.00, 493.88, 587.33, 659.25, 783.99, 880.00];
+
+// Acordes mayores en registro medio (sin bajos retumbantes) para un ambiente más alegre
 const ACORDES_PAD = [
-    [130.81, 164.81, 196.00], // Do mayor
-    [146.83, 174.61, 220.00], // Re menor
-    [174.61, 220.00, 261.63], // Fa mayor
-    [196.00, 246.94, 293.66], // Sol mayor
+    [261.63, 329.63, 392.00], // Do mayor
+    [293.66, 369.99, 440.00], // Re mayor
+    [349.23, 440.00, 523.25], // Fa mayor
+    [392.00, 493.88, 587.33], // Sol mayor
 ];
 
 function tocarNotaPad(frec, duracion, vol) {
@@ -38,7 +57,7 @@ function tocarNotaPad(frec, duracion, vol) {
         gain.gain.linearRampToValueAtTime(vol, t0 + duracion * 0.3);   // entrada suave
         gain.gain.linearRampToValueAtTime(0, t0 + duracion);            // salida suave
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(obtenerSalidaMusica());
         osc.start(t0);
         osc.stop(t0 + duracion + 0.1);
     } catch (e) {}
@@ -53,32 +72,35 @@ function tocarNotaMelodia(frec, duracion, vol) {
         osc.frequency.value = frec;
         const t0 = ctx.currentTime;
         gain.gain.setValueAtTime(0, t0);
-        gain.gain.linearRampToValueAtTime(vol, t0 + 0.4);
+        gain.gain.linearRampToValueAtTime(vol, t0 + 0.25);
         gain.gain.exponentialRampToValueAtTime(0.001, t0 + duracion);
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(obtenerSalidaMusica());
         osc.start(t0);
         osc.stop(t0 + duracion + 0.1);
     } catch (e) {}
 }
 
-// Un ciclo = un acorde de fondo sostenido + un par de notas de melodía suave encima.
+// Un ciclo = un acorde de fondo (arpegiado, no las 3 notas a la vez, para que no se amontonen
+// y suene más ligero/alegre) + varias notas de melodía suave encima.
 // Se reprograma a sí mismo indefinidamente, así que la música nunca se detiene.
 function reproducirCicloMusical() {
     if (musicaActiva) {
         const acorde = ACORDES_PAD[acordeIndex % ACORDES_PAD.length];
-        acorde.forEach(frec => tocarNotaPad(frec, 6, 0.025));
+        acorde.forEach((frec, i) => {
+            setTimeout(() => { if (musicaActiva) tocarNotaPad(frec, 3.5, 0.05); }, i * 180);
+        });
         acordeIndex++;
 
-        const numNotas = 2 + Math.floor(Math.random() * 2); // 2-3 notas por ciclo
-        let demora = 0;
+        const numNotas = 3 + Math.floor(Math.random() * 2); // 3-4 notas por ciclo: más vivo
+        let demora = 200;
         for (let i = 0; i < numNotas; i++) {
-            demora += 1200 + Math.random() * 800;
+            demora += 700 + Math.random() * 600;
             const nota = ESCALA_CALMA[Math.floor(Math.random() * ESCALA_CALMA.length)];
-            setTimeout(() => { if (musicaActiva) tocarNotaMelodia(nota, 1.8, 0.035); }, demora);
+            setTimeout(() => { if (musicaActiva) tocarNotaMelodia(nota, 1.2, 0.06); }, demora);
         }
     }
-    setTimeout(reproducirCicloMusical, 6000);
+    setTimeout(reproducirCicloMusical, 5000);
 }
 
 function iniciarMusica() {
