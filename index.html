@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <title>Templos - Inicio</title>
     <style>
-        body { background: #1a472a; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Segoe UI', sans-serif; margin: 0; }
-        .pantalla-inicio { text-align: center; color: #f9e0a0; background: #2d2b1fcc; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        button { font-size: 1.2rem; padding: 12px 25px; margin: 8px; background: #c9a87b; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #dbb87c; }
-        .modo-btn { font-size: 1.5rem; padding: 15px 30px; }
+        body { background: radial-gradient(ellipse at center, #18120d 0%, #0c0907 100%); display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Segoe UI', Georgia, serif; margin: 0; }
+        .pantalla-inicio { text-align: center; color: #e7cf9c; background: linear-gradient(160deg,#2a1d15,#1a120c); padding: 40px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.65); border:1px solid #4a3424; }
+        button { font-size: 1.1rem; padding: 12px 25px; margin: 8px; border: 1px solid #6b4c2c; border-radius: 15px; cursor: pointer; font-weight: bold; background: linear-gradient(160deg,#e7cf9c,#cda86b); color:#2a1c10; }
+        button:hover { filter: brightness(1.08); }
+        .modo-btn { font-size: 1.4rem; padding: 15px 30px; }
         .dificultad { margin-top: 15px; display: none; }
+        .opcion-timer { margin-top: 20px; font-size: 0.95rem; }
     </style>
 </head>
 <body>
@@ -17,17 +18,26 @@
         <h1>⚔️ Templos ⚔️</h1>
         <p>Juego de estrategia tipo damas chinas + ajedrez</p>
         <button class="modo-btn" onclick="mostrarDificultad()">1 Jugador (vs PC)</button>
-        <button class="modo-btn" onclick="window.location.href='tablero.html?mode=2'">2 Jugadores</button>
+        <button class="modo-btn" onclick="irAlTablero(2)">2 Jugadores</button>
         <div id="dificultad" class="dificultad">
             <p>Elige dificultad:</p>
-            <button onclick="window.location.href='tablero.html?mode=1&diff=1'">Fácil</button>
-            <button onclick="window.location.href='tablero.html?mode=1&diff=2'">Medio</button>
-            <button onclick="window.location.href='tablero.html?mode=1&diff=3'">Difícil</button>
+            <button onclick="irAlTablero(1, 1)">Fácil</button>
+            <button onclick="irAlTablero(1, 2)">Medio</button>
+            <button onclick="irAlTablero(1, 3)">Difícil</button>
+        </div>
+        <div class="opcion-timer">
+            <label><input type="checkbox" id="chkTemporizador"> Usar reloj de 5 minutos por jugador</label>
         </div>
     </div>
     <script>
         function mostrarDificultad() {
             document.getElementById('dificultad').style.display = 'block';
+        }
+        function irAlTablero(modo, dificultad) {
+            const timer = document.getElementById('chkTemporizador').checked ? 1 : 0;
+            let url = `tablero.html?mode=${modo}&timer=${timer}`;
+            if (dificultad) url += `&diff=${dificultad}`;
+            window.location.href = url;
         }
     </script>
 </body>
