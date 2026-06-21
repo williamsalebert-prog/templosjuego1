@@ -6,6 +6,7 @@ let coronacionPendiente = null;
 
 function mostrarMenuCoronacion() {
     if (!coronacionPendiente) return;
+    if (typeof sonidoCoronacion === 'function') sonidoCoronacion();
     const opciones = [
         { tipo: 'F0', nombre: 'Torre' }, { tipo: 'F2', nombre: 'Caballo' },
         { tipo: 'F4', nombre: 'Trampero' }, { tipo: 'F5', nombre: 'Alfil' }
@@ -41,4 +42,5 @@ function coronar(tipo) {
     turno = 1 - turno;
     selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
     dibujarTablero();
+    if (typeof despuesDeJugada === 'function') despuesDeJugada();
 }
