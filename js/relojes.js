@@ -1,11 +1,7 @@
 console.log("✅ relojes.js cargado");
 
-// Sistema de relojes con soporte para los distintos modos de partida definidos
-// en MODOS_TIEMPO (config.js): bala, blitz5, blitz3+2, rapidoA, rapidoB, clasico
-// e infinito (cronómetro ascendente, sin límite, sin derrota por tiempo).
-
 let tiempoRestante = [0, 0];
-let cronometro = [0, 0];           // usado solo en modo "infinito" (cuenta hacia arriba)
+let cronometro = [0, 0];
 let relojIntervalo = null;
 let relojesActivos = false;
 let avisoBajoTiempoDado = [false, false];
@@ -22,18 +18,22 @@ function formatearTiempo(seg) {
 }
 
 function pintarRelojes() {
-    const el0 = document.getElementById('relojJ0');
-    const el1 = document.getElementById('relojJ1');
+    const elJ0 = document.getElementById('relojJ0');
+    const elJ1 = document.getElementById('relojJ1');
+    const valJ0 = document.getElementById('relojJ0Val');
+    const valJ1 = document.getElementById('relojJ1Val');
     const esInfinito = modoTiempoActual && modoTiempoActual.segundos === null;
-    if (el0) {
-        el0.textContent = esInfinito ? formatearTiempo(cronometro[0]) : formatearTiempo(tiempoRestante[0]);
-        el0.classList.toggle('reloj-activo', relojesActivos && turno === 0 && !juegoTerminado);
-        el0.classList.toggle('reloj-bajo', !esInfinito && tiempoRestante[0] <= 20);
+
+    if (valJ0) valJ0.textContent = esInfinito ? formatearTiempo(cronometro[0]) : formatearTiempo(tiempoRestante[0]);
+    if (valJ1) valJ1.textContent = esInfinito ? formatearTiempo(cronometro[1]) : formatearTiempo(tiempoRestante[1]);
+
+    if (elJ0) {
+        elJ0.classList.toggle('reloj-activo', relojesActivos && turno === 0 && !juegoTerminado);
+        elJ0.classList.toggle('reloj-bajo', !esInfinito && tiempoRestante[0] <= 20);
     }
-    if (el1) {
-        el1.textContent = esInfinito ? formatearTiempo(cronometro[1]) : formatearTiempo(tiempoRestante[1]);
-        el1.classList.toggle('reloj-activo', relojesActivos && turno === 1 && !juegoTerminado);
-        el1.classList.toggle('reloj-bajo', !esInfinito && tiempoRestante[1] <= 20);
+    if (elJ1) {
+        elJ1.classList.toggle('reloj-activo', relojesActivos && turno === 1 && !juegoTerminado);
+        elJ1.classList.toggle('reloj-bajo', !esInfinito && tiempoRestante[1] <= 20);
     }
 }
 
@@ -54,9 +54,14 @@ function iniciarRelojes() {
     cronometro = [0, 0];
     avisoBajoTiempoDado = [false, false];
     bonoJugadaAplicado = [false, false];
-    relojesActivos = true;
+    // No arrancar todavía — se arranca tras el countdown
+    relojesActivos = false;
     pintarRelojes();
+}
 
+function arrancarRelojes() {
+    if (!CONFIG_JUEGO.timer || !modoTiempoActual) return;
+    relojesActivos = true;
     let ultimo = performance.now();
     relojIntervalo = setInterval(() => {
         if (!relojesActivos || juegoTerminado || animando || coronacionPendiente) { ultimo = performance.now(); return; }
@@ -65,7 +70,6 @@ function iniciarRelojes() {
         ultimo = ahora;
 
         if (modoTiempoActual.segundos === null) {
-            // Modo infinito: cronómetro ascendente, no hay derrota por tiempo
             cronometro[turno] += delta;
             pintarRelojes();
             return;
@@ -95,12 +99,9 @@ function detenerRelojes() {
     if (relojIntervalo) { clearInterval(relojIntervalo); relojIntervalo = null; }
 }
 
-// Se llama justo después de que un jugador completa una jugada (antes de pasar el
-// turno visualmente ya pasó, pero "jugadorQueMovio" es quien acaba de jugar).
-// Aplica el incremento de tiempo y, en modo clásico, el bono al llegar a la jugada 40.
 function aplicarIncrementoTiempo(jugadorQueMovio, numeroJugadaDeEseJugador) {
     if (!CONFIG_JUEGO.timer || !modoTiempoActual) return;
-    if (modoTiempoActual.segundos === null) return; // infinito no usa incrementos
+    if (modoTiempoActual.segundos === null) return;
     if (modoTiempoActual.incremento > 0) {
         tiempoRestante[jugadorQueMovio] += modoTiempoActual.incremento;
     }

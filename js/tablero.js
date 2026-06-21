@@ -4,6 +4,22 @@ const ctx = canvas.getContext('2d');
 canvas.width = COLUMNAS * CELL_SIZE;
 canvas.height = FILAS * CELL_SIZE;
 
+// Ajustar canvas al espacio disponible
+function ajustarCanvas() {
+    const barra = document.querySelector('.barra-top');
+    const barraH = barra ? barra.offsetHeight : 44;
+    const dispW = window.innerWidth - 28; // padding del marco
+    const dispH = window.innerHeight - barraH - 28;
+    const ratio = COLUMNAS / FILAS;
+    let w = Math.min(dispW, dispH * ratio);
+    let h = w / ratio;
+    if (h > dispH) { h = dispH; w = h * ratio; }
+    canvas.style.width = Math.floor(w) + 'px';
+    canvas.style.height = Math.floor(h) + 'px';
+}
+window.addEventListener('resize', ajustarCanvas);
+ajustarCanvas();
+
 function copiarBoard() {
     return board.map(fila => fila.map(celda => {
         if (celda === null) return null;
@@ -55,13 +71,30 @@ function iniciarJuego() {
     precargarImagenes();
     if (typeof actualizarInterfaz === 'function') actualizarInterfaz();
     if (typeof iniciarRelojes === 'function') iniciarRelojes();
-    if (typeof configurarPanelOnline === 'function') configurarPanelOnline();
     dibujarTablero();
+
+    // Countdown de inicio (3s bloqueado + 2s preparación, luego arranca cronómetros)
+    if (!CONFIG_JUEGO.online) {
+        // Para modo local, arrancar countdown directamente
+        if (typeof window.arrancarCountdown === 'function') {
+            window.arrancarCountdown(() => {
+                if (typeof arrancarRelojes === 'function') arrancarRelojes();
+            });
+        } else {
+            window.tableroHabilitado = true;
+            if (typeof arrancarRelojes === 'function') arrancarRelojes();
+        }
+    }
+    // Para online: el countdown se lanza desde sync.js cuando los dos están conectados
+
+    if (typeof programarTurnoIASiCorresponde === 'function') programarTurnoIASiCorresponde();
 }
 
 function manejarClicTablero(clientX, clientY) {
+    // Bloquear si el countdown no ha terminado
+    if (!window.tableroHabilitado) return;
     if (coronacionPendiente || animando || juegoTerminado) return;
-    if (CONFIG_JUEGO.online && turno !== CONFIG_JUEGO.onlineSoyJugador) return; // no es tu turno
+    if (CONFIG_JUEGO.online && turno !== CONFIG_JUEGO.onlineSoyJugador) return;
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -70,11 +103,6 @@ function manejarClicTablero(clientX, clientY) {
     if (fila < 0 || fila >= FILAS || col < 0 || col >= COLUMNAS) return;
 
     if (modoRuta) {
-        // ✅ Primero comprobamos si el clic corresponde a una de las rutas alternativas
-        // resaltadas en azul (aunque esa casilla intermedia tenga una ficha amiga encima,
-        // sigue siendo una ruta válida y debe poder elegirse). Antes esto se comprobaba
-        // DESPUÉS de mirar si había una ficha propia, así que un clic sobre una ruta con
-        // ficha amiga en medio deseleccionaba todo en vez de ejecutar el movimiento.
         for (let ruta of rutasAlternativas) {
             let [if_, ic] = ruta.inter;
             if (if_ === fila && ic === col) {
@@ -138,12 +166,8 @@ function manejarClicTablero(clientX, clientY) {
     seleccionarNuevaPieza(fila, col);
 }
 
-canvas.addEventListener('click', (e) => {
-    manejarClicTablero(e.clientX, e.clientY);
-});
+canvas.addEventListener('click', (e) => { manejarClicTablero(e.clientX, e.clientY); });
 
-// Soporte táctil dedicado: evita el retardo de ~300ms de "click" en móviles y
-// previene el comportamiento por defecto (scroll/zoom) al tocar el tablero.
 let ultimoToqueProcesado = 0;
 canvas.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
@@ -152,7 +176,6 @@ canvas.addEventListener('touchstart', (e) => {
     ultimoToqueProcesado = Date.now();
     manejarClicTablero(touch.clientX, touch.clientY);
 }, { passive: false });
-// Si el navegador también dispara "click" tras el touch, lo ignoramos para no duplicar la jugada.
 canvas.addEventListener('click', (e) => {
     if (Date.now() - ultimoToqueProcesado < 500) e.stopImmediatePropagation();
 }, true);
@@ -177,11 +200,9 @@ function seleccionarNuevaPieza(fila, col) {
                 }
         }
 
-        // ✅ Aplicar filtro de jaque (ahora en jaque.js)
         let filtrado = filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDestino);
         posiblesMovimientos = filtrado.posiblesMovimientos;
         caminosDestino = filtrado.caminosDestino;
-
         dibujarTablero();
     } else {
         selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
@@ -223,18 +244,4 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// --- Botón de volver al menú principal, con confirmación ---
-function configurarBotonVolver() {
-    const btn = document.getElementById('btnVolverMenu');
-    const modal = document.getElementById('modalConfirmarSalida');
-    const btnSi = document.getElementById('btnConfirmarSalida');
-    const btnNo = document.getElementById('btnCancelarSalida');
-    if (!btn || !modal) return;
-    btn.addEventListener('click', () => { modal.style.display = 'flex'; });
-    if (btnNo) btnNo.addEventListener('click', () => { modal.style.display = 'none'; });
-    if (btnSi) btnSi.addEventListener('click', () => { window.location.href = 'index.html'; });
-}
-configurarBotonVolver();
-
 iniciarJuego();
-if (typeof programarTurnoIASiCorresponde === 'function') programarTurnoIASiCorresponde();

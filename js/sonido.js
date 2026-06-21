@@ -39,3 +39,10 @@ function sonidoCoronacion() {
 
 // Aviso de poco tiempo en el reloj
 function sonidoTiempoBajo() { playTone(220, 0.18, 'sawtooth', 0.08); }
+
+// Pitido de inicio de partida (suena después del countdown)
+function sonidoInicio() {
+    playTone(523, 0.1, "sine", 0.12);
+    setTimeout(() => playTone(659, 0.1, "sine", 0.12), 100);
+    setTimeout(() => playTone(784, 0.2, "sine", 0.15), 200);
+}
