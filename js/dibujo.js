@@ -64,7 +64,19 @@ function dibujarTablero() {
         ctx.fillRect(reyPos[1]*CELL_SIZE, reyPos[0]*CELL_SIZE, CELL_SIZE-1, CELL_SIZE-1);
     }
 
-    if (!animando) {
+    // Fin de partida: rey perdedor en gris (jaque mate) o ambos reyes en verde (tablas/ahogado)
+    if (typeof casillaFinJuego !== 'undefined' && casillaFinJuego) {
+        ctx.fillStyle = 'rgba(120,120,120,0.75)';
+        ctx.fillRect(casillaFinJuego.c*CELL_SIZE, casillaFinJuego.f*CELL_SIZE, CELL_SIZE-1, CELL_SIZE-1);
+    }
+    if (typeof casillasFinJuego !== 'undefined' && casillasFinJuego.length > 0) {
+        ctx.fillStyle = 'rgba(60,200,90,0.6)';
+        for (let cas of casillasFinJuego) {
+            ctx.fillRect(cas.c*CELL_SIZE, cas.f*CELL_SIZE, CELL_SIZE-1, CELL_SIZE-1);
+        }
+    }
+
+    if (!animando && !(typeof juegoTerminado !== 'undefined' && juegoTerminado)) {
         if (selectedPiece && piezasAmenazadas.length > 0 &&
             !['F2','F4'].includes(board[selectedPiece.fila][selectedPiece.col]?.tipo)) {
             for (let [af, ac] of piezasAmenazadas) {
