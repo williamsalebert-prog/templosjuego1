@@ -93,4 +93,5 @@ function finalizarAnimacion() {
     selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
     modoRuta = false; rutasAlternativas = []; destinoRuta = null;
     dibujarTablero();
+    if (typeof despuesDeJugada === 'function') despuesDeJugada();
 }
