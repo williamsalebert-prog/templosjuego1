@@ -67,10 +67,16 @@ function simularMovimiento(tablero, fromF, fromC, destino, camino) {
     return copia;
 }
 
-// ✅ NUEVA DETECCIÓN DE JAQUE: recorre TODOS los movimientos (incluyendo cadenas de saltos)
+// ✅ DETECCIÓN DE JAQUE: recorre TODOS los caminos registrados de cada pieza enemiga
+// (incluyendo cadenas de saltos completas de F1 y F6) y comprueba si en CUALQUIER
+// paso del camino se captura la casilla del rey, sea o no el destino final del
+// movimiento. Esto es imprescindible para F1 y F6, ya que al encadenar saltos el
+// rey puede ser "comido" en mitad de la cadena mientras la pieza atacante sigue
+// saltando y termina su turno varias casillas más allá.
 function esJaque(jugador, tablero = board) {
     let reyPos = obtenerPosicionRey(jugador, tablero);
     if (!reyPos) return false;
+    let [reyF, reyC] = reyPos;
     let enemigo = 1 - jugador;
 
     for (let i = 0; i < FILAS; i++) {
@@ -78,31 +84,30 @@ function esJaque(jugador, tablero = board) {
             let pieza = tablero[i][j];
             if (!pieza || pieza.jugador !== enemigo) continue;
 
-            // Obtener todos los destinos (y caminos) de esta pieza enemiga
+            // Obtener todos los movimientos (y caminos) de esta pieza enemiga
             let movimientos = pieza.obtenerMovimientos(i, j, tablero);
-            for (let dest of movimientos.destinos) {
-                let fDest = Array.isArray(dest) ? dest[0] : dest.f;
-                let cDest = Array.isArray(dest) ? dest[1] : dest.c;
-                if (fDest !== reyPos[0] || cDest !== reyPos[1]) continue;
 
-                // La pieza enemiga puede alcanzar la casilla del rey.
-                // Verificar que el camino es legal (simularlo completamente).
-                let claveDest = `${fDest},${cDest}`;
-                let caminos = movimientos.caminos[claveDest];
-                if (!caminos) continue;
+            for (let clave in movimientos.caminos) {
+                let infoCamino = movimientos.caminos[clave];
+                if (!infoCamino) continue;
 
-                // El caballo (F2) puede tener múltiples rutas
-                if (Array.isArray(caminos) && caminos.length > 0 && caminos[0].hasOwnProperty('pasos')) {
-                    for (let ruta of caminos) {
-                        let caminoReal = ruta.pasos;
-                        if (!Array.isArray(caminoReal)) continue;
-                        let copia = simularMovimiento(tablero, i, j, [fDest, cDest], caminoReal);
-                        if (copia) return true; // Si la simulación tiene éxito, es jaque
-                    }
+                // El caballo (F2) puede tener múltiples rutas para un mismo destino
+                let rutas;
+                if (Array.isArray(infoCamino) && infoCamino.length > 0 && infoCamino[0].hasOwnProperty('pasos')) {
+                    rutas = infoCamino.map(r => r.pasos);
                 } else {
-                    let caminoReal = Array.isArray(caminos) ? caminos : [caminos]; // asegurar array
-                    let copia = simularMovimiento(tablero, i, j, [fDest, cDest], caminoReal);
-                    if (copia) return true;
+                    rutas = [infoCamino];
+                }
+
+                for (let caminoReal of rutas) {
+                    if (!Array.isArray(caminoReal)) continue;
+                    for (let paso of caminoReal) {
+                        if (!paso.over) continue;
+                        if ((paso.tipo === 'jump' || paso.tipo === 'captureDirect' || paso.tipo === 'removePiece') &&
+                            paso.over[0] === reyF && paso.over[1] === reyC) {
+                            return true; // El rey es capturado en algún punto de un camino legal
+                        }
+                    }
                 }
             }
         }
