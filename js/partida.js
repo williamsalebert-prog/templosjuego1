@@ -36,6 +36,7 @@ function exportarPartida() {
         board: serializarBoard(board),
         carcela: carcela.obtenerTodas().map(p => ({ tipo: p.tipo, jugador: p.jugador })),
         contadorJugadas,
+        jugadasPorJugador: [...jugadasPorJugador],
         juegoTerminado,
         historialPila: historial.pila.map(serializarEstadoHistorial),
         historialFuturos: historial.futuros.map(serializarEstadoHistorial)
@@ -69,6 +70,7 @@ function importarPartida(archivo) {
             });
 
             contadorJugadas = datos.contadorJugadas || 0;
+            jugadasPorJugador = datos.jugadasPorJugador || [0, 0];
 
             historial.pila = (datos.historialPila || []).map(deserializarEstadoHistorial);
             historial.futuros = (datos.historialFuturos || []).map(deserializarEstadoHistorial);

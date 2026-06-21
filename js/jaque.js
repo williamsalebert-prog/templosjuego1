@@ -115,6 +115,26 @@ function esJaque(jugador, tablero = board) {
     return false;
 }
 
+// Devuelve la lista [[fila,col], ...] de todas las piezas enemigas que actualmente
+// están dando jaque al rey de "jugador" (usado para resaltarlas en naranja en el tablero).
+function obtenerPiezasQueDanJaque(jugador, tablero = board) {
+    let reyPos = obtenerPosicionRey(jugador, tablero);
+    if (!reyPos) return [];
+    let [reyF, reyC] = reyPos;
+    let enemigo = 1 - jugador;
+    let atacantes = [];
+    for (let i = 0; i < FILAS; i++) {
+        for (let j = 0; j < COLUMNAS; j++) {
+            let pieza = tablero[i][j];
+            if (!pieza || pieza.jugador !== enemigo) continue;
+            if (typeof pieza.puedeAtacarRey === 'function' && pieza.puedeAtacarRey(i, j, reyF, reyC, tablero)) {
+                atacantes.push([i, j]);
+            }
+        }
+    }
+    return atacantes;
+}
+
 // ----------------------------------------------------------
 // FILTRO DE SEGURIDAD (SE APLICA SIEMPRE)
 // ----------------------------------------------------------

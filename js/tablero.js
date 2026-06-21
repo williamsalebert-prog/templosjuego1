@@ -48,23 +48,25 @@ function iniciarJuego() {
     turno = 0; selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
     modoRuta = false; rutasAlternativas = []; destinoRuta = null;
     enroqueRealizado = [false, false]; coronacionPendiente = null;
-    contadorJugadas = 0;
+    contadorJugadas = 0; jugadasPorJugador = [0, 0];
     menuCoronacion.style.display = 'none';
     historial.limpiar(); carcela.limpiar();
     if (typeof reiniciarFinJuego === 'function') reiniciarFinJuego();
     precargarImagenes();
     if (typeof actualizarInterfaz === 'function') actualizarInterfaz();
     if (typeof iniciarRelojes === 'function') iniciarRelojes();
+    if (typeof configurarPanelOnline === 'function') configurarPanelOnline();
     dibujarTablero();
 }
 
-canvas.addEventListener('click', (e) => {
+function manejarClicTablero(clientX, clientY) {
     if (coronacionPendiente || animando || juegoTerminado) return;
+    if (CONFIG_JUEGO.online && turno !== CONFIG_JUEGO.onlineSoyJugador) return; // no es tu turno
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    const col = Math.floor(((e.clientX - rect.left) * scaleX) / CELL_SIZE);
-    const fila = Math.floor(((e.clientY - rect.top) * scaleY) / CELL_SIZE);
+    const col = Math.floor(((clientX - rect.left) * scaleX) / CELL_SIZE);
+    const fila = Math.floor(((clientY - rect.top) * scaleY) / CELL_SIZE);
     if (fila < 0 || fila >= FILAS || col < 0 || col >= COLUMNAS) return;
 
     if (modoRuta) {
@@ -134,7 +136,26 @@ canvas.addEventListener('click', (e) => {
     }
 
     seleccionarNuevaPieza(fila, col);
+}
+
+canvas.addEventListener('click', (e) => {
+    manejarClicTablero(e.clientX, e.clientY);
 });
+
+// Soporte táctil dedicado: evita el retardo de ~300ms de "click" en móviles y
+// previene el comportamiento por defecto (scroll/zoom) al tocar el tablero.
+let ultimoToqueProcesado = 0;
+canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    ultimoToqueProcesado = Date.now();
+    manejarClicTablero(touch.clientX, touch.clientY);
+}, { passive: false });
+// Si el navegador también dispara "click" tras el touch, lo ignoramos para no duplicar la jugada.
+canvas.addEventListener('click', (e) => {
+    if (Date.now() - ultimoToqueProcesado < 500) e.stopImmediatePropagation();
+}, true);
 
 function seleccionarNuevaPieza(fila, col) {
     let ficha = board[fila][col];

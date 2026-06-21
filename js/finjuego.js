@@ -6,6 +6,7 @@ console.log("✅ finjuego.js cargado");
 function despuesDeJugada() {
     registrarJugadaRealizada();
     comprobarFinJuego();
+    if (typeof transmitirEstadoSiOnline === 'function') transmitirEstadoSiOnline();
     if (typeof programarTurnoIASiCorresponde === 'function') programarTurnoIASiCorresponde();
 }
 
@@ -32,6 +33,13 @@ function comprobarFinJuego() {
     if (typeof actualizarInterfaz === 'function') actualizarInterfaz();
     dibujarTablero();
 }
+
+// --- Estado del panel de fin de partida (contador de 8s, límite de exportaciones) ---
+let finJuegoIntervalo = null;
+let finJuegoSegundosRestantes = 8;
+let finJuegoExportacionesUsadas = 0;
+const FIN_JUEGO_MAX_EXPORTACIONES = 3;
+const FIN_JUEGO_SEGUNDOS_TOTAL = 8;
 
 function mostrarFinJuego(tipo, jugadorEnTurno) {
     if (typeof detenerRelojes === 'function') detenerRelojes();
@@ -76,6 +84,78 @@ function mostrarFinJuego(tipo, jugadorEnTurno) {
     selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
     modoRuta = false; rutasAlternativas = [];
     dibujarTablero();
+
+    iniciarPanelFinPartida();
+}
+
+// Configura y arranca el contador de 8 segundos del panel de fin de partida.
+// Si no se pulsa "Listo" ni "Exportar partida" dentro de ese tiempo, regresa
+// automáticamente al menú principal.
+function iniciarPanelFinPartida() {
+    finJuegoExportacionesUsadas = 0;
+    finJuegoSegundosRestantes = FIN_JUEGO_SEGUNDOS_TOTAL;
+
+    const btnListo = document.getElementById('btnFinListo');
+    const btnExportar = document.getElementById('btnFinExportar');
+    const contadorEl = document.getElementById('finJuegoContador');
+
+    if (btnExportar) {
+        btnExportar.disabled = false;
+        btnExportar.textContent = `💾 Exportar partida (3 disponibles)`;
+    }
+    actualizarContadorFinPartida();
+
+    if (finJuegoIntervalo) clearInterval(finJuegoIntervalo);
+    finJuegoIntervalo = setInterval(() => {
+        finJuegoSegundosRestantes--;
+        actualizarContadorFinPartida();
+        if (finJuegoSegundosRestantes <= 0) {
+            detenerPanelFinPartida();
+            window.location.href = 'index.html';
+        }
+    }, 1000);
+
+    if (btnListo) {
+        btnListo.onclick = () => {
+            detenerPanelFinPartida();
+            window.location.href = 'index.html';
+        };
+    }
+    if (btnExportar) {
+        btnExportar.onclick = () => {
+            if (finJuegoExportacionesUsadas >= FIN_JUEGO_MAX_EXPORTACIONES) return;
+            if (typeof exportarPartida === 'function') exportarPartida();
+            finJuegoExportacionesUsadas++;
+            // Pulsar exportar pausa el contador automático de regreso al menú
+            pausarContadorFinPartida();
+            const restantes = FIN_JUEGO_MAX_EXPORTACIONES - finJuegoExportacionesUsadas;
+            if (restantes <= 0) {
+                btnExportar.disabled = true;
+                btnExportar.textContent = '💾 Exportar (límite alcanzado)';
+            } else {
+                btnExportar.textContent = `💾 Exportar partida (${restantes} disponibles)`;
+            }
+        };
+    }
+}
+
+function actualizarContadorFinPartida() {
+    const contadorEl = document.getElementById('finJuegoContador');
+    if (contadorEl) {
+        contadorEl.textContent = finJuegoSegundosRestantes > 0
+            ? `Volviendo al menú en ${finJuegoSegundosRestantes}s...`
+            : '';
+    }
+}
+
+function pausarContadorFinPartida() {
+    if (finJuegoIntervalo) { clearInterval(finJuegoIntervalo); finJuegoIntervalo = null; }
+    const contadorEl = document.getElementById('finJuegoContador');
+    if (contadorEl) contadorEl.textContent = 'Partida exportada. Pulsa "Listo" cuando quieras volver al menú.';
+}
+
+function detenerPanelFinPartida() {
+    if (finJuegoIntervalo) { clearInterval(finJuegoIntervalo); finJuegoIntervalo = null; }
 }
 
 // Llamado al iniciar una partida nueva o al importar/deshacer, para limpiar cualquier
@@ -84,6 +164,7 @@ function reiniciarFinJuego() {
     juegoTerminado = false;
     casillaFinJuego = null;
     casillasFinJuego = [];
+    detenerPanelFinPartida();
     const banner = document.getElementById('bannerFin');
     if (banner) { banner.className = 'banner-fin'; }
     if (typeof reanudarMusicaNormal === 'function') reanudarMusicaNormal();

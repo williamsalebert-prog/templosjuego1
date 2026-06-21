@@ -16,7 +16,10 @@ function mostrarMenuCoronacion() {
         const btn = document.createElement('button');
         const img = document.createElement('img');
         img.src = `img/${op.tipo.toLowerCase()}.jpg`;
-        img.onerror = () => { img.style.display = 'none'; btn.textContent = op.tipo; };
+        img.onerror = () => {
+            img.style.display = 'none';
+            btn.innerHTML = `<div style="font-size:1.6rem;line-height:1;">${SIMBOLO_PIEZA[op.tipo] || ''}</div><div style="font-size:0.65rem;">${op.nombre}</div>`;
+        };
         img.onload = () => { btn.textContent = ''; btn.appendChild(img); };
         btn.appendChild(img);
         btn.onclick = () => coronar(op.tipo);

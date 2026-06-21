@@ -54,20 +54,7 @@ function procesarSiguientePaso() {
         const x = origenX + (destinoX - origenX) * progreso;
         const y = origenY + (destinoY - origenY) * progreso + (paso.tipo === 'jump' ? Math.sin(progreso * Math.PI) * 15 : 0);
         dibujarTablero();
-        ctx.save();
-        let radio = CELL_SIZE * 0.4;
-        ctx.strokeStyle = colorBordeEquipo[piezaAnimacion.jugador];
-        ctx.lineWidth = 2.5; ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath(); ctx.arc(x, y, radio, 0, 2*Math.PI); ctx.fill(); ctx.stroke();
-        let img = imagenesPiezas[piezaAnimacion.tipo];
-        if (img && img.complete && img.naturalWidth > 0) {
-            ctx.beginPath(); ctx.arc(x, y, radio-2, 0, 2*Math.PI); ctx.clip();
-            ctx.drawImage(img, x - radio + 2, y - radio + 2, (radio-2)*2, (radio-2)*2);
-        } else {
-            ctx.fillStyle = '#000000'; ctx.font = `bold ${CELL_SIZE*0.3}px monospace`;
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(piezaAnimacion.tipo, x, y);
-        }
-        ctx.restore();
+        dibujarPiezaTallada(ctx, x, y, CELL_SIZE * 0.4, piezaAnimacion, false);
         if (progreso < 1.0) requestAnimationFrame(animarPaso);
         else { origenAnimacion = [toF, toC]; procesarSiguientePaso(); }
     }
