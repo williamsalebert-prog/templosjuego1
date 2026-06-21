@@ -3,197 +3,391 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Templos - Inicio</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Templos</title>
 <style>
 :root{
     --rojo:#b5302f; --azul:#2b4f9e; --oro:#cda86b; --oro-claro:#e7cf9c;
     --madera-osc:#241712; --madera:#3b261c; --panel:#1e1410;
 }
 * { box-sizing: border-box; }
-html, body { height: 100%; }
+html, body { height: 100%; margin: 0; }
 body {
     background:
         radial-gradient(ellipse at top left, rgba(80,55,30,0.25), transparent 55%),
         radial-gradient(ellipse at bottom right, rgba(40,20,10,0.4), transparent 55%),
         radial-gradient(ellipse at center, #18120d 0%, #0c0907 100%);
-    display: flex; justify-content: center; align-items: center; min-height: 100vh;
-    font-family: 'Segoe UI', Georgia, serif; margin: 0; color: var(--oro-claro);
-    padding: 14px; overflow-x: hidden;
+    display: flex; justify-content: center; align-items: center; min-height: 100dvh;
+    font-family: 'Segoe UI', Georgia, serif; color: var(--oro-claro);
+    padding: 12px; overflow-x: hidden;
 }
 .pantalla-inicio {
     text-align: center; background: linear-gradient(160deg,#2a1d15,#1a120c);
-    padding: clamp(18px, 4vw, 36px); border-radius: 20px;
+    padding: clamp(16px, 4vw, 30px); border-radius: 20px;
     box-shadow: 0 20px 50px rgba(0,0,0,0.65), inset 0 0 40px rgba(0,0,0,0.35);
-    border:1px solid #4a3424; max-width: 480px; width: 100%;
-    max-height: 96vh; overflow-y: auto;
+    border:1px solid #4a3424; max-width: 420px; width: 100%;
+    max-height: 96dvh; overflow-y: auto;
 }
-.pantalla-inicio::-webkit-scrollbar { width: 8px; }
-.pantalla-inicio::-webkit-scrollbar-thumb { background: #4a3424; border-radius: 8px; }
-h1 { margin: 0 0 4px; font-size: clamp(1.5rem, 5vw, 2rem); text-shadow: 0 2px 6px rgba(0,0,0,0.5); letter-spacing: 1px; }
-.subtitulo { margin: 0 0 18px; opacity: 0.75; font-size: 0.9rem; }
+.pantalla-inicio::-webkit-scrollbar { width: 6px; }
+.pantalla-inicio::-webkit-scrollbar-thumb { background: #4a3424; border-radius: 6px; }
 
 .fila-titulo { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom: 4px; }
+h1 { margin: 0; font-size: clamp(1.4rem, 5vw, 1.9rem); text-shadow: 0 2px 6px rgba(0,0,0,0.5); }
+.subtitulo { margin: 2px 0 16px; opacity: 0.7; font-size: 0.85rem; }
+
 .btn-ayuda-global {
-    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--oro);
+    width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--oro);
     background: radial-gradient(circle at 35% 30%, #4a3424, #1a120c); color: var(--oro-claro);
-    cursor: pointer; font-weight: bold; font-size: 1rem; display:flex; align-items:center; justify-content:center;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    cursor: pointer; font-weight: bold; font-size: 0.95rem; display:flex; align-items:center; justify-content:center;
+    flex-shrink: 0;
 }
-.btn-ayuda-global:hover { filter: brightness(1.2); }
 
-button { font-size: 1rem; padding: 11px 20px; margin: 5px; border: 1px solid #6b4c2c; border-radius: 14px; cursor: pointer; font-weight: bold; background: linear-gradient(160deg,#e7cf9c,#cda86b); color:#2a1c10; box-shadow: 0 3px 8px rgba(0,0,0,0.4); transition: transform .1s, filter .1s; }
+button { font-size: 0.95rem; padding: 11px 18px; margin: 4px; border: 1px solid #6b4c2c; border-radius: 12px; cursor: pointer; font-weight: bold; background: linear-gradient(160deg,#e7cf9c,#cda86b); color:#2a1c10; box-shadow: 0 3px 8px rgba(0,0,0,0.4); transition: transform .1s, filter .1s; }
 button:hover { filter: brightness(1.08); transform: translateY(-1px); }
-button:active { transform: translateY(0); }
-.modo-btn { font-size: 1.05rem; padding: 13px 22px; width: 100%; }
-.fila-modos { display:flex; flex-direction:column; gap:8px; margin-bottom: 14px; }
+button:active { transform: translateY(0); filter: brightness(1.15); }
 
-.seccion { margin-top: 16px; padding-top: 14px; border-top: 1px solid #3a2a1c; text-align:left; }
-.seccion h3 { margin: 0 0 8px; font-size: 0.78rem; letter-spacing: 1.5px; text-transform: uppercase; color:#a98a5a; text-align:center; }
+.modo-btn { font-size: 1rem; padding: 13px 18px; width: 100%; display:flex; align-items:center; gap:10px; }
+.fila-modos { display:flex; flex-direction:column; gap:7px; margin-bottom: 14px; }
 
 .dificultad { display: none; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom: 10px; }
-.dificultad button { flex:1; min-width: 90px; padding: 9px 6px; font-size: 0.9rem; }
+.dificultad button { flex:1; min-width: 80px; padding: 9px 6px; font-size: 0.88rem; }
 
-.grid-tiempo { display:grid; grid-template-columns: 1fr 1fr; gap:7px; }
+.seccion { margin-top: 14px; padding-top: 12px; border-top: 1px solid #3a2a1c; text-align:left; }
+.seccion h3 { margin: 0 0 8px; font-size: 0.72rem; letter-spacing: 1.5px; text-transform: uppercase; color:#a98a5a; text-align:center; }
+
+.grid-tiempo { display:grid; grid-template-columns: 1fr 1fr; gap:6px; }
 .opcion-tiempo {
-    background: linear-gradient(160deg,#2d2118,#1a130d); border:1px solid #4a3424; border-radius: 12px;
-    padding: 8px 6px; cursor:pointer; text-align:center; font-size: 0.78rem; color:#cbb892;
+    background: linear-gradient(160deg,#2d2118,#1a130d); border:1px solid #4a3424; border-radius: 10px;
+    padding: 7px 5px; cursor:pointer; text-align:center; font-size: 0.75rem; color:#cbb892;
     transition: all .15s; line-height:1.3;
 }
-.opcion-tiempo b { display:block; font-size: 0.85rem; color: var(--oro-claro); margin-bottom: 2px; }
+.opcion-tiempo b { display:block; font-size: 0.82rem; color: var(--oro-claro); margin-bottom: 2px; }
 .opcion-tiempo:hover { border-color: var(--oro); }
 .opcion-tiempo.activa { border-color: var(--oro); background: linear-gradient(160deg,#4a3424,#2a1c10); box-shadow: 0 0 10px rgba(205,168,107,0.4); }
 .opcion-tiempo.sin-reloj { grid-column: 1 / -1; }
 
-.toggle-reloj { display:flex; align-items:center; gap:8px; margin-bottom: 10px; font-size: 0.85rem; cursor:pointer; user-select:none; }
+.toggle-reloj { display:flex; align-items:center; gap:8px; margin-bottom: 8px; font-size: 0.82rem; cursor:pointer; user-select:none; }
 .toggle-reloj input { width:16px; height:16px; accent-color: var(--oro); }
 
-.panel-online { display:none; flex-direction:column; gap:8px; }
-.panel-online button { width:100%; margin:0; }
-.online-sub { font-size: 0.75rem; opacity:0.7; text-align:center; margin: 2px 0 6px; }
+/* Panel online en el menú inicial */
+.panel-online-inicio {
+    display:none; flex-direction:column; gap:8px;
+    background: linear-gradient(160deg,#1e1510,#150f0a);
+    border:1px solid #4a3424; border-radius:14px; padding:14px;
+}
+.panel-online-inicio h4 { margin:0 0 8px; font-size:0.75rem; color:#a98a5a; letter-spacing:1px; text-transform:uppercase; text-align:center; }
+.panel-online-inicio button { width:100%; margin:0; }
+.online-nota { font-size:0.72rem; opacity:0.65; text-align:center; margin:0 0 6px; line-height:1.4; }
 
+/* Modal sala creada (en index, antes de ir al tablero) */
+.modal-sala {
+    position: fixed; inset:0; background:rgba(5,3,2,0.88);
+    display:none; align-items:center; justify-content:center; z-index:50; padding:16px;
+}
+.modal-sala.mostrar { display:flex; }
+.sala-box {
+    background: linear-gradient(160deg,#2a1d15,#1a120c); border:1px solid var(--oro);
+    border-radius:18px; padding:22px 18px; max-width:340px; width:100%;
+    box-shadow:0 20px 50px rgba(0,0,0,0.7); text-align:center;
+}
+.sala-box h3 { margin:0 0 10px; font-size:1.05rem; }
+.sala-box p { margin:0 0 10px; font-size:0.85rem; opacity:0.85; line-height:1.4; }
+.codigo-sala {
+    font-size:2rem; font-weight:bold; letter-spacing:5px;
+    background:#100b08; border-radius:10px; padding:12px;
+    color:var(--oro-claro); margin:10px 0; border:1px solid #4a3424;
+}
+#avisoSala { font-size:0.8rem; color:#cbb892; min-height:1.2em; margin:6px 0; }
+.sala-btn {
+    width:100%; padding:11px; border-radius:10px; border:none; font-weight:bold;
+    cursor:pointer; font-size:0.92rem; margin-top:6px;
+    background: linear-gradient(160deg,var(--oro-claro),var(--oro)); color:#2a1c10;
+}
+.sala-btn:disabled { opacity:0.45; cursor:not-allowed; }
+.sala-btn.cancelar { background: linear-gradient(160deg,#3a2a1c,#241712); color:var(--oro-claro); border:1px solid #4a3424; }
+
+/* Modal unirse */
+.input-codigo {
+    width:100%; text-transform:uppercase; letter-spacing:3px; text-align:center;
+    font-weight:bold; font-size:1.2rem; padding:10px; border-radius:10px;
+    border:1px solid #4a3424; background:#100b08; color:var(--oro-claro);
+    margin-bottom:8px;
+}
+
+/* Modal ayuda */
 .modal-ayuda {
-    position: fixed; inset: 0; background: rgba(5,3,2,0.85); display:none;
-    align-items:center; justify-content:center; z-index: 50; padding: 16px;
+    position: fixed; inset: 0; background: rgba(5,3,2,0.85);
+    display:none; align-items:center; justify-content:center; z-index: 50; padding: 16px;
 }
 .modal-ayuda.mostrar { display:flex; }
 .modal-ayuda-contenido {
     background: linear-gradient(160deg,#2a1d15,#1a120c); border:1px solid var(--oro);
-    border-radius: 18px; padding: 22px; max-width: 460px; width:100%; max-height: 85vh; overflow-y:auto;
+    border-radius: 18px; padding: 20px; max-width: 420px; width:100%; max-height: 85dvh; overflow-y:auto;
     box-shadow: 0 20px 50px rgba(0,0,0,0.7);
 }
 .modal-ayuda-contenido h2 { margin-top:0; text-align:center; }
-.lista-ayuda { display:flex; flex-direction:column; gap:8px; margin: 14px 0; }
+.lista-ayuda { display:flex; flex-direction:column; gap:7px; margin: 12px 0; }
 .lista-ayuda button { width:100%; margin:0; text-align:left; background: linear-gradient(160deg,#3a2a1c,#241712); color: var(--oro-claro); display:flex; align-items:center; gap:8px; }
 .lista-ayuda button:hover { background: linear-gradient(160deg,#4a3424,#2a1c10); }
-.cerrar-modal { width:100%; background: linear-gradient(160deg,#c75b5b,#7a1f1e); color:#fff; }
+.cerrar-modal { width:100%; background: linear-gradient(160deg,#c75b5b,#7a1f1e); color:#fff; margin:0; }
 </style>
 </head>
 <body>
-    <div class="pantalla-inicio">
-        <div class="fila-titulo">
-            <h1>⚔️ Templos ⚔️</h1>
-            <button class="btn-ayuda-global" id="btnAyudaGlobal" title="Ayuda / cómo se juega">?</button>
-        </div>
-        <p class="subtitulo">Juego de estrategia tipo damas chinas + ajedrez</p>
+<div class="pantalla-inicio">
+    <div class="fila-titulo">
+        <h1>⚔️ Templos ⚔️</h1>
+        <button class="btn-ayuda-global" id="btnAyudaGlobal" title="Ayuda">?</button>
+    </div>
+    <p class="subtitulo">Estrategia: damas chinas + ajedrez</p>
 
-        <div class="fila-modos">
-            <button class="modo-btn" onclick="mostrarDificultad()">🤖 1 Jugador (vs PC)</button>
-            <button class="modo-btn" onclick="seleccionarModo(2)">👥 2 Jugadores (mismo dispositivo)</button>
-            <button class="modo-btn" onclick="mostrarPanelOnline()">🌐 2 Jugadores (otro dispositivo)</button>
-        </div>
-
-        <div id="dificultad" class="dificultad">
-            <button onclick="seleccionarModo(1, 1)">Fácil</button>
-            <button onclick="seleccionarModo(1, 2)">Medio</button>
-            <button onclick="seleccionarModo(1, 3)">Difícil</button>
-        </div>
-
-        <div id="panelOnlineInicio" class="panel-online">
-            <p class="online-sub">Gratis y en tiempo real: el Jugador 1 crea una sala y comparte un código corto (una sola vez); el Jugador 2 lo pega y listo, las jugadas se ven al instante en ambos dispositivos.</p>
-            <button onclick="iniciarPartidaOnline(0)">Soy el Jugador 1 (Rojo) — crear sala</button>
-            <button onclick="iniciarPartidaOnline(1)">Soy el Jugador 2 (Azul) — unirme con un código</button>
-        </div>
-
-        <div class="seccion" id="seccionTiempo">
-            <h3>Temporizador</h3>
-            <label class="toggle-reloj">
-                <input type="checkbox" id="chkTemporizador">
-                Usar reloj de partida
-            </label>
-            <div class="grid-tiempo" id="gridTiempo">
-                <div class="opcion-tiempo" data-modo="bala"><b>Bala</b>1 min</div>
-                <div class="opcion-tiempo" data-modo="blitz5"><b>Blitz 5</b>5 min</div>
-                <div class="opcion-tiempo" data-modo="blitz32"><b>Blitz 3+2</b>3 min +2s/jug.</div>
-                <div class="opcion-tiempo" data-modo="rapidoA"><b>Rápido A</b>10 min +10s</div>
-                <div class="opcion-tiempo" data-modo="rapidoB"><b>Rápido B</b>15 min +10s</div>
-                <div class="opcion-tiempo" data-modo="clasico"><b>Clásico</b>90 min +30s</div>
-                <div class="opcion-tiempo sin-reloj" data-modo="infinito"><b>Infinito</b>Solo cronómetro, sin límite</div>
-            </div>
-        </div>
+    <div class="fila-modos">
+        <button class="modo-btn" onclick="mostrarDificultad()">🤖 <span>1 Jugador (vs PC)</span></button>
+        <button class="modo-btn" onclick="seleccionarModo(2)">👥 <span>2 Jugadores (mismo dispositivo)</span></button>
+        <button class="modo-btn" onclick="mostrarPanelOnline()">🌐 <span>2 Jugadores (otro dispositivo)</span></button>
     </div>
 
-    <div class="modal-ayuda" id="modalAyuda">
-        <div class="modal-ayuda-contenido">
-            <h2>📖 Ayuda</h2>
-            <p style="text-align:center; opacity:0.8; font-size:0.9rem;">Elige qué quieres aprender. Se mostrará una animación corta explicando cada cosa.</p>
-            <div class="lista-ayuda">
-                <button onclick="abrirAyudaEnTablero('tablero')">🗺️ El tablero y sus zonas</button>
-                <button onclick="abrirAyudaEnTablero('movimientos')">♟️ Movimientos de cada pieza</button>
-                <button onclick="abrirAyudaEnTablero('enroque')">🏯 Enroque</button>
-                <button onclick="abrirAyudaEnTablero('jaque')">⚠️ Jaque y jaque mate</button>
-                <button onclick="abrirAyudaEnTablero('ahogado')">🤝 Ahogado (tablas)</button>
-            </div>
-            <button class="cerrar-modal" onclick="cerrarAyuda()">Cerrar</button>
+    <div id="dificultad" class="dificultad">
+        <button onclick="seleccionarModo(1,1)">Fácil</button>
+        <button onclick="seleccionarModo(1,2)">Medio</button>
+        <button onclick="seleccionarModo(1,3)">Difícil</button>
+    </div>
+
+    <div id="panelOnlineInicio" class="panel-online-inicio">
+        <h4>Multijugador en tiempo real</h4>
+        <p class="online-nota">Gratis, sin cuentas. Jugador 1 crea una sala y comparte el código; Jugador 2 lo ingresa para unirse.</p>
+        <button onclick="abrirModalCrearSala()">Soy J1 (Rojo) — Crear sala</button>
+        <button onclick="abrirModalUnirse()" style="margin-top:4px;">Soy J2 (Azul) — Unirme con código</button>
+    </div>
+
+    <div class="seccion" id="seccionTiempo">
+        <h3>Temporizador</h3>
+        <label class="toggle-reloj">
+            <input type="checkbox" id="chkTemporizador">
+            Usar reloj de partida
+        </label>
+        <div class="grid-tiempo" id="gridTiempo">
+            <div class="opcion-tiempo" data-modo="bala"><b>Bala</b>1 min</div>
+            <div class="opcion-tiempo" data-modo="blitz5"><b>Blitz 5</b>5 min</div>
+            <div class="opcion-tiempo" data-modo="blitz32"><b>Blitz 3+2</b>3 min +2s/jug.</div>
+            <div class="opcion-tiempo" data-modo="rapidoA"><b>Rápido A</b>10 min +10s</div>
+            <div class="opcion-tiempo" data-modo="rapidoB"><b>Rápido B</b>15 min +10s</div>
+            <div class="opcion-tiempo" data-modo="clasico"><b>Clásico</b>90 min +30s</div>
+            <div class="opcion-tiempo sin-reloj" data-modo="infinito"><b>Infinito</b>Solo cronómetro</div>
         </div>
     </div>
+</div>
+
+<!-- MODAL CREAR SALA -->
+<div class="modal-sala" id="modalCrearSala">
+    <div class="sala-box">
+        <h3>🌐 Sala creada</h3>
+        <p>Comparte este código con el Jugador 2. La partida comienza cuando se una.</p>
+        <div class="codigo-sala" id="codigoSalaDisplay">------</div>
+        <div id="avisoSala">⏳ Iniciando sala...</div>
+        <button class="sala-btn cancelar" id="btnCancelarSala" onclick="cancelarSala()">Cancelar</button>
+    </div>
+</div>
+
+<!-- MODAL UNIRSE -->
+<div class="modal-sala" id="modalUnirse">
+    <div class="sala-box">
+        <h3>🌐 Unirse a partida</h3>
+        <p>Ingresa el código que te compartió el Jugador 1:</p>
+        <input id="inputCodigoUnirseIdx" class="input-codigo" type="text" maxlength="6" placeholder="CÓDIGO" autocomplete="off">
+        <div id="avisoUnirse" style="font-size:0.8rem;color:#cbb892;min-height:1.2em;margin:6px 0;"></div>
+        <button class="sala-btn" id="btnConfirmarUnirse">Unirme ▶</button>
+        <button class="sala-btn cancelar" onclick="cerrarModalUnirse()">Cancelar</button>
+    </div>
+</div>
+
+<!-- MODAL AYUDA -->
+<div class="modal-ayuda" id="modalAyuda">
+    <div class="modal-ayuda-contenido">
+        <h2>📖 Ayuda</h2>
+        <p style="text-align:center;opacity:0.8;font-size:0.85rem;">Elige qué quieres aprender:</p>
+        <div class="lista-ayuda">
+            <button onclick="abrirAyudaEnTablero('tablero')">🗺️ El tablero y sus zonas</button>
+            <button onclick="abrirAyudaEnTablero('movimientos')">♟️ Movimientos de cada pieza</button>
+            <button onclick="abrirAyudaEnTablero('enroque')">🏯 Enroque</button>
+            <button onclick="abrirAyudaEnTablero('jaque')">⚠️ Jaque y jaque mate</button>
+            <button onclick="abrirAyudaEnTablero('ahogado')">🤝 Ahogado (tablas)</button>
+        </div>
+        <button class="cerrar-modal" onclick="cerrarAyuda()">Cerrar</button>
+    </div>
+</div>
 
 <script>
-    let modoTiempoSeleccionado = 'blitz5';
+// ===== PeerJS para crear sala en el menú =====
+const PEERJS_CDNS = [
+    'https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js'
+];
 
-    function mostrarDificultad() {
-        document.getElementById('dificultad').style.display = 'flex';
-        document.getElementById('panelOnlineInicio').style.display = 'none';
-    }
-    function mostrarPanelOnline() {
-        document.getElementById('panelOnlineInicio').style.display = 'flex';
-        document.getElementById('dificultad').style.display = 'none';
-    }
+let peerIndex = null;
+let codigoSalaActual = null;
+let modoTiempoSeleccionado = 'blitz5';
 
-    document.querySelectorAll('.opcion-tiempo').forEach(el => {
-        el.addEventListener('click', () => {
-            document.querySelectorAll('.opcion-tiempo').forEach(o => o.classList.remove('activa'));
-            el.classList.add('activa');
-            modoTiempoSeleccionado = el.dataset.modo;
-            document.getElementById('chkTemporizador').checked = true;
+// Temporizador
+document.querySelectorAll('.opcion-tiempo').forEach(el => {
+    el.addEventListener('click', () => {
+        document.querySelectorAll('.opcion-tiempo').forEach(o => o.classList.remove('activa'));
+        el.classList.add('activa');
+        modoTiempoSeleccionado = el.dataset.modo;
+        document.getElementById('chkTemporizador').checked = true;
+    });
+});
+document.querySelector('.opcion-tiempo[data-modo="blitz5"]').classList.add('activa');
+
+function construirParametrosTiempo() {
+    const timer = document.getElementById('chkTemporizador').checked ? 1 : 0;
+    return `&timer=${timer}&timerMode=${modoTiempoSeleccionado}`;
+}
+
+function mostrarDificultad() {
+    document.getElementById('dificultad').style.display = 'flex';
+    document.getElementById('panelOnlineInicio').style.display = 'none';
+}
+function mostrarPanelOnline() {
+    document.getElementById('panelOnlineInicio').style.display = 'flex';
+    document.getElementById('dificultad').style.display = 'none';
+}
+function seleccionarModo(modo, dificultad) {
+    let url = `tablero.html?mode=${modo}${construirParametrosTiempo()}`;
+    if (dificultad) url += `&diff=${dificultad}`;
+    window.location.href = url;
+}
+
+// ===== CREAR SALA (en index) =====
+function cargarPeerJS(cb) {
+    if (window.Peer) { cb(); return; }
+    let i = 0;
+    function sig() {
+        if (i >= PEERJS_CDNS.length) { cb(new Error('No PeerJS')); return; }
+        const s = document.createElement('script');
+        s.src = PEERJS_CDNS[i++];
+        s.onload = cb; s.onerror = sig;
+        document.head.appendChild(s);
+    }
+    sig();
+}
+
+function generarCodigo() {
+    const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let c = '';
+    for (let i = 0; i < 6; i++) c += a[Math.floor(Math.random()*a.length)];
+    return c;
+}
+
+function abrirModalCrearSala() {
+    document.getElementById('modalCrearSala').classList.add('mostrar');
+    document.getElementById('avisoSala').textContent = '⏳ Cargando...';
+    document.getElementById('codigoSalaDisplay').textContent = '...';
+
+    cargarPeerJS((err) => {
+        if (err) { document.getElementById('avisoSala').textContent = '⚠️ Sin internet. Revisa tu conexión.'; return; }
+        codigoSalaActual = generarCodigo();
+        document.getElementById('codigoSalaDisplay').textContent = codigoSalaActual;
+        document.getElementById('avisoSala').textContent = '⏳ Esperando al Jugador 2...';
+
+        const idCompleto = 'templos-' + codigoSalaActual;
+        if (peerIndex) { try { peerIndex.destroy(); } catch(e){} }
+        peerIndex = new Peer(idCompleto, { host:'0.peerjs.com', port:443, path:'/', secure:true });
+
+        peerIndex.on('open', () => {
+            document.getElementById('avisoSala').textContent = '🟠 Sala activa. Esperando al J2...';
+        });
+        peerIndex.on('connection', (conn) => {
+            conn.on('open', () => {
+                // J2 conectado: ir al tablero
+                conn.send({ tipo: 'ir', sala: codigoSalaActual });
+                setTimeout(() => {
+                    const url = `tablero.html?mode=2&online=1&jugador=0&sala=${codigoSalaActual}${construirParametrosTiempo()}`;
+                    window.location.href = url;
+                }, 200);
+            });
+        });
+        peerIndex.on('error', (e) => {
+            if (e.type === 'unavailable-id') {
+                codigoSalaActual = generarCodigo();
+                document.getElementById('codigoSalaDisplay').textContent = codigoSalaActual;
+                // reintentar
+                abrirModalCrearSala();
+            } else {
+                document.getElementById('avisoSala').textContent = '⚠️ Error: ' + (e.type||'desconocido');
+            }
         });
     });
-    document.querySelector('.opcion-tiempo[data-modo="blitz5"]').classList.add('activa');
+}
 
-    function construirParametrosTiempo() {
-        const timer = document.getElementById('chkTemporizador').checked ? 1 : 0;
-        return `&timer=${timer}&timerMode=${modoTiempoSeleccionado}`;
-    }
+function cancelarSala() {
+    if (peerIndex) { try { peerIndex.destroy(); } catch(e){} peerIndex = null; }
+    document.getElementById('modalCrearSala').classList.remove('mostrar');
+}
 
-    function seleccionarModo(modo, dificultad) {
-        let url = `tablero.html?mode=${modo}${construirParametrosTiempo()}`;
-        if (dificultad) url += `&diff=${dificultad}`;
-        window.location.href = url;
-    }
+// ===== UNIRSE (en index) =====
+function abrirModalUnirse() {
+    document.getElementById('modalUnirse').classList.add('mostrar');
+    document.getElementById('avisoUnirse').textContent = '';
+    const input = document.getElementById('inputCodigoUnirseIdx');
+    if (input) { input.value = ''; setTimeout(()=>input.focus(),100); }
 
-    function iniciarPartidaOnline(soyJugador) {
-        let url = `tablero.html?mode=2&online=1&jugador=${soyJugador}${construirParametrosTiempo()}`;
-        window.location.href = url;
-    }
+    const btn = document.getElementById('btnConfirmarUnirse');
+    if (btn) btn.onclick = () => {
+        const codigo = (input ? input.value : '').trim().toUpperCase();
+        if (codigo.length < 4) { document.getElementById('avisoUnirse').textContent = '⚠️ Código muy corto.'; return; }
+        btn.disabled = true; btn.textContent = 'Conectando...';
+        document.getElementById('avisoUnirse').textContent = '⏳ Buscando sala...';
+        cargarPeerJS((err) => {
+            if (err) { document.getElementById('avisoUnirse').textContent='⚠️ Sin internet.'; btn.disabled=false; btn.textContent='Unirme ▶'; return; }
+            const p = new Peer(undefined, { host:'0.peerjs.com', port:443, path:'/', secure:true });
+            p.on('open', () => {
+                const conn = p.connect('templos-'+codigo, { reliable: true });
+                conn.on('open', () => {
+                    // Ir al tablero como J2
+                    const url = `tablero.html?mode=2&online=1&jugador=1&sala=${codigo}${construirParametrosTiempo()}`;
+                    window.location.href = url;
+                });
+                conn.on('error', () => {
+                    document.getElementById('avisoUnirse').textContent = '⚠️ No se encontró la sala.';
+                    btn.disabled=false; btn.textContent='Unirme ▶';
+                });
+                setTimeout(() => {
+                    if (!conn.open) {
+                        document.getElementById('avisoUnirse').textContent = '⚠️ No se pudo conectar. Verifica el código.';
+                        btn.disabled=false; btn.textContent='Unirme ▶';
+                    }
+                }, 8000);
+            });
+            p.on('error', (e) => {
+                document.getElementById('avisoUnirse').textContent = '⚠️ Error: '+(e.type||'desconocido');
+                btn.disabled=false; btn.textContent='Unirme ▶';
+            });
+        });
+    };
+}
 
-    function abrirAyuda() { document.getElementById('modalAyuda').classList.add('mostrar'); }
-    function cerrarAyuda() { document.getElementById('modalAyuda').classList.remove('mostrar'); }
-    document.getElementById('btnAyudaGlobal').addEventListener('click', abrirAyuda);
+const inputUnirse = document.getElementById('inputCodigoUnirseIdx');
+if (inputUnirse) {
+    inputUnirse.addEventListener('input', () => {
+        inputUnirse.value = inputUnirse.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+    });
+    inputUnirse.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') document.getElementById('btnConfirmarUnirse').click();
+    });
+}
 
-    // La ayuda animada interactiva vive dentro del tablero (necesita el canvas para
-    // las animaciones), así que desde aquí enviamos al tablero en "modo ayuda".
-    function abrirAyudaEnTablero(tema) {
-        window.location.href = `tablero.html?ayuda=${tema}`;
-    }
+function cerrarModalUnirse() {
+    document.getElementById('modalUnirse').classList.remove('mostrar');
+}
+
+// ===== AYUDA =====
+document.getElementById('btnAyudaGlobal').addEventListener('click', () => {
+    document.getElementById('modalAyuda').classList.add('mostrar');
+});
+function cerrarAyuda() { document.getElementById('modalAyuda').classList.remove('mostrar'); }
+function abrirAyudaEnTablero(tema) { window.location.href = `tablero.html?ayuda=${tema}`; }
 </script>
 </body>
 </html>
