@@ -91,10 +91,15 @@ class F1 extends Pieza {
             }
 
             if (!haSaltado) {
+                // Captura directa cuando no hay casilla detrás para saltar (borde/zona no jugable).
+                // Solo en las 3 direcciones de avance: el peón únicamente captura hacia adelante
+                // fuera de una cadena de saltos; las 8 direcciones son exclusivas del sistema de
+                // saltos encadenados (dirsSalto, más abajo), no de esta captura suelta.
                 for (let [df, dc] of dirsMovimiento) {
                     let nf = f + df, nc = c + dc;
                     if (nf >= 0 && nf < FILAS && nc >= 0 && nc < COLUMNAS && esJugable(nf, nc) &&
-                        tablero[nf][nc] !== null && tablero[nf][nc].jugador !== jugador) {
+                        tablero[nf][nc] !== null && tablero[nf][nc].jugador !== jugador &&
+                        capturaPermitida(this.tipo, tablero[nf][nc])) {
                         let detrasF = nf + df, detrasC = nc + dc;
                         if (!(detrasF >= 0 && detrasF < FILAS && detrasC >= 0 && detrasC < COLUMNAS && esJugable(detrasF, detrasC))) {
                             let clave = `${nf},${nc}`;
