@@ -48,14 +48,18 @@ function iniciarJuego() {
     turno = 0; selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
     modoRuta = false; rutasAlternativas = []; destinoRuta = null;
     enroqueRealizado = [false, false]; coronacionPendiente = null;
+    contadorJugadas = 0;
     menuCoronacion.style.display = 'none';
     historial.limpiar(); carcela.limpiar();
+    if (typeof reiniciarFinJuego === 'function') reiniciarFinJuego();
     precargarImagenes();
+    if (typeof actualizarInterfaz === 'function') actualizarInterfaz();
+    if (typeof iniciarRelojes === 'function') iniciarRelojes();
     dibujarTablero();
 }
 
 canvas.addEventListener('click', (e) => {
-    if (coronacionPendiente || animando) return;
+    if (coronacionPendiente || animando || juegoTerminado) return;
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -64,12 +68,11 @@ canvas.addEventListener('click', (e) => {
     if (fila < 0 || fila >= FILAS || col < 0 || col >= COLUMNAS) return;
 
     if (modoRuta) {
-        let fichaClicRuta = board[fila][col];
-        if (fichaClicRuta && fichaClicRuta.jugador === turno) {
-            modoRuta = false; rutasAlternativas = [];
-            seleccionarNuevaPieza(fila, col);
-            return;
-        }
+        // ✅ Primero comprobamos si el clic corresponde a una de las rutas alternativas
+        // resaltadas en azul (aunque esa casilla intermedia tenga una ficha amiga encima,
+        // sigue siendo una ruta válida y debe poder elegirse). Antes esto se comprobaba
+        // DESPUÉS de mirar si había una ficha propia, así que un clic sobre una ruta con
+        // ficha amiga en medio deseleccionaba todo en vez de ejecutar el movimiento.
         for (let ruta of rutasAlternativas) {
             let [if_, ic] = ruta.inter;
             if (if_ === fila && ic === col) {
@@ -77,6 +80,12 @@ canvas.addEventListener('click', (e) => {
                 aplicarMovimiento([selectedPiece.fila, selectedPiece.col], destinoRuta, caminoElegido);
                 return;
             }
+        }
+        let fichaClicRuta = board[fila][col];
+        if (fichaClicRuta && fichaClicRuta.jugador === turno) {
+            modoRuta = false; rutasAlternativas = [];
+            seleccionarNuevaPieza(fila, col);
+            return;
         }
         modoRuta = false; rutasAlternativas = []; selectedPiece = null;
         posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
@@ -93,7 +102,9 @@ canvas.addEventListener('click', (e) => {
         ejecutarEnroque(selectedPiece.fila, selectedPiece.col, fila, col, turno);
         turno = 1 - turno;
         selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
-        dibujarTablero(); return;
+        dibujarTablero();
+        if (typeof despuesDeJugada === 'function') despuesDeJugada();
+        return;
     }
 
     let clave = `${fila},${col}`;
@@ -160,17 +171,49 @@ function seleccionarNuevaPieza(fila, col) {
 document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'z') {
         e.preventDefault();
-        if (!animando) {
-            if (!historial.puedeDeshacer()) return;
-            let estado = historial.deshacer();
-            board = estado.board; turno = estado.turno;
-            enroqueRealizado = estado.enroqueRealizado || [false, false];
-            selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
-            modoRuta = false; rutasAlternativas = []; destinoRuta = null;
-            coronacionPendiente = null; menuCoronacion.style.display = 'none';
-            dibujarTablero();
-        }
+        if (animando || coronacionPendiente) return;
+        if (!historial.puedeDeshacer()) return;
+        let estadoActual = { board: copiarBoard(), turno, enroqueRealizado: [...enroqueRealizado] };
+        let estado = historial.deshacer(estadoActual);
+        board = estado.board; turno = estado.turno;
+        enroqueRealizado = estado.enroqueRealizado || [false, false];
+        selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
+        modoRuta = false; rutasAlternativas = []; destinoRuta = null;
+        coronacionPendiente = null; menuCoronacion.style.display = 'none';
+        if (typeof reiniciarFinJuego === 'function') reiniciarFinJuego();
+        if (typeof actualizarInterfaz === 'function') actualizarInterfaz();
+        dibujarTablero();
+    } else if (e.ctrlKey && e.key === 'y') {
+        e.preventDefault();
+        if (animando || coronacionPendiente) return;
+        if (!historial.puedeRehacer()) return;
+        let estadoActual = { board: copiarBoard(), turno, enroqueRealizado: [...enroqueRealizado] };
+        let estado = historial.rehacer(estadoActual);
+        board = estado.board; turno = estado.turno;
+        enroqueRealizado = estado.enroqueRealizado || [false, false];
+        selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
+        modoRuta = false; rutasAlternativas = []; destinoRuta = null;
+        coronacionPendiente = null; menuCoronacion.style.display = 'none';
+        if (typeof reiniciarFinJuego === 'function') reiniciarFinJuego();
+        if (esJaqueMate(turno)) { juegoTerminado = true; mostrarFinJuego('jaquemate', turno); }
+        else if (esAhogado(turno)) { juegoTerminado = true; mostrarFinJuego('tablas', turno); }
+        if (typeof actualizarInterfaz === 'function') actualizarInterfaz();
+        dibujarTablero();
     }
 });
 
+// --- Botón de volver al menú principal, con confirmación ---
+function configurarBotonVolver() {
+    const btn = document.getElementById('btnVolverMenu');
+    const modal = document.getElementById('modalConfirmarSalida');
+    const btnSi = document.getElementById('btnConfirmarSalida');
+    const btnNo = document.getElementById('btnCancelarSalida');
+    if (!btn || !modal) return;
+    btn.addEventListener('click', () => { modal.style.display = 'flex'; });
+    if (btnNo) btnNo.addEventListener('click', () => { modal.style.display = 'none'; });
+    if (btnSi) btnSi.addEventListener('click', () => { window.location.href = 'index.html'; });
+}
+configurarBotonVolver();
+
 iniciarJuego();
+if (typeof programarTurnoIASiCorresponde === 'function') programarTurnoIASiCorresponde();
