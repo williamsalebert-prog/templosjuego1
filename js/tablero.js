@@ -74,7 +74,13 @@ function iniciarJuego() {
     dibujarTablero();
 
     // Countdown de inicio (3s bloqueado + 2s preparación, luego arranca cronómetros)
-    if (!CONFIG_JUEGO.online) {
+    if (CONFIG_JUEGO.online) {
+        // Modo online: hay que abrir/conectar la sala peer-to-peer. El countdown y los
+        // relojes se disparan desde sync.js (lanzarInicioOnline) cuando ambos jugadores
+        // estén conectados. Antes esta función nunca se llamaba, así que la partida
+        // online jamás llegaba a conectarse (no se podía mover ni avisaba desconexión).
+        if (typeof configurarPanelOnline === 'function') configurarPanelOnline();
+    } else {
         // Para modo local, arrancar countdown directamente
         if (typeof window.arrancarCountdown === 'function') {
             window.arrancarCountdown(() => {

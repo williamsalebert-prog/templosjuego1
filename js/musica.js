@@ -121,7 +121,19 @@ function alternarMusica() {
     musicaActiva = !musicaPausadaPorUsuario && !musicaPausadaPorSistema;
     const btn = document.getElementById('btnMusica');
     if (btn) btn.textContent = musicaActiva ? '🎵 Música' : '🔇 Música';
+
+    // Botón del menú hamburguesa del tablero (tablero.html), si existe
+    const menuBtn = document.getElementById('menuMusica');
+    if (menuBtn) {
+        const icono = menuBtn.querySelector('.mi-icon');
+        if (icono) icono.textContent = musicaActiva ? '🎵' : '🔇';
+    }
 }
+
+// Alias usado por tablero.html al pulsar "Música" en el menú. Antes el menú llamaba
+// a una función toggleMusica() / window.musica.toggle() que nunca existió, por eso
+// el botón no silenciaba nada.
+window.toggleMusica = alternarMusica;
 
 // Botón opcional para silenciar/activar. Puede ya existir en el HTML (tablero.html lo
 // incluye), en cuyo caso solo le conectamos el evento; si no existe, lo creamos.
