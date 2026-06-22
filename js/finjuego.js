@@ -6,7 +6,11 @@ console.log("✅ finjuego.js cargado");
 function despuesDeJugada() {
     registrarJugadaRealizada();
     comprobarFinJuego();
-    if (typeof transmitirEstadoSiOnline === 'function') transmitirEstadoSiOnline();
+    // NOTA: el movimiento en sí ya se transmitió ANTES de animarlo (ver
+    // transmitirMovimientoSiOnline en tablero.js/coronacion.js/enroque.js),
+    // para que el rival reproduzca la misma animación y sonido. Aquí solo
+    // sincronizamos los relojes, que no viajan dentro de la jugada.
+    if (typeof transmitirRelojesSiOnline === 'function') transmitirRelojesSiOnline();
     if (typeof programarTurnoIASiCorresponde === 'function') programarTurnoIASiCorresponde();
 }
 
@@ -44,48 +48,68 @@ const FIN_JUEGO_SEGUNDOS_TOTAL = 8;
 function mostrarFinJuego(tipo, jugadorEnTurno) {
     if (typeof detenerRelojes === 'function') detenerRelojes();
 
-    const banner = document.getElementById('bannerFin');
-    const texto = document.getElementById('bannerFinTexto');
+    // Dejamos ver el tablero 3 segundos (la jugada/posición final) antes de
+    // tapar la pantalla con el aviso de fin de partida, para que los jugadores
+    // entiendan por qué ganaron, perdieron o empataron.
     casillaFinJuego = null;
     casillasFinJuego = [];
+    selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
+    modoRuta = false; rutasAlternativas = [];
 
-    if (tipo === 'jaquemate') {
-        const ganador = 1 - jugadorEnTurno;
-        const nombreGanador = ganador === 0 ? 'Jugador 1 (Rojo)' : 'Jugador 2 (Azul)';
-        if (texto) texto.textContent = `♛ ¡Jaque mate! Gana ${nombreGanador}`;
-        if (banner) { banner.className = 'banner-fin mostrar victoria jugador' + ganador; }
-
+    if (tipo === 'jaquemate' || tipo === 'tiempo') {
         let reyPerdedor = obtenerPosicionRey(jugadorEnTurno);
         if (reyPerdedor) casillaFinJuego = { f: reyPerdedor[0], c: reyPerdedor[1] };
-
-        if (typeof reproducirVictoria === 'function') reproducirVictoria();
-    } else if (tipo === 'tiempo') {
-        const ganador = 1 - jugadorEnTurno;
-        const nombreGanador = ganador === 0 ? 'Jugador 1 (Rojo)' : 'Jugador 2 (Azul)';
-        if (texto) texto.textContent = `⏱️ ¡Tiempo agotado! Gana ${nombreGanador}`;
-        if (banner) { banner.className = 'banner-fin mostrar victoria jugador' + ganador; }
-
-        let reyPerdedor = obtenerPosicionRey(jugadorEnTurno);
-        if (reyPerdedor) casillaFinJuego = { f: reyPerdedor[0], c: reyPerdedor[1] };
-
-        if (typeof reproducirVictoria === 'function') reproducirVictoria();
     } else {
-        if (texto) texto.textContent = '🤝 ¡Tablas! Partida terminada en empate (ahogado)';
-        if (banner) { banner.className = 'banner-fin mostrar tablas'; }
-
         let r0 = obtenerPosicionRey(0);
         let r1 = obtenerPosicionRey(1);
         if (r0) casillasFinJuego.push({ f: r0[0], c: r0[1] });
         if (r1) casillasFinJuego.push({ f: r1[0], c: r1[1] });
+    }
+    dibujarTablero();
+
+    setTimeout(() => {
+        mostrarBannerFinJuego(tipo, jugadorEnTurno);
+    }, 3000);
+}
+
+function mostrarBannerFinJuego(tipo, jugadorEnTurno) {
+    const banner = document.getElementById('bannerFin');
+    const texto = document.getElementById('bannerFinTexto');
+
+    if (tipo === 'jaquemate' || tipo === 'tiempo') {
+        const ganador = 1 - jugadorEnTurno;
+        const nombreGanador = ganador === 0 ? 'Jugador 1 (Rojo)' : 'Jugador 2 (Azul)';
+        const motivo = tipo === 'jaquemate' ? '♛ ¡Jaque mate!' : '⏱️ ¡Tiempo agotado!';
+        if (texto) texto.textContent = `${motivo} Gana ${nombreGanador}`;
+        if (banner) { banner.className = 'banner-fin mostrar victoria jugador' + ganador; }
+
+        reproducirSonidoResultado(ganador);
+    } else {
+        if (texto) texto.textContent = '🤝 ¡Tablas! Partida terminada en empate (ahogado)';
+        if (banner) { banner.className = 'banner-fin mostrar tablas'; }
 
         if (typeof reproducirTablas === 'function') reproducirTablas();
     }
 
-    selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
-    modoRuta = false; rutasAlternativas = [];
-    dibujarTablero();
-
     iniciarPanelFinPartida();
+}
+
+// Decide qué sonido tocar según quién "es" el usuario de este dispositivo.
+// - Online: cada dispositivo solo controla a un jugador, así que suena alegre
+//   si ese jugador ganó, y triste si perdió.
+// - Local (mismo dispositivo, 2 jugadores o vs IA): ambos jugadores están
+//   presentes, así que se mantiene el sonido de victoria general.
+function reproducirSonidoResultado(ganador) {
+    if (CONFIG_JUEGO.online) {
+        const soyGanador = CONFIG_JUEGO.onlineSoyJugador === ganador;
+        if (soyGanador) {
+            if (typeof reproducirVictoria === 'function') reproducirVictoria();
+        } else {
+            if (typeof reproducirDerrota === 'function') reproducirDerrota();
+        }
+    } else {
+        if (typeof reproducirVictoria === 'function') reproducirVictoria();
+    }
 }
 
 // Configura y arranca el contador de 8 segundos del panel de fin de partida.

@@ -64,7 +64,7 @@ function arrancarRelojes() {
     relojesActivos = true;
     let ultimo = performance.now();
     relojIntervalo = setInterval(() => {
-        if (!relojesActivos || juegoTerminado || animando || coronacionPendiente) { ultimo = performance.now(); return; }
+        if (!relojesActivos || juegoTerminado || animando || coronacionPendiente || window.partidaPausadaPorPropuesta) { ultimo = performance.now(); return; }
         const ahora = performance.now();
         const delta = (ahora - ultimo) / 1000;
         ultimo = ahora;

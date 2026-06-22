@@ -30,7 +30,12 @@ function deserializarEstadoHistorial(estado) {
 
 function exportarPartida() {
     const datos = {
-        version: 1,
+        version: 2,
+        // Marca de origen: evita que un archivo de Modo Prueba se abra en una
+        // partida normal (mezclaría reglas distintas), aunque al revés sí se
+        // permite (el Modo Prueba puede abrir partidas normales para practicar).
+        modoPrueba: !!CONFIG_JUEGO.modoPrueba,
+
         turno,
         enroqueRealizado: [...enroqueRealizado],
         board: serializarBoard(board),
@@ -39,13 +44,30 @@ function exportarPartida() {
         jugadasPorJugador: [...jugadasPorJugador],
         juegoTerminado,
         historialPila: historial.pila.map(serializarEstadoHistorial),
-        historialFuturos: historial.futuros.map(serializarEstadoHistorial)
+        historialFuturos: historial.futuros.map(serializarEstadoHistorial),
+
+        // --- Metadatos de partida pedidos: contadores/relojes de ambos
+        // jugadores, quién tiene el turno, tipo de temporizador usado, y si la
+        // partida es contra la máquina o entre dos jugadores (mismo o distinto
+        // dispositivo) ---
+        metadatos: {
+            turnoActual: turno,
+            tipoModo: CONFIG_JUEGO.modo === 1 ? 'vs_maquina' : 'dos_jugadores',
+            dificultadIA: CONFIG_JUEGO.modo === 1 ? CONFIG_JUEGO.dificultad : null,
+            dispositivo: CONFIG_JUEGO.online ? 'distinto_dispositivo' : 'mismo_dispositivo',
+            timerActivo: !!CONFIG_JUEGO.timer,
+            timerMode: CONFIG_JUEGO.timerMode,
+            timerNombre: (MODOS_TIEMPO[CONFIG_JUEGO.timerMode] || {}).nombre || null,
+            tiempoRestante: (typeof tiempoRestante !== 'undefined') ? [...tiempoRestante] : null,
+            cronometro: (typeof cronometro !== 'undefined') ? [...cronometro] : null
+        }
     };
     const blob = new Blob([JSON.stringify(datos)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `partida_templos_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    const prefijo = CONFIG_JUEGO.modoPrueba ? 'prueba_templos_' : 'partida_templos_';
+    a.download = `${prefijo}${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -53,27 +75,61 @@ function exportarPartida() {
 }
 
 function importarPartida(archivo) {
+    if (!archivo) return; // Sin archivo seleccionado (diálogo cancelado): no tocar nada, seguir como estaba.
     const lector = new FileReader();
     lector.onload = (e) => {
         try {
             const datos = JSON.parse(e.target.result);
             if (!datos || !Array.isArray(datos.board)) throw new Error('Formato inválido');
 
-            board = deserializarBoard(datos.board);
-            turno = datos.turno || 0;
-            enroqueRealizado = datos.enroqueRealizado || [false, false];
+            // Un archivo guardado en Modo Prueba NO se puede abrir en una partida
+            // normal (mezclaría el Ctrl+Z/Ctrl+Y y el contador infinito con reglas
+            // que no aplican fuera de Prueba). Al revés sí se permite: el Modo
+            // Prueba puede importar partidas normales para practicar con ellas.
+            if (datos.modoPrueba && !CONFIG_JUEGO.modoPrueba) {
+                alert('Este archivo se exportó desde el Modo Prueba y solo puede abrirse ahí.');
+                return; // El tablero actual no se modifica.
+            }
+
+            // Construimos primero TODO el nuevo estado en variables temporales y
+            // solo si nada falla lo aplicamos de golpe. Así, si el archivo está
+            // corrupto a medio camino, la partida en curso queda intacta en vez
+            // de quedar a medio reemplazar (lo que antes podía dejar el tablero
+            // vacío o en un estado inconsistente).
+            const nuevoBoard = deserializarBoard(datos.board);
+            const nuevoTurno = datos.turno || 0;
+            const nuevoEnroque = datos.enroqueRealizado || [false, false];
+            const nuevaCarcelaDatos = datos.carcela || [];
+            const nuevoContadorJugadas = datos.contadorJugadas || 0;
+            const nuevoJugadasPorJugador = datos.jugadasPorJugador || [0, 0];
+            const nuevaHistorialPila = (datos.historialPila || []).map(deserializarEstadoHistorial);
+            const nuevaHistorialFuturos = (datos.historialFuturos || []).map(deserializarEstadoHistorial);
+            const meta = datos.metadatos || null;
+
+            // A partir de aquí ya no puede fallar: aplicamos todo.
+            board = nuevoBoard;
+            turno = nuevoTurno;
+            enroqueRealizado = nuevoEnroque;
 
             carcela.limpiar();
-            (datos.carcela || []).forEach(c => {
+            nuevaCarcelaDatos.forEach(c => {
                 const Clase = piezasRegistradas.get(c.tipo);
                 if (Clase) carcela.agregar(new Clase(c.jugador));
             });
 
-            contadorJugadas = datos.contadorJugadas || 0;
-            jugadasPorJugador = datos.jugadasPorJugador || [0, 0];
+            contadorJugadas = nuevoContadorJugadas;
+            jugadasPorJugador = nuevoJugadasPorJugador;
 
-            historial.pila = (datos.historialPila || []).map(deserializarEstadoHistorial);
-            historial.futuros = (datos.historialFuturos || []).map(deserializarEstadoHistorial);
+            historial.pila = nuevaHistorialPila;
+            historial.futuros = nuevaHistorialFuturos;
+
+            // Restaurar relojes/cronómetro si el archivo los trae (partidas con
+            // temporizador activo guardan cuánto tiempo le quedaba a cada uno).
+            if (meta) {
+                if (meta.tiempoRestante && typeof tiempoRestante !== 'undefined') tiempoRestante = meta.tiempoRestante;
+                if (meta.cronometro && typeof cronometro !== 'undefined') cronometro = meta.cronometro;
+                if (typeof pintarRelojes === 'function') pintarRelojes();
+            }
 
             selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
             modoRuta = false; rutasAlternativas = []; destinoRuta = null;
@@ -89,7 +145,7 @@ function importarPartida(archivo) {
             actualizarInterfaz();
             dibujarTablero();
         } catch (err) {
-            alert('No se pudo importar la partida: el archivo no es válido.');
+            alert('No se pudo importar la partida: el archivo no es válido. La partida actual no se modificó.');
         }
     };
     lector.readAsText(archivo);

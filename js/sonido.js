@@ -46,3 +46,10 @@ function sonidoInicio() {
     setTimeout(() => playTone(659, 0.1, "sine", 0.12), 100);
     setTimeout(() => playTone(784, 0.2, "sine", 0.15), 200);
 }
+
+// Pitido corto en cada número del conteo 3,2,1, para llamar la atención de
+// ambos jugadores. El último (n=0, "¡Ya!") suena un poco más agudo y largo.
+function sonidoCountdown(n) {
+    if (n > 0) playTone(700, 0.15, 'square', 0.11);
+    else playTone(950, 0.22, 'square', 0.13);
+}

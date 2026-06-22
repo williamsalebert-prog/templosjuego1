@@ -46,5 +46,15 @@ const CONFIG_JUEGO = {
     timer: parametrosURL.get('timer') === '1',
     timerMode: MODOS_TIEMPO[parametrosURL.get('timerMode')] ? parametrosURL.get('timerMode') : 'blitz5',
     online: parametrosURL.get('online') === '1',
-    onlineSoyJugador: parametrosURL.get('jugador') === '1' ? 1 : 0
+    onlineSoyJugador: parametrosURL.get('jugador') === '1' ? 1 : 0,
+    // Modo Prueba: 2 jugadores, contador infinito, Ctrl+Z/Ctrl+Y habilitados,
+    // y los archivos exportados quedan "marcados" para no mezclarse con
+    // partidas normales (ver partida.js).
+    modoPrueba: parametrosURL.get('prueba') === '1'
 };
+if (CONFIG_JUEGO.modoPrueba) {
+    CONFIG_JUEGO.modo = 2;
+    CONFIG_JUEGO.timer = true;
+    CONFIG_JUEGO.timerMode = 'infinito';
+    CONFIG_JUEGO.online = false;
+}

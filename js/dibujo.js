@@ -191,7 +191,19 @@ function dibujarPiezaTallada(ctx, cx, cy, radio, pieza, estaSeleccionada) {
         ctx.fillStyle = 'rgba(0,0,0,0.75)';
         ctx.font = `bold ${radio*0.78}px Georgia, serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(SIMBOLO_PIEZA[pieza.tipo] || pieza.tipo, cx, cy + radio*0.04);
+        // Si el canvas está rotado visualmente (móvil en horizontal), el
+        // símbolo se contra-rota para que el jugador siempre lo vea "derecho"
+        // en su pantalla, en vez de tumbado de costado.
+        const gradosCanvas = (typeof canvas !== 'undefined' && canvas.dataset) ? parseInt(canvas.dataset.rotacion || '0', 10) : 0;
+        if (gradosCanvas !== 0) {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(-gradosCanvas * Math.PI / 180);
+            ctx.fillText(SIMBOLO_PIEZA[pieza.tipo] || pieza.tipo, 0, radio*0.04);
+            ctx.restore();
+        } else {
+            ctx.fillText(SIMBOLO_PIEZA[pieza.tipo] || pieza.tipo, cx, cy + radio*0.04);
+        }
     }
 
     // Brillo superior (highlight) para dar aspecto pulido/tallado

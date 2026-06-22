@@ -1,5 +1,10 @@
 console.log("✅ sync.js cargado");
 
+// Bandera para saber si la jugada en curso vino del rival (remota) o la hicimos
+// nosotros (local). Se usa para no "hacer eco": solo quien originó la jugada
+// transmite el movimiento y la sincronización de relojes.
+window.jugadaEnCursoEsRemota = false;
+
 const PEERJS_CDN_URLS = [
     'https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js',
     'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js'
@@ -9,6 +14,7 @@ let peerConexion = null;
 let canalDatos = null;
 let onlineConectado = false;
 let onlineRolAnfitrion = false;
+const MAX_INTENTOS_CONEXION = 3;
 
 function cargarScriptPeerJS(callback) {
     if (window.Peer) { callback(); return; }
@@ -85,6 +91,69 @@ function transmitirEstadoSiOnline() {
     try { canalDatos.send({ tipo: 'estado', datos: estadoCompletoActual() }); } catch (e) {}
 }
 
+// Sincroniza solo los relojes/cronómetro tras una jugada local (la jugada en sí
+// ya viajó por transmitirMovimientoSiOnline, con su propia animación y sonido).
+function transmitirRelojesSiOnline() {
+    if (window.jugadaEnCursoEsRemota) { window.jugadaEnCursoEsRemota = false; return; }
+    if (!CONFIG_JUEGO.online || !canalDatos || !onlineConectado) return;
+    try {
+        canalDatos.send({
+            tipo: 'relojes',
+            tiempoRestante: (typeof tiempoRestante !== 'undefined') ? [...tiempoRestante] : null,
+            cronometro: (typeof cronometro !== 'undefined') ? [...cronometro] : null
+        });
+    } catch (e) {}
+}
+
+// --- Propuestas de tablas/rendición (ver js/tablasrendicion.js) ---
+function transmitirPropuesta(tipo) {
+    if (!canalDatos || !onlineConectado) return;
+    try { canalDatos.send({ tipo: 'propuesta', subtipo: tipo, de: CONFIG_JUEGO.onlineSoyJugador }); } catch (e) {}
+}
+function transmitirRespuestaPropuesta(acepta) {
+    if (!canalDatos || !onlineConectado) return;
+    try { canalDatos.send({ tipo: 'respuestaPropuesta', acepta }); } catch (e) {}
+}
+function transmitirCancelarPropuesta() {
+    if (!canalDatos || !onlineConectado) return;
+    try { canalDatos.send({ tipo: 'cancelarPropuesta' }); } catch (e) {}
+}
+function transmitirRendicion(quienSeRinde) {
+    if (!canalDatos || !onlineConectado) return;
+    try { canalDatos.send({ tipo: 'rendicion', quienSeRinde }); } catch (e) {}
+}
+function canalDatosActivo() { return !!(canalDatos && onlineConectado); }
+
+// Transmite la JUGADA concreta (no solo el resultado final) para que el rival
+// reproduzca la misma animación y los mismos sonidos en su pantalla, en vez de
+// solo ver el tablero "saltar" al estado final sin animación ni audio.
+function transmitirMovimientoSiOnline(jugada) {
+    if (!CONFIG_JUEGO.online || !canalDatos || !onlineConectado) return;
+    try { canalDatos.send({ tipo: 'jugada', jugada }); } catch (e) {}
+}
+
+// Aplica en este dispositivo una jugada que llegó del rival, reproduciendo la
+// animación y el sonido correspondientes (igual que si la hubiéramos hecho
+// nosotros), en vez de limitarnos a redibujar el tablero ya resuelto.
+function aplicarJugadaRemota(jugada) {
+    if (!jugada) return;
+    window.jugadaEnCursoEsRemota = true;
+    if (jugada.tipo === 'mover') {
+        turno = CONFIG_JUEGO.onlineSoyJugador === 0 ? 1 : 0; // el turno de quien movió (el rival)
+        aplicarMovimiento(jugada.origen, jugada.destino, jugada.camino, true);
+    } else if (jugada.tipo === 'enroque') {
+        turno = jugada.jugador;
+        ejecutarEnroque(jugada.reyFila, jugada.reyCol, jugada.piezaFila, jugada.piezaCol, jugada.jugador);
+        turno = 1 - turno;
+        selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
+        dibujarTablero();
+        if (typeof despuesDeJugada === 'function') despuesDeJugada();
+    } else if (jugada.tipo === 'coronar') {
+        coronacionPendiente = { jugador: jugada.jugador, f: jugada.f, c: jugada.c };
+        coronar(jugada.piezaTipo, true);
+    }
+}
+
 function configurarCanalDatos(conn) {
     canalDatos = conn;
     conn.on('open', () => {
@@ -98,7 +167,26 @@ function configurarCanalDatos(conn) {
         }
     });
     conn.on('data', (mensaje) => {
-        if (mensaje && mensaje.tipo === 'estado') {
+        if (mensaje && mensaje.tipo === 'jugada') {
+            aplicarJugadaRemota(mensaje.jugada);
+        } else if (mensaje && mensaje.tipo === 'relojes') {
+            if (mensaje.tiempoRestante && typeof tiempoRestante !== 'undefined') tiempoRestante = mensaje.tiempoRestante;
+            if (mensaje.cronometro && typeof cronometro !== 'undefined') cronometro = mensaje.cronometro;
+            if (typeof pintarRelojes === 'function') pintarRelojes();
+        } else if (mensaje && mensaje.tipo === 'propuesta') {
+            window.partidaPausadaPorPropuesta = true;
+            if (mensaje.subtipo === 'tablas' && typeof mostrarPropuestaRecibida === 'function') {
+                mostrarPropuestaRecibida('tablas', CONFIG_JUEGO.onlineSoyJugador);
+            }
+        } else if (mensaje && mensaje.tipo === 'respuestaPropuesta') {
+            if (typeof aplicarResultadoPropuesta === 'function') aplicarResultadoPropuesta(mensaje.acepta);
+        } else if (mensaje && mensaje.tipo === 'cancelarPropuesta') {
+            window.partidaPausadaPorPropuesta = false;
+            if (typeof cerrarPropuestaRecibida === 'function') cerrarPropuestaRecibida();
+        } else if (mensaje && mensaje.tipo === 'rendicion') {
+            window.partidaPausadaPorPropuesta = false;
+            if (typeof finalizarPorRendicion === 'function') finalizarPorRendicion(1 - mensaje.quienSeRinde);
+        } else if (mensaje && mensaje.tipo === 'estado') {
             aplicarEstadoRecibido(mensaje.datos);
         } else if (mensaje && mensaje.tipo === 'iniciar') {
             // Jugador 2 recibe señal: lanzar countdown
@@ -162,7 +250,11 @@ function configurarPanelOnline() {
             return;
         }
         if (onlineRolAnfitrion) iniciarComoAnfitrion();
-        else renderFormularioUnirse();
+        else {
+            const params = new URLSearchParams(window.location.search);
+            const codigoDesdeURL = (params.get('sala') || '').trim().toUpperCase();
+            renderFormularioUnirse(codigoDesdeURL || null);
+        }
     });
 }
 
@@ -173,7 +265,7 @@ function crearInstanciaPeer(idDeseado) {
     });
 }
 
-function iniciarComoAnfitrion() {
+function iniciarComoAnfitrion(intentoActual = 1) {
     // El código ya viene desde index.html via URL (lo generamos allá)
     // Si no viene, generamos uno aquí
     const params = new URLSearchParams(window.location.search);
@@ -181,10 +273,14 @@ function iniciarComoAnfitrion() {
     const idCompleto = 'templos-' + codigo;
 
     renderPanelAnfitrion(codigo);
-    mostrarAvisoEspera('⏳ Creando sala...');
+    mostrarAvisoEspera('⏳ Creando sala...' + (intentoActual > 1 ? ` (intento ${intentoActual})` : ''));
 
+    if (peerConexion) { try { peerConexion.destroy(); } catch(e) {} }
     peerConexion = crearInstanciaPeer(idCompleto);
+
+    let abrioCorrectamente = false;
     peerConexion.on('open', () => {
+        abrioCorrectamente = true;
         mostrarAvisoEspera('🟠 Sala creada. Esperando al otro jugador...');
     });
     peerConexion.on('connection', (conn) => {
@@ -195,8 +291,16 @@ function iniciarComoAnfitrion() {
         configurarCanalDatos(conn);
     });
     peerConexion.on('error', (err) => {
-        if (err && err.type === 'unavailable-id') iniciarComoAnfitrion();
-        else mostrarAvisoEspera('⚠️ Error: ' + (err && err.type ? err.type : 'desconocido'));
+        if (err && err.type === 'unavailable-id') {
+            // El código ya estaba en uso (sala vieja sin cerrar): generamos otro
+            iniciarComoAnfitrion(intentoActual);
+        } else if (intentoActual < MAX_INTENTOS_CONEXION) {
+            // Primer intento de apertura falló (servidor de señalización "frío");
+            // reintentamos automáticamente en vez de dejar al jugador varado.
+            setTimeout(() => iniciarComoAnfitrion(intentoActual + 1), 800);
+        } else {
+            mostrarAvisoEspera('⚠️ Error: ' + (err && err.type ? err.type : 'desconocido') + '. Revisa tu conexión y recarga.');
+        }
     });
 }
 
@@ -212,22 +316,25 @@ function renderPanelAnfitrion(codigo) {
     `;
 }
 
-function renderFormularioUnirse() {
+function renderFormularioUnirse(codigoPrellenado, mensajeError) {
     const box = document.getElementById('espeiraContenido');
     if (!box) return;
     box.innerHTML = `
         <h3>🌐 Unirse a partida</h3>
         <p>Pega el código que te compartió el Jugador 1:</p>
         <input id="inputCodigoUnirse" class="input-codigo" type="text" maxlength="6" placeholder="CÓDIGO" autocomplete="off">
-        <div id="avisoEspera" style="color:#cbb892;font-size:0.82rem;margin:6px 0;min-height:1.2em;"></div>
+        <div id="avisoEspera" style="color:#cbb892;font-size:0.82rem;margin:6px 0;min-height:1.2em;">${mensajeError || ''}</div>
         <button class="espera-btn" id="btnConectarSala">Conectar ▶</button>
     `;
 
     const input = document.getElementById('inputCodigoUnirse');
     const btn = document.getElementById('btnConectarSala');
-    if (input) input.addEventListener('input', () => {
-        input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
-    });
+    if (input) {
+        input.addEventListener('input', () => {
+            input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+        });
+        if (codigoPrellenado) input.value = codigoPrellenado;
+    }
     const intentar = () => {
         const codigo = (input ? input.value : '').trim().toUpperCase();
         if (codigo.length < 4) { mostrarAvisoEspera('⚠️ El código es demasiado corto.'); return; }
@@ -236,18 +343,54 @@ function renderFormularioUnirse() {
     };
     if (btn) btn.addEventListener('click', intentar);
     if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') intentar(); });
+
+    // Si ya tenemos código (vino de index.html), conectamos automáticamente
+    // sin que el jugador tenga que volver a escribirlo ni pulsar nada.
+    if (codigoPrellenado) {
+        if (btn) { btn.disabled = true; btn.textContent = 'Conectando...'; }
+        unirseASala(codigoPrellenado);
+    }
 }
 
-function unirseASala(codigo) {
-    mostrarAvisoEspera('⏳ Conectando con sala ' + codigo + '...');
+// Intenta conectar con reintentos automáticos: la primera conexión a PeerJS a
+// veces falla o tarda (servidor de señalización "frío"), lo que antes se veía
+// como "sin conexión la primera vez". Ahora se reintenta solo, sin que el
+// jugador tenga que tocar nada, antes de mostrarle un error.
+function unirseASala(codigo, intentoActual = 1) {
+    mostrarAvisoEspera(`⏳ Conectando con sala ${codigo}...` + (intentoActual > 1 ? ` (intento ${intentoActual})` : ''));
+
+    if (peerConexion) { try { peerConexion.destroy(); } catch(e) {} }
     peerConexion = crearInstanciaPeer(undefined);
+
+    let yaResuelto = false;
+    const reintentarOFallar = (mensaje) => {
+        if (yaResuelto) return;
+        if (intentoActual < MAX_INTENTOS_CONEXION) {
+            setTimeout(() => unirseASala(codigo, intentoActual + 1), 800);
+        } else {
+            yaResuelto = true;
+            mostrarFormularioConError(codigo, mensaje || '⚠️ No se pudo conectar. Verifica el código e intenta de nuevo.');
+        }
+    };
+
     peerConexion.on('open', () => {
         const idHost = 'templos-' + codigo;
         const conn = peerConexion.connect(idHost, { reliable: true });
-        conn.on('error', () => mostrarAvisoEspera('⚠️ No se encontró la sala. Verifica el código.'));
+        conn.on('open', () => { yaResuelto = true; });
+        conn.on('error', () => reintentarOFallar('⚠️ No se encontró la sala. Verifica el código.'));
         configurarCanalDatos(conn);
+
+        // Si tras unos segundos la conexión no abrió, lo tratamos como fallo
+        // y reintentamos (en vez de dejar al jugador esperando indefinidamente).
+        setTimeout(() => {
+            if (!yaResuelto && !onlineConectado) reintentarOFallar('⚠️ No se pudo conectar. Verifica el código.');
+        }, 6000);
     });
     peerConexion.on('error', (err) => {
-        mostrarAvisoEspera('⚠️ Error: ' + (err && err.type ? err.type : 'desconocido'));
+        reintentarOFallar('⚠️ Error: ' + (err && err.type ? err.type : 'desconocido'));
     });
+}
+
+function mostrarFormularioConError(codigo, mensaje) {
+    renderFormularioUnirse(codigo, mensaje);
 }

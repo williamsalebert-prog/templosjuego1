@@ -156,14 +156,25 @@ function crearBotonMusica() {
 crearBotonMusica();
 
 // Los navegadores bloquean el audio automático hasta que el usuario interactúa con la página,
-// así que arrancamos la música en la primera interacción (clic o tecla) y la dejamos sonando siempre.
+// pero como el usuario YA interactuó (tocó un botón en index.html para llegar aquí), intentamos
+// arrancar la música de inmediato: en la mayoría de navegadores esto basta para que el audio
+// "se escuche desde que inicia la partida" en vez de quedar mudo hasta el primer toque al tablero
+// (el countdown inicial bloquea el tablero, así que antes la música tardaba en empezar).
+iniciarMusica();
+
+// Respaldo: si el navegador igualmente bloqueó el audio (AudioContext en "suspended"),
+// lo reanudamos en el primer toque/clic/tecla que ocurra en la página.
 function manejarPrimeraInteraccion() {
-    iniciarMusica();
+    const ctx = obtenerContextoMusica();
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+    if (!musicaIniciada) iniciarMusica();
     document.removeEventListener('click', manejarPrimeraInteraccion);
     document.removeEventListener('keydown', manejarPrimeraInteraccion);
+    document.removeEventListener('touchstart', manejarPrimeraInteraccion);
 }
 document.addEventListener('click', manejarPrimeraInteraccion);
 document.addEventListener('keydown', manejarPrimeraInteraccion);
+document.addEventListener('touchstart', manejarPrimeraInteraccion);
 
 // ------------------------------------------------------------------
 // Música especial de fin de partida: una más alegre/triunfal para la
@@ -188,6 +199,17 @@ function reproducirVictoria() {
     fanfarria.forEach((frec, i) => {
         setTimeout(() => tocarNotaMelodia(frec, 0.5, 0.12), t);
         t += i === fanfarria.length - 2 ? 120 : 220;
+    });
+}
+
+// Sonido triste/descendente para quien pierde la partida (jaque mate o tiempo agotado).
+function reproducirDerrota() {
+    pausarMusicaNormal();
+    const notasTristes = [440.00, 392.00, 349.23, 311.13, 261.63];
+    let t = 0;
+    notasTristes.forEach((frec, i) => {
+        setTimeout(() => tocarNotaMelodia(frec, 0.7, 0.09), t);
+        t += 280;
     });
 }
 

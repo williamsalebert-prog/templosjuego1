@@ -71,6 +71,12 @@ function finalizarAnimacion() {
         let zona = getZona(ff, cc);
         if ((pieza.jugador === 0 && zona === 'templo2') || (pieza.jugador === 1 && zona === 'templo1')) {
             coronacionPendiente = { jugador: pieza.jugador, f: ff, c: cc };
+            // Si quien corona es la IA (modo 1 jugador), elige Reina sola, sin
+            // mostrarle al jugador humano un menú que no le corresponde decidir.
+            if (CONFIG_JUEGO.modo === 1 && pieza.jugador === 1) {
+                coronar('F3');
+                return;
+            }
             mostrarMenuCoronacion();
             return;
         }
