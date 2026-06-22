@@ -16,7 +16,9 @@
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; overflow: hidden; }
     body {
-        background: radial-gradient(ellipse at center, #18120d 0%, #0c0907 100%);
+        background:
+            repeating-linear-gradient(95deg, rgba(90,60,30,0.04) 0px, rgba(110,75,40,0.06) 4px, rgba(40,25,12,0.04) 8px, rgba(90,60,30,0.04) 12px),
+            radial-gradient(ellipse at center, #1a140e 0%, #0a0705 100%);
         display: flex; flex-direction: column;
         font-family: 'Segoe UI', Georgia, serif; color: var(--oro-claro);
         height: 100dvh; overflow: hidden;
@@ -73,17 +75,31 @@
     .marco-tablero {
         position: relative; border-radius: 10px;
         padding: 10px;
+        display: flex; align-items: center; justify-content: center;
         background:
-            repeating-linear-gradient(100deg, #5a3a22 0px, #6b4a2c 3px, #4a3220 6px, #5a3a22 9px),
+            repeating-linear-gradient(97deg, #5a3a22 0px, #6b4a2c 2px, #4a3220 5px, #6b4a2c 7px, #5a3a22 10px),
+            radial-gradient(ellipse at 30% 20%, rgba(255,220,170,0.10), transparent 60%),
             linear-gradient(160deg, #6b4a2c, #3a2615);
         box-shadow:
             0 0 0 2px #1a120c,
             0 0 0 5px var(--oro),
-            0 12px 30px rgba(0,0,0,0.7);
+            0 0 18px rgba(205,168,107,0.25),
+            0 14px 34px rgba(0,0,0,0.75),
+            inset 0 2px 4px rgba(255,220,170,0.12);
+    }
+    /* El wrapper recibe el tamaño ya "intercambiado" cuando hay rotación de
+       90°/270° (su ancho/alto en el documento SÍ son los visuales), y el
+       canvas de adentro (con su tamaño original sin rotar) se centra dentro
+       y se rota visualmente — así el espacio reservado en el layout siempre
+       coincide con lo que ocupa en pantalla, sin desbordes ni recortes. */
+    .canvas-wrapper {
+        display: flex; align-items: center; justify-content: center;
+        position: relative;
     }
     canvas {
         display: block; border-radius: 4px; cursor: pointer;
         box-shadow: inset 0 0 0 2px rgba(0,0,0,0.5), 0 6px 18px rgba(0,0,0,0.5);
+        transform-origin: center center;
     }
 
     /* ===== MENÚ DESPLEGABLE ===== */
@@ -118,6 +134,8 @@
     .menu-item .mi-icon { font-size: 1.2rem; width: 24px; text-align:center; }
     .menu-item.peligro { border-color: #7a2020; }
     .menu-item.peligro .mi-icon { color: #ff6060; }
+    .menu-item:has(.mi-icon:only-child) { justify-content: center; }
+    .menu-item:has(.mi-icon:only-child) .mi-icon { width: auto; }
 
     /* ===== MODALES ===== */
     .modal-base {
@@ -148,7 +166,9 @@
         background: rgba(10,7,5,0.96); padding: 18px; border-radius: 16px;
         display: none; z-index: 35; text-align: center; color: #f4e3c4;
         border:1px solid var(--oro); box-shadow: 0 15px 40px rgba(0,0,0,0.7);
+        max-width: 92vw;
     }
+    #opcionesCoronacion { display:flex; flex-wrap:wrap; justify-content:center; max-width: 320px; }
     .menu-coronacion button {
         margin: 6px; padding: 10px; background: var(--oro); border: none;
         border-radius: 10px; cursor: pointer; font-weight: bold; width: 70px;
@@ -254,6 +274,8 @@
     <button class="menu-item" id="menuMusica"><span class="mi-icon">🎵</span>Música</button>
     <button class="menu-item" id="menuImportar"><span class="mi-icon">📂</span>Importar</button>
     <button class="menu-item" id="menuExportar"><span class="mi-icon">💾</span>Exportar</button>
+    <button class="menu-item" id="menuTablas" title="Pedir tablas"><span class="mi-icon">🤝</span></button>
+    <button class="menu-item peligro" id="menuRendirse" title="Rendirse"><span class="mi-icon">🏳️</span></button>
     <button class="menu-item peligro" id="menuSalir"><span class="mi-icon">🚪</span>Menú principal</button>
 </div>
 <input type="file" id="inputImportarPartida" accept=".json" style="display:none;">
@@ -261,7 +283,9 @@
 <!-- TABLERO -->
 <div class="zona-tablero">
     <div class="marco-tablero">
-        <canvas id="tableroCanvas" width="900" height="600"></canvas>
+        <div id="canvasWrapper" class="canvas-wrapper">
+            <canvas id="tableroCanvas" width="900" height="600"></canvas>
+        </div>
     </div>
 
     <div id="menuCoronacion" class="menu-coronacion">
@@ -288,6 +312,41 @@
         <div class="modal-btns">
             <button class="modal-btn modal-btn-danger" id="btnConfirmarSalida">Sí, salir</button>
             <button class="modal-btn modal-btn-cancel" id="btnCancelarSalida">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CONFIRMAR RENDICIÓN (antes de enviar la propuesta) -->
+<div class="modal-base" id="modalConfirmarRendicion">
+    <div class="modal-contenido">
+        <h3>🏳️ Rendirse</h3>
+        <p id="textoConfirmarRendicion">¿Seguro que quieres rendirte? El otro jugador ganará la partida.</p>
+        <div class="modal-btns">
+            <button class="modal-btn modal-btn-danger" id="btnConfirmarRendicion">Sí, rendirme</button>
+            <button class="modal-btn modal-btn-cancel" id="btnCancelarRendicion">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: TABLAS/RENDICIÓN PROPUESTAS AL RIVAL (esperando respuesta) -->
+<div class="modal-base" id="modalEsperandoRespuesta">
+    <div class="modal-contenido">
+        <h3 id="tituloEsperandoRespuesta">🤝 Tablas propuestas</h3>
+        <p id="textoEsperandoRespuesta">Esperando la respuesta del otro jugador...</p>
+        <div class="modal-btns">
+            <button class="modal-btn modal-btn-cancel" id="btnCancelarPropuesta">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: TABLAS/RENDICIÓN RECIBIDAS DEL RIVAL (responder Sí/No) -->
+<div class="modal-base" id="modalPropuestaRecibida">
+    <div class="modal-contenido">
+        <h3 id="tituloPropuestaRecibida">🤝 ¿Aceptas tablas?</h3>
+        <p id="textoPropuestaRecibida">El otro jugador propone tablas.</p>
+        <div class="modal-btns">
+            <button class="modal-btn modal-btn-ok" id="btnAceptarPropuesta">Sí</button>
+            <button class="modal-btn modal-btn-danger" id="btnRechazarPropuesta">No</button>
         </div>
     </div>
 </div>
@@ -333,28 +392,29 @@ window.arrancarCountdown = function(cb) {
 
     let n = 3;
     num.textContent = n;
+    if (typeof sonidoCountdown === 'function') sonidoCountdown(n);
 
     function siguiente() {
         n--;
         if (n < 0) {
-            // Fase silenciosa extra antes de habilitar el tablero (≈2s) y arrancar
-            setTimeout(() => {
-                overlay.classList.remove('mostrar');
-                window.tableroHabilitado = true;
-                if (typeof sonidoInicio === 'function') sonidoInicio();
-                if (cb) cb();
-            }, 2000);
+            // Arranca de inmediato apenas termina el conteo (sin demora extra).
+            overlay.classList.remove('mostrar');
+            window.tableroHabilitado = true;
+            if (typeof sonidoInicio === 'function') sonidoInicio();
+            if (cb) cb();
         } else {
             num.textContent = n > 0 ? n : '...';
             num.style.animation = 'none';
             void num.offsetWidth;
             num.style.animation = '';
+            if (typeof sonidoCountdown === 'function') sonidoCountdown(n);
             setTimeout(siguiente, 1000);
         }
     }
     setTimeout(siguiente, 1000);
 };
 </script>
+<script src="js/sonido.js"></script>
 <script src="js/zonas.js"></script>
 <script src="js/pieza.js"></script>
 <script src="js/f0.js"></script>
@@ -367,7 +427,6 @@ window.arrancarCountdown = function(cb) {
 <script src="js/config.js"></script>
 <script src="js/carcela.js"></script>
 <script src="js/historial.js"></script>
-<script src="js/sonido.js"></script>
 <script src="js/animacion.js"></script>
 <script src="js/dibujo.js"></script>
 <script src="js/jaque.js"></script>
@@ -378,9 +437,10 @@ window.arrancarCountdown = function(cb) {
 <script src="js/interfaz.js"></script>
 <script src="js/relojes.js"></script>
 <script src="js/finjuego.js"></script>
-<script src="js/ia.js"></script>
 <script src="js/partida.js"></script>
+<script src="js/ia.js"></script>
 <script src="js/sync.js"></script>
+<script src="js/tablasrendicion.js"></script>
 <script src="js/tablero.js"></script>
 <script src="js/musica.js"></script>
 
@@ -445,6 +505,11 @@ document.getElementById('btnExportarDesconexion').addEventListener('click', () =
 });
 
 function mostrarDesconexion(msg) {
+    // Detenemos relojes y pausamos la partida: antes solo se mostraba el
+    // panel, pero el reloj seguía corriendo de fondo y podía hacer perder por
+    // tiempo a alguien cuya partida ya no tenía con quién continuar.
+    window.partidaPausadaPorPropuesta = true;
+    if (typeof detenerRelojes === 'function') detenerRelojes();
     document.getElementById('textoDesconexion').textContent = msg || 'El otro jugador se desconectó.';
     document.getElementById('panelDesconexion').classList.add('mostrar');
 }

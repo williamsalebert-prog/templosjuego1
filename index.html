@@ -16,17 +16,21 @@
 html, body { height: 100%; margin: 0; }
 body {
     background:
-        radial-gradient(ellipse at top left, rgba(80,55,30,0.25), transparent 55%),
-        radial-gradient(ellipse at bottom right, rgba(40,20,10,0.4), transparent 55%),
-        radial-gradient(ellipse at center, #18120d 0%, #0c0907 100%);
+        repeating-linear-gradient(95deg, rgba(90,60,30,0.05) 0px, rgba(110,75,40,0.07) 4px, rgba(40,25,12,0.05) 8px, rgba(90,60,30,0.05) 12px),
+        radial-gradient(ellipse at top left, rgba(120,80,40,0.18), transparent 55%),
+        radial-gradient(ellipse at bottom right, rgba(40,20,10,0.45), transparent 55%),
+        radial-gradient(ellipse at center, #1a140e 0%, #0a0705 100%);
     display: flex; justify-content: center; align-items: center; min-height: 100dvh;
     font-family: 'Segoe UI', Georgia, serif; color: var(--oro-claro);
     padding: 12px; overflow-x: hidden;
 }
 .pantalla-inicio {
-    text-align: center; background: linear-gradient(160deg,#2a1d15,#1a120c);
+    text-align: center;
+    background:
+        repeating-linear-gradient(100deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 2px, transparent 2px, transparent 7px),
+        linear-gradient(160deg,#2e2016,#180f0a);
     padding: clamp(16px, 4vw, 30px); border-radius: 20px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.65), inset 0 0 40px rgba(0,0,0,0.35);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.65), inset 0 0 50px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,220,160,0.06);
     border:1px solid #4a3424; max-width: 420px; width: 100%;
     max-height: 96dvh; overflow-y: auto;
 }
@@ -44,8 +48,8 @@ h1 { margin: 0; font-size: clamp(1.4rem, 5vw, 1.9rem); text-shadow: 0 2px 6px rg
     flex-shrink: 0;
 }
 
-button { font-size: 0.95rem; padding: 11px 18px; margin: 4px; border: 1px solid #6b4c2c; border-radius: 12px; cursor: pointer; font-weight: bold; background: linear-gradient(160deg,#e7cf9c,#cda86b); color:#2a1c10; box-shadow: 0 3px 8px rgba(0,0,0,0.4); transition: transform .1s, filter .1s; }
-button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+button { font-size: 0.95rem; padding: 11px 18px; margin: 4px; border: 1px solid #6b4c2c; border-radius: 12px; cursor: pointer; font-weight: bold; background: linear-gradient(160deg,#f0dca8,#cda86b 55%,#b08a4e); color:#2a1c10; box-shadow: 0 3px 8px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.4); transition: transform .1s, filter .1s, box-shadow .1s; }
+button:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 5px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.45); }
 button:active { transform: translateY(0); filter: brightness(1.15); }
 
 .modo-btn { font-size: 1rem; padding: 13px 18px; width: 100%; display:flex; align-items:center; gap:10px; }
@@ -146,6 +150,7 @@ button:active { transform: translateY(0); filter: brightness(1.15); }
         <button class="modo-btn" onclick="mostrarDificultad()">🤖 <span>1 Jugador (vs PC)</span></button>
         <button class="modo-btn" onclick="seleccionarModo(2)">👥 <span>2 Jugadores (mismo dispositivo)</span></button>
         <button class="modo-btn" onclick="mostrarPanelOnline()">🌐 <span>2 Jugadores (otro dispositivo)</span></button>
+        <button class="modo-btn" onclick="irModoPrueba()">🧪 <span>Modo Prueba</span></button>
     </div>
 
     <div id="dificultad" class="dificultad">
@@ -172,17 +177,6 @@ button:active { transform: translateY(0); filter: brightness(1.15); }
             <div class="opcion-tiempo" data-modo="clasico"><b>Clásico</b>90 min +30s</div>
             <div class="opcion-tiempo sin-reloj" data-modo="infinito"><b>Infinito</b>Solo cronómetro</div>
         </div>
-    </div>
-</div>
-
-<!-- MODAL CREAR SALA -->
-<div class="modal-sala" id="modalCrearSala">
-    <div class="sala-box">
-        <h3>🌐 Sala creada</h3>
-        <p>Comparte este código con el Jugador 2. La partida comienza cuando se una.</p>
-        <div class="codigo-sala" id="codigoSalaDisplay">------</div>
-        <div id="avisoSala">⏳ Iniciando sala...</div>
-        <button class="sala-btn cancelar" id="btnCancelarSala" onclick="cancelarSala()">Cancelar</button>
     </div>
 </div>
 
@@ -215,14 +209,7 @@ button:active { transform: translateY(0); filter: brightness(1.15); }
 </div>
 
 <script>
-// ===== PeerJS para crear sala en el menú =====
-const PEERJS_CDNS = [
-    'https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js'
-];
-
-let peerIndex = null;
-let codigoSalaActual = null;
+// ===== Parámetros de tiempo (selección en el menú) =====
 let modoTiempoSeleccionado = 'blitz5';
 
 // Temporizador (siempre hay uno activo: un reloj con cuenta atrás, o el modo
@@ -255,114 +242,43 @@ function seleccionarModo(modo, dificultad) {
     window.location.href = url;
 }
 
-// ===== CREAR SALA (en index) =====
-function cargarPeerJS(cb) {
-    if (window.Peer) { cb(); return; }
-    let i = 0;
-    function sig() {
-        if (i >= PEERJS_CDNS.length) { cb(new Error('No PeerJS')); return; }
-        const s = document.createElement('script');
-        s.src = PEERJS_CDNS[i++];
-        s.onload = cb; s.onerror = sig;
-        document.head.appendChild(s);
-    }
-    sig();
+// Modo Prueba: 2 jugadores, mismo dispositivo, contador infinito, con
+// Ctrl+Z/Ctrl+Y habilitados para practicar y probar errores del juego.
+function irModoPrueba() {
+    window.location.href = 'tablero.html?mode=2&prueba=1';
 }
 
-function generarCodigo() {
-    const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let c = '';
-    for (let i = 0; i < 6; i++) c += a[Math.floor(Math.random()*a.length)];
-    return c;
-}
-
+// ===== CREAR SALA =====
+// IMPORTANTE: aquí NO se conecta a PeerJS ni se genera código. Eso ocurre una
+// única vez dentro de tablero.html (sync.js), que es quien realmente gestiona
+// la conexión. Conectar también aquí causaba dos problemas: la conexión de
+// este menú se perdía al navegar (por eso "pedía conectar dos veces"), y al
+// llegar a tablero.html con la conexión ya hecha aquí, ese archivo volvía a
+// pedir el código desde cero (la pantalla de espera "reaparecía").
 function abrirModalCrearSala() {
-    document.getElementById('modalCrearSala').classList.add('mostrar');
-    document.getElementById('avisoSala').textContent = '⏳ Cargando...';
-    document.getElementById('codigoSalaDisplay').textContent = '...';
-
-    cargarPeerJS((err) => {
-        if (err) { document.getElementById('avisoSala').textContent = '⚠️ Sin internet. Revisa tu conexión.'; return; }
-        codigoSalaActual = generarCodigo();
-        document.getElementById('codigoSalaDisplay').textContent = codigoSalaActual;
-        document.getElementById('avisoSala').textContent = '⏳ Esperando al Jugador 2...';
-
-        const idCompleto = 'templos-' + codigoSalaActual;
-        if (peerIndex) { try { peerIndex.destroy(); } catch(e){} }
-        peerIndex = new Peer(idCompleto, { host:'0.peerjs.com', port:443, path:'/', secure:true });
-
-        peerIndex.on('open', () => {
-            document.getElementById('avisoSala').textContent = '🟠 Sala activa. Esperando al J2...';
-        });
-        peerIndex.on('connection', (conn) => {
-            conn.on('open', () => {
-                // J2 conectado: ir al tablero
-                conn.send({ tipo: 'ir', sala: codigoSalaActual });
-                setTimeout(() => {
-                    const url = `tablero.html?mode=2&online=1&jugador=0&sala=${codigoSalaActual}${construirParametrosTiempo()}`;
-                    window.location.href = url;
-                }, 200);
-            });
-        });
-        peerIndex.on('error', (e) => {
-            if (e.type === 'unavailable-id') {
-                codigoSalaActual = generarCodigo();
-                document.getElementById('codigoSalaDisplay').textContent = codigoSalaActual;
-                // reintentar
-                abrirModalCrearSala();
-            } else {
-                document.getElementById('avisoSala').textContent = '⚠️ Error: ' + (e.type||'desconocido');
-            }
-        });
-    });
+    window.location.href = `tablero.html?mode=2&online=1&jugador=0${construirParametrosTiempo()}`;
 }
 
-function cancelarSala() {
-    if (peerIndex) { try { peerIndex.destroy(); } catch(e){} peerIndex = null; }
-    document.getElementById('modalCrearSala').classList.remove('mostrar');
-}
-
-// ===== UNIRSE (en index) =====
+// ===== UNIRSE =====
 function abrirModalUnirse() {
     document.getElementById('modalUnirse').classList.add('mostrar');
     document.getElementById('avisoUnirse').textContent = '';
     const input = document.getElementById('inputCodigoUnirseIdx');
     if (input) { input.value = ''; setTimeout(()=>input.focus(),100); }
-
-    const btn = document.getElementById('btnConfirmarUnirse');
-    if (btn) btn.onclick = () => {
-        const codigo = (input ? input.value : '').trim().toUpperCase();
-        if (codigo.length < 4) { document.getElementById('avisoUnirse').textContent = '⚠️ Código muy corto.'; return; }
-        btn.disabled = true; btn.textContent = 'Conectando...';
-        document.getElementById('avisoUnirse').textContent = '⏳ Buscando sala...';
-        cargarPeerJS((err) => {
-            if (err) { document.getElementById('avisoUnirse').textContent='⚠️ Sin internet.'; btn.disabled=false; btn.textContent='Unirme ▶'; return; }
-            const p = new Peer(undefined, { host:'0.peerjs.com', port:443, path:'/', secure:true });
-            p.on('open', () => {
-                const conn = p.connect('templos-'+codigo, { reliable: true });
-                conn.on('open', () => {
-                    // Ir al tablero como J2
-                    const url = `tablero.html?mode=2&online=1&jugador=1&sala=${codigo}${construirParametrosTiempo()}`;
-                    window.location.href = url;
-                });
-                conn.on('error', () => {
-                    document.getElementById('avisoUnirse').textContent = '⚠️ No se encontró la sala.';
-                    btn.disabled=false; btn.textContent='Unirme ▶';
-                });
-                setTimeout(() => {
-                    if (!conn.open) {
-                        document.getElementById('avisoUnirse').textContent = '⚠️ No se pudo conectar. Verifica el código.';
-                        btn.disabled=false; btn.textContent='Unirme ▶';
-                    }
-                }, 8000);
-            });
-            p.on('error', (e) => {
-                document.getElementById('avisoUnirse').textContent = '⚠️ Error: '+(e.type||'desconocido');
-                btn.disabled=false; btn.textContent='Unirme ▶';
-            });
-        });
-    };
 }
+
+function confirmarUnirse() {
+    const input = document.getElementById('inputCodigoUnirseIdx');
+    const codigo = (input ? input.value : '').trim().toUpperCase();
+    if (codigo.length < 4) {
+        document.getElementById('avisoUnirse').textContent = '⚠️ Código muy corto.';
+        return;
+    }
+    // La conexión real (con reintentos y manejo de errores) se hace una sola
+    // vez dentro de tablero.html.
+    window.location.href = `tablero.html?mode=2&online=1&jugador=1&sala=${codigo}${construirParametrosTiempo()}`;
+}
+document.getElementById('btnConfirmarUnirse').addEventListener('click', confirmarUnirse);
 
 const inputUnirse = document.getElementById('inputCodigoUnirseIdx');
 if (inputUnirse) {
@@ -370,7 +286,7 @@ if (inputUnirse) {
         inputUnirse.value = inputUnirse.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
     });
     inputUnirse.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') document.getElementById('btnConfirmarUnirse').click();
+        if (e.key === 'Enter') confirmarUnirse();
     });
 }
 
@@ -384,6 +300,48 @@ document.getElementById('btnAyudaGlobal').addEventListener('click', () => {
 });
 function cerrarAyuda() { document.getElementById('modalAyuda').classList.remove('mostrar'); }
 function abrirAyudaEnTablero(tema) { window.location.href = `tablero.html?ayuda=${tema}`; }
+
+// ===== AUDIO DE FONDO EN EL MENÚ PRINCIPAL =====
+// Mismo motor de Web Audio que el resto del juego (sin archivos de audio).
+// Arranca con la primera interacción del usuario, como exige el navegador.
+let _audioMenuCtx = null;
+let _audioMenuIniciado = false;
+function _obtenerCtxMenu() {
+    if (!_audioMenuCtx) _audioMenuCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_audioMenuCtx.state === 'suspended') _audioMenuCtx.resume();
+    return _audioMenuCtx;
+}
+function _tocarNotaMenu(frec, duracion, vol) {
+    try {
+        const ctx = _obtenerCtxMenu();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine'; osc.frequency.value = frec;
+        const t0 = ctx.currentTime;
+        gain.gain.setValueAtTime(0, t0);
+        gain.gain.linearRampToValueAtTime(vol, t0 + 0.4);
+        gain.gain.linearRampToValueAtTime(0, t0 + duracion);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(t0); osc.stop(t0 + duracion + 0.1);
+    } catch (e) {}
+}
+function _cicloAudioMenu() {
+    const acorde = [261.63, 329.63, 392.00];
+    acorde.forEach((f, i) => setTimeout(() => _tocarNotaMenu(f, 3.2, 0.045), i * 200));
+    setTimeout(_cicloAudioMenu, 4200);
+}
+function _iniciarAudioMenu() {
+    if (_audioMenuIniciado) return;
+    _audioMenuIniciado = true;
+    _obtenerCtxMenu();
+    _cicloAudioMenu();
+    document.removeEventListener('click', _iniciarAudioMenu);
+    document.removeEventListener('keydown', _iniciarAudioMenu);
+    document.removeEventListener('touchstart', _iniciarAudioMenu);
+}
+document.addEventListener('click', _iniciarAudioMenu);
+document.addEventListener('keydown', _iniciarAudioMenu);
+document.addEventListener('touchstart', _iniciarAudioMenu);
 </script>
 </body>
 </html>
