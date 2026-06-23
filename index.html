@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
@@ -71,6 +72,13 @@ button:active { transform: translateY(0); filter: brightness(1.15); }
 .opcion-tiempo:hover { border-color: var(--oro); }
 .opcion-tiempo.activa { border-color: var(--oro); background: linear-gradient(160deg,#4a3424,#2a1c10); box-shadow: 0 0 10px rgba(205,168,107,0.4); }
 .opcion-tiempo.sin-reloj { grid-column: 1 / -1; }
+
+.grid-color-j1 { display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-bottom:8px; }
+.opcion-color {
+    background: linear-gradient(160deg,#2d2118,#1a130d); border:1px solid #4a3424; border-radius: 10px;
+    padding: 8px 5px; cursor:pointer; text-align:center; font-size: 0.82rem; color:#cbb892; font-weight:bold;
+}
+.opcion-color.activa { border-color: var(--oro); background: linear-gradient(160deg,#4a3424,#2a1c10); box-shadow: 0 0 10px rgba(205,168,107,0.4); }
 
 .toggle-reloj { display:flex; align-items:center; gap:8px; margin-bottom: 8px; font-size: 0.82rem; cursor:pointer; user-select:none; }
 .toggle-reloj input { width:16px; height:16px; accent-color: var(--oro); }
@@ -161,21 +169,30 @@ button:active { transform: translateY(0); filter: brightness(1.15); }
 
     <div id="panelOnlineInicio" class="panel-online-inicio">
         <h4>Multijugador en tiempo real</h4>
-        <p class="online-nota">Gratis, sin cuentas. Jugador 1 crea una sala y comparte el código; Jugador 2 lo ingresa para unirse.</p>
-        <button onclick="abrirModalCrearSala()">Soy J1 (Rojo) — Crear sala</button>
-        <button onclick="abrirModalUnirse()" style="margin-top:4px;">Soy J2 (Azul) — Unirme con código</button>
+        <p class="online-nota">Gratis, sin cuentas. El Jugador 1 crea la sala eligiendo color y tipo de partida; el Jugador 2 solo ingresa el código.</p>
+
+        <div class="seccion-color-j1">
+            <p style="margin:8px 0 4px;font-size:0.85rem;">Tus fichas:</p>
+            <div class="grid-color-j1" id="gridColorJ1" role="radiogroup" aria-label="Elegir color de fichas para el Jugador 1">
+                <button type="button" class="opcion-color activa" data-color="0" role="radio" aria-checked="true">🔴 Rojas</button>
+                <button type="button" class="opcion-color" data-color="1" role="radio" aria-checked="false">🔵 Azules</button>
+            </div>
+        </div>
+
+        <button onclick="abrirModalCrearSala()">Crear sala (Jugador 1)</button>
+        <button onclick="abrirModalUnirse()" style="margin-top:4px;">Unirme con código (Jugador 2)</button>
     </div>
 
     <div class="seccion" id="seccionTiempo">
         <h3>Temporizador</h3>
-        <div class="grid-tiempo" id="gridTiempo">
-            <div class="opcion-tiempo" data-modo="bala"><b>Bala</b>1 min</div>
-            <div class="opcion-tiempo" data-modo="blitz5"><b>Blitz 5</b>5 min</div>
-            <div class="opcion-tiempo" data-modo="blitz32"><b>Blitz 3+2</b>3 min +2s/jug.</div>
-            <div class="opcion-tiempo" data-modo="rapidoA"><b>Rápido A</b>10 min +10s</div>
-            <div class="opcion-tiempo" data-modo="rapidoB"><b>Rápido B</b>15 min +10s</div>
-            <div class="opcion-tiempo" data-modo="clasico"><b>Clásico</b>90 min +30s</div>
-            <div class="opcion-tiempo sin-reloj" data-modo="infinito"><b>Infinito</b>Solo cronómetro</div>
+        <div class="grid-tiempo" id="gridTiempo" role="radiogroup" aria-label="Elegir tipo de temporizador">
+            <div class="opcion-tiempo" data-modo="bala" role="radio" aria-checked="false" tabindex="0"><b>Bala</b>1 min</div>
+            <div class="opcion-tiempo" data-modo="blitz5" role="radio" aria-checked="true" tabindex="0"><b>Blitz 5</b>5 min</div>
+            <div class="opcion-tiempo" data-modo="blitz32" role="radio" aria-checked="false" tabindex="0"><b>Blitz 3+2</b>3 min +2s/jug.</div>
+            <div class="opcion-tiempo" data-modo="rapidoA" role="radio" aria-checked="false" tabindex="0"><b>Rápido A</b>10 min +10s</div>
+            <div class="opcion-tiempo" data-modo="rapidoB" role="radio" aria-checked="false" tabindex="0"><b>Rápido B</b>15 min +10s</div>
+            <div class="opcion-tiempo" data-modo="clasico" role="radio" aria-checked="false" tabindex="0"><b>Clásico</b>90 min +30s</div>
+            <div class="opcion-tiempo sin-reloj" data-modo="infinito" role="radio" aria-checked="false" tabindex="0"><b>Infinito</b>Solo cronómetro</div>
         </div>
     </div>
 </div>
@@ -185,8 +202,8 @@ button:active { transform: translateY(0); filter: brightness(1.15); }
     <div class="sala-box">
         <h3>🌐 Unirse a partida</h3>
         <p>Ingresa el código que te compartió el Jugador 1:</p>
-        <input id="inputCodigoUnirseIdx" class="input-codigo" type="text" maxlength="6" placeholder="CÓDIGO" autocomplete="off">
-        <div id="avisoUnirse" style="font-size:0.8rem;color:#cbb892;min-height:1.2em;margin:6px 0;"></div>
+        <input id="inputCodigoUnirseIdx" class="input-codigo" type="text" maxlength="6" placeholder="CÓDIGO" autocomplete="off" aria-label="Código de la sala">
+        <div id="avisoUnirse" style="font-size:0.8rem;color:#cbb892;min-height:1.2em;margin:6px 0;" role="status" aria-live="polite"></div>
         <button class="sala-btn" id="btnConfirmarUnirse">Unirme ▶</button>
         <button class="sala-btn cancelar" onclick="cerrarModalUnirse()">Cancelar</button>
     </div>
@@ -216,11 +233,13 @@ let modoTiempoSeleccionado = 'blitz5';
 // "Infinito" que es un cronómetro ascendente sin límite. Por eso ya no existe
 // un interruptor para "desactivar" el reloj.)
 document.querySelectorAll('.opcion-tiempo').forEach(el => {
-    el.addEventListener('click', () => {
-        document.querySelectorAll('.opcion-tiempo').forEach(o => o.classList.remove('activa'));
-        el.classList.add('activa');
+    const activar = () => {
+        document.querySelectorAll('.opcion-tiempo').forEach(o => { o.classList.remove('activa'); o.setAttribute('aria-checked','false'); });
+        el.classList.add('activa'); el.setAttribute('aria-checked','true');
         modoTiempoSeleccionado = el.dataset.modo;
-    });
+    };
+    el.addEventListener('click', activar);
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activar(); } });
 });
 document.querySelector('.opcion-tiempo[data-modo="blitz5"]').classList.add('activa');
 
@@ -255,8 +274,17 @@ function irModoPrueba() {
 // este menú se perdía al navegar (por eso "pedía conectar dos veces"), y al
 // llegar a tablero.html con la conexión ya hecha aquí, ese archivo volvía a
 // pedir el código desde cero (la pantalla de espera "reaparecía").
+let colorJ1Elegido = 0; // 0 = rojo, 1 = azul
+document.querySelectorAll('.opcion-color').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.opcion-color').forEach(b => { b.classList.remove('activa'); b.setAttribute('aria-checked','false'); });
+        btn.classList.add('activa'); btn.setAttribute('aria-checked','true');
+        colorJ1Elegido = parseInt(btn.dataset.color, 10);
+    });
+});
+
 function abrirModalCrearSala() {
-    window.location.href = `tablero.html?mode=2&online=1&jugador=0${construirParametrosTiempo()}`;
+    window.location.href = `tablero.html?mode=2&online=1&jugador=0&colorJ1=${colorJ1Elegido}${construirParametrosTiempo()}`;
 }
 
 // ===== UNIRSE =====

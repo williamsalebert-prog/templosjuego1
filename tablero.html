@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
@@ -253,15 +254,27 @@
         display:none; align-items:center; justify-content:center; z-index:50; padding:16px;
     }
     #panelDesconexion.mostrar { display:flex; }
+#panelAnalisis {
+    display:none; align-items:center; justify-content:center; gap:6px;
+    background: rgba(10,7,5,0.92); border-top: 1px solid var(--oro);
+    padding: 8px; flex-wrap: wrap;
+}
+#panelAnalisis button {
+    background: linear-gradient(160deg,#e7cf9c,#cda86b); color:#2a1c10;
+    border:1px solid #6b4c2c; border-radius:8px; padding:6px 10px; cursor:pointer; font-weight:bold;
+}
+#panelAnalisis button:disabled { opacity:0.4; cursor:default; }
+#panelAnalisis select { border-radius:6px; padding:4px; }
+#analisisNumeroJugada, #analisisJugador { color:#f4e3c4; font-size:0.8rem; padding:0 6px; }
 </style>
 </head>
 <body>
 
 <!-- BARRA SUPERIOR (siempre visible) -->
 <div class="barra-top">
-    <button class="btn-menu-top" id="btnMenuTop" title="Menú">☰</button>
-    <div id="turnoTexto" class="turno-rojo">J1</div>
-    <div id="estadoJuego"></div>
+    <button class="btn-menu-top" id="btnMenuTop" title="Menú" aria-label="Abrir menú" aria-haspopup="true" aria-expanded="false">☰</button>
+    <div id="turnoTexto" class="turno-rojo" role="status" aria-live="polite">J1</div>
+    <div id="estadoJuego" role="status" aria-live="polite"></div>
     <div id="panelRelojes" class="relojes-barra">
         <div class="reloj" id="relojJ0"><span class="reloj-label">J1</span><span id="relojJ0Val">5:00</span></div>
         <div class="reloj" id="relojJ1"><span class="reloj-label">J2</span><span id="relojJ1Val">5:00</span></div>
@@ -271,12 +284,12 @@
 <!-- OVERLAY MENU -->
 <div class="menu-overlay" id="menuOverlay"></div>
 <div class="menu-panel" id="menuPanel">
-    <button class="menu-item" id="menuMusica"><span class="mi-icon">🎵</span>Música</button>
-    <button class="menu-item" id="menuImportar"><span class="mi-icon">📂</span>Importar</button>
-    <button class="menu-item" id="menuExportar"><span class="mi-icon">💾</span>Exportar</button>
-    <button class="menu-item" id="menuTablas" title="Pedir tablas"><span class="mi-icon">🤝</span></button>
-    <button class="menu-item peligro" id="menuRendirse" title="Rendirse"><span class="mi-icon">🏳️</span></button>
-    <button class="menu-item peligro" id="menuSalir"><span class="mi-icon">🚪</span>Menú principal</button>
+    <button class="menu-item" id="menuMusica" aria-label="Activar o pausar música"><span class="mi-icon">🎵</span>Música</button>
+    <button class="menu-item" id="menuImportar" aria-label="Importar partida"><span class="mi-icon">📂</span>Importar</button>
+    <button class="menu-item" id="menuExportar" aria-label="Exportar partida"><span class="mi-icon">💾</span>Exportar</button>
+    <button class="menu-item" id="menuTablas" title="Pedir tablas" aria-label="Pedir tablas"><span class="mi-icon">🤝</span></button>
+    <button class="menu-item peligro" id="menuRendirse" title="Rendirse" aria-label="Rendirse"><span class="mi-icon">🏳️</span></button>
+    <button class="menu-item peligro" id="menuSalir" aria-label="Volver al menú principal"><span class="mi-icon">🚪</span>Menú principal</button>
 </div>
 <input type="file" id="inputImportarPartida" accept=".json" style="display:none;">
 
@@ -284,7 +297,7 @@
 <div class="zona-tablero">
     <div class="marco-tablero">
         <div id="canvasWrapper" class="canvas-wrapper">
-            <canvas id="tableroCanvas" width="900" height="600"></canvas>
+            <canvas id="tableroCanvas" width="900" height="600" role="img" aria-label="Tablero de Templos: usa el ratón o el dedo para mover piezas"></canvas>
         </div>
     </div>
 
@@ -358,6 +371,23 @@
     </div>
 </div>
 
+<!-- PANEL DE ANÁLISIS (solo Modo Prueba): navegar, reproducir y revisar la partida -->
+<nav id="panelAnalisis" aria-label="Controles de análisis de partida">
+    <button id="analisisBtnInicio" aria-label="Ir al inicio de la partida">⏮</button>
+    <button id="analisisBtnAtras" aria-label="Jugada anterior">◀</button>
+    <button id="analisisBtnPlay" aria-label="Reproducir partida">▶</button>
+    <button id="analisisBtnAdelante" aria-label="Jugada siguiente">▶|</button>
+    <button id="analisisBtnFinal" aria-label="Ir al final de la partida">⏭</button>
+    <span id="analisisNumeroJugada" role="status" aria-live="polite">Jugada 0 / 0</span>
+    <span id="analisisJugador" role="status" aria-live="polite">Posición inicial</span>
+    <label for="analisisVelocidad" style="font-size:0.78rem;color:#cbb892;">Velocidad</label>
+    <select id="analisisVelocidad" aria-label="Velocidad de reproducción">
+        <option value="1600">Lenta</option>
+        <option value="900" selected>Normal</option>
+        <option value="400">Rápida</option>
+    </select>
+</nav>
+
 <!-- COUNTDOWN INICIO -->
 <div id="countdownOverlay">
     <div class="countdown-num" id="countdownNum">3</div>
@@ -368,9 +398,10 @@
     <div class="modal-contenido">
         <h3>📡 Conexión perdida</h3>
         <p id="textoDesconexion">El otro jugador se desconectó.</p>
+        <p id="textoReconectando" style="font-size:0.8rem;opacity:0.75;margin-top:-4px;">🔄 Intentando reconectar automáticamente... la partida se guardó y los relojes están en pausa.</p>
         <div class="modal-btns">
             <button class="modal-btn modal-btn-export" id="btnExportarDesconexion">💾 Exportar partida</button>
-            <button class="modal-btn modal-btn-ok" id="btnOkDesconexion">OK</button>
+            <button class="modal-btn modal-btn-ok" id="btnOkDesconexion">Volver al menú</button>
         </div>
     </div>
 </div>
@@ -425,6 +456,7 @@ window.arrancarCountdown = function(cb) {
 <script src="js/f5.js"></script>
 <script src="js/f6.js"></script>
 <script src="js/config.js"></script>
+<script src="js/cache.js"></script>
 <script src="js/carcela.js"></script>
 <script src="js/historial.js"></script>
 <script src="js/animacion.js"></script>
@@ -440,8 +472,10 @@ window.arrancarCountdown = function(cb) {
 <script src="js/partida.js"></script>
 <script src="js/ia.js"></script>
 <script src="js/sync.js"></script>
+<script src="js/coloronline.js"></script>
 <script src="js/tablasrendicion.js"></script>
 <script src="js/tablero.js"></script>
+<script src="js/analisis.js"></script>
 <script src="js/musica.js"></script>
 
 <script>
@@ -473,10 +507,18 @@ document.getElementById('menuExportar').addEventListener('click', () => {
     cerrarMenu();
     if (typeof exportarPartida === 'function') exportarPartida();
 });
-document.getElementById('menuImportar').addEventListener('click', () => {
-    cerrarMenu();
-    document.getElementById('inputImportarPartida').click();
-});
+// Importar solo está permitido en Modo Prueba. En partidas normales (vs IA,
+// 2 jugadores u online) solo se puede exportar, nunca importar un archivo
+// ajeno a mitad de partida.
+if (!CONFIG_JUEGO.modoPrueba) {
+    const btnImportarMenu = document.getElementById('menuImportar');
+    if (btnImportarMenu) btnImportarMenu.remove();
+} else {
+    document.getElementById('menuImportar').addEventListener('click', () => {
+        cerrarMenu();
+        document.getElementById('inputImportarPartida').click();
+    });
+}
 document.getElementById('menuSalir').addEventListener('click', () => {
     cerrarMenu();
     document.getElementById('modalConfirmarSalida').classList.add('mostrar');
@@ -496,6 +538,8 @@ document.getElementById('inputImportarPartida').addEventListener('change', (e) =
 
 // ===== DESCONEXIÓN ONLINE =====
 document.getElementById('btnOkDesconexion').addEventListener('click', () => {
+    if (typeof intentandoReconectar !== 'undefined') intentandoReconectar = false;
+    if (typeof peerConexion !== 'undefined' && peerConexion) { try { peerConexion.destroy(); } catch(e) {} }
     window.location.href = 'index.html';
 });
 document.getElementById('btnExportarDesconexion').addEventListener('click', () => {
