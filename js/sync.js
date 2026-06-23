@@ -154,58 +154,238 @@ function aplicarJugadaRemota(jugada) {
     }
 }
 
+function manejarMensajeCanalDatos(mensaje) {
+    if (mensaje && mensaje.tipo === 'jugada') {
+        aplicarJugadaRemota(mensaje.jugada);
+    } else if (mensaje && mensaje.tipo === 'relojes') {
+        if (mensaje.tiempoRestante && typeof tiempoRestante !== 'undefined') tiempoRestante = mensaje.tiempoRestante;
+        if (mensaje.cronometro && typeof cronometro !== 'undefined') cronometro = mensaje.cronometro;
+        if (typeof pintarRelojes === 'function') pintarRelojes();
+    } else if (mensaje && mensaje.tipo === 'propuesta') {
+        window.partidaPausadaPorPropuesta = true;
+        if (mensaje.subtipo === 'tablas' && typeof mostrarPropuestaRecibida === 'function') {
+            mostrarPropuestaRecibida('tablas', CONFIG_JUEGO.onlineSoyJugador);
+        }
+    } else if (mensaje && mensaje.tipo === 'respuestaPropuesta') {
+        if (typeof aplicarResultadoPropuesta === 'function') aplicarResultadoPropuesta(mensaje.acepta);
+    } else if (mensaje && mensaje.tipo === 'cancelarPropuesta') {
+        window.partidaPausadaPorPropuesta = false;
+        if (typeof cerrarPropuestaRecibida === 'function') cerrarPropuestaRecibida();
+    } else if (mensaje && mensaje.tipo === 'rendicion') {
+        window.partidaPausadaPorPropuesta = false;
+        if (typeof finalizarPorRendicion === 'function') finalizarPorRendicion(1 - mensaje.quienSeRinde);
+    } else if (mensaje && mensaje.tipo === 'estado') {
+        aplicarEstadoRecibido(mensaje.datos);
+    } else if (mensaje && mensaje.tipo === 'rechazado') {
+        mostrarAvisoEspera('⚠️ Esa sala ya tiene 2 jugadores.');
+    } else if (mensaje && mensaje.tipo === 'config-partida') {
+        // J2 recibe la elección de color y el tipo de partida de J1 (solo
+        // informativo) y debe confirmar o sortear el color con una moneda.
+        if (typeof mostrarConfirmacionColorJ2 === 'function') {
+            mostrarConfirmacionColorJ2(mensaje.colorJ1, mensaje.timerMode, mensaje.timer);
+        }
+    } else if (mensaje && mensaje.tipo === 'respuesta-color') {
+        // El anfitrión recibe la decisión final de color (confirmada o
+        // sorteada) y, con eso resuelto, ordena a ambos lados arrancar.
+        CONFIG_JUEGO.onlineSoyJugador = mensaje.colorJ1;
+        try { canalDatos.send({ tipo: 'iniciar', colorJ1: mensaje.colorJ1 }); } catch(e) {}
+        lanzarInicioOnline();
+    } else if (mensaje && mensaje.tipo === 'iniciar') {
+        // colorJ1 ya viene decidido (confirmado o sorteado): determina si el
+        // anfitrión (jugador de conexión 0) controla las piezas rojas (color
+        // de jugador 0) o las azules (color de jugador 1).
+        if (typeof mensaje.colorJ1 === 'number') {
+            CONFIG_JUEGO.onlineSoyJugador = onlineRolAnfitrion
+                ? mensaje.colorJ1
+                : (1 - mensaje.colorJ1);
+        }
+        lanzarInicioOnline();
+    }
+}
+
 function configurarCanalDatos(conn) {
     canalDatos = conn;
     conn.on('open', () => {
         onlineConectado = true;
-        // Ambos jugadores conectados: lanzar countdown y arrancar partida
         ocultarPanelEspera();
-        if (onlineRolAnfitrion) {
-            // Anfitrión manda señal de inicio
-            try { canalDatos.send({ tipo: 'iniciar' }); } catch(e) {}
-            lanzarInicioOnline();
+        if (contadorJugadas > 0) {
+            // Esta sesión ya tenía jugadas (se recuperó de un snapshot tras
+            // recargar la página): en vez de arrancar countdown de partida
+            // nueva, sincronizamos con el otro lado por si él también se
+            // recuperó con un estado distinto, y luego mostramos el
+            // countdown corto de preparación antes de continuar.
+            try { conn.send({ tipo: 'reconexion-info', contadorJugadas, estado: estadoCompletoActual() }); } catch(e) {}
+        } else if (onlineRolAnfitrion) {
+            // Partida nueva: antes de arrancar, el anfitrión manda su
+            // elección de color y el tipo de partida para que J2 los vea
+            // (solo lectura) y confirme o sortee el color con una moneda.
+            const params = new URLSearchParams(window.location.search);
+            const colorJ1 = params.get('colorJ1') === '1' ? 1 : 0;
+            try {
+                canalDatos.send({
+                    tipo: 'config-partida',
+                    colorJ1,
+                    timerMode: CONFIG_JUEGO.timerMode,
+                    timer: CONFIG_JUEGO.timer
+                });
+            } catch(e) {}
         }
     });
     conn.on('data', (mensaje) => {
-        if (mensaje && mensaje.tipo === 'jugada') {
-            aplicarJugadaRemota(mensaje.jugada);
-        } else if (mensaje && mensaje.tipo === 'relojes') {
-            if (mensaje.tiempoRestante && typeof tiempoRestante !== 'undefined') tiempoRestante = mensaje.tiempoRestante;
-            if (mensaje.cronometro && typeof cronometro !== 'undefined') cronometro = mensaje.cronometro;
-            if (typeof pintarRelojes === 'function') pintarRelojes();
-        } else if (mensaje && mensaje.tipo === 'propuesta') {
-            window.partidaPausadaPorPropuesta = true;
-            if (mensaje.subtipo === 'tablas' && typeof mostrarPropuestaRecibida === 'function') {
-                mostrarPropuestaRecibida('tablas', CONFIG_JUEGO.onlineSoyJugador);
+        if (mensaje && mensaje.tipo === 'reconexion-info') {
+            if (mensaje.contadorJugadas > contadorJugadas) {
+                aplicarEstadoRecibido(mensaje.estado);
+            } else if (mensaje.contadorJugadas < contadorJugadas) {
+                try { conn.send({ tipo: 'estado', datos: estadoCompletoActual() }); } catch(e) {}
             }
-        } else if (mensaje && mensaje.tipo === 'respuestaPropuesta') {
-            if (typeof aplicarResultadoPropuesta === 'function') aplicarResultadoPropuesta(mensaje.acepta);
-        } else if (mensaje && mensaje.tipo === 'cancelarPropuesta') {
-            window.partidaPausadaPorPropuesta = false;
-            if (typeof cerrarPropuestaRecibida === 'function') cerrarPropuestaRecibida();
-        } else if (mensaje && mensaje.tipo === 'rendicion') {
-            window.partidaPausadaPorPropuesta = false;
-            if (typeof finalizarPorRendicion === 'function') finalizarPorRendicion(1 - mensaje.quienSeRinde);
-        } else if (mensaje && mensaje.tipo === 'estado') {
-            aplicarEstadoRecibido(mensaje.datos);
-        } else if (mensaje && mensaje.tipo === 'iniciar') {
-            // Jugador 2 recibe señal: lanzar countdown
-            lanzarInicioOnline();
-        } else if (mensaje && mensaje.tipo === 'rechazado') {
-            mostrarAvisoEspera('⚠️ Esa sala ya tiene 2 jugadores.');
+            lanzarPreparacionTrasReconexion();
+        } else {
+            manejarMensajeCanalDatos(mensaje);
         }
     });
     conn.on('close', () => {
         if (!juegoTerminado) {
             onlineConectado = false;
+            // Pausamos todo (relojes incluidos) mientras se intenta reconectar.
+            // El tiempo que pase desconectado NO cuenta para ningún jugador.
+            window.partidaPausadaPorPropuesta = true;
+            if (typeof detenerRelojes === 'function') detenerRelojes();
             if (typeof mostrarDesconexion === 'function') {
                 mostrarDesconexion('El otro jugador se desconectó de la partida.');
             }
+            intentarReconexionAutomatica();
         }
     });
     conn.on('error', () => {
         mostrarAvisoEspera('⚠️ Error de conexión. Intenta de nuevo.');
     });
+}
+
+// ============================================================================
+// RECONEXIÓN TRAS UNA CAÍDA (corta o larga)
+// ============================================================================
+// Si la conexión se cae a mitad de partida, en vez de obligar a empezar de
+// cero, se intenta restablecer la MISMA sala: el anfitrión vuelve a escuchar
+// conexiones entrantes, y quien se unió reintenta conectar al mismo código.
+// Cuando ambos vuelven a estar conectados, se comparan los estados de cada
+// uno (por número de jugadas) y se adopta el más avanzado, para no perder
+// ninguna jugada que uno de los dos sí haya recibido. Los relojes quedaron
+// pausados desde el instante de la caída y solo se reanudan tras el
+// countdown de 3 segundos de preparación.
+// ============================================================================
+
+let intentandoReconectar = false;
+
+function intentarReconexionAutomatica() {
+    if (intentandoReconectar || juegoTerminado) return;
+    intentandoReconectar = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const sala = params.get('sala') || _idCodigoSalaPropia;
+
+    if (onlineRolAnfitrion) {
+        // Volvemos a abrir el mismo Peer (mismo id de sala) y esperamos a que
+        // el otro jugador reconecte.
+        reabrirComoAnfitrionParaReconectar(sala);
+    } else {
+        reintentarUnionParaReconectar(sala);
+    }
+}
+
+let _idCodigoSalaPropia = null;
+
+function reabrirComoAnfitrionParaReconectar(sala) {
+    if (!sala) { intentandoReconectar = false; return; }
+    if (peerConexion) { try { peerConexion.destroy(); } catch(e) {} }
+    peerConexion = crearInstanciaPeer('templos-' + sala);
+    peerConexion.on('connection', (conn) => {
+        configurarCanalDatosReconexion(conn);
+    });
+    peerConexion.on('error', () => {
+        // Reintentar en unos segundos si el id quedó "ocupado" por la sesión
+        // anterior que el servidor de señalización todavía no liberó.
+        setTimeout(() => { if (intentandoReconectar) reabrirComoAnfitrionParaReconectar(sala); }, 2000);
+    });
+}
+
+function reintentarUnionParaReconectar(sala) {
+    if (!sala) { intentandoReconectar = false; return; }
+    if (peerConexion) { try { peerConexion.destroy(); } catch(e) {} }
+    peerConexion = crearInstanciaPeer(undefined);
+    peerConexion.on('open', () => {
+        const conn = peerConexion.connect('templos-' + sala, { reliable: true });
+        configurarCanalDatosReconexion(conn);
+    });
+    peerConexion.on('error', () => {
+        setTimeout(() => { if (intentandoReconectar) reintentarUnionParaReconectar(sala); }, 2000);
+    });
+}
+
+// Variante de configurarCanalDatos específica para cuando la conexión se
+// reestablece tras una caída a mitad de partida: en vez de lanzar el inicio
+// de partida desde cero, sincroniza el estado más avanzado de los dos y
+// lanza un countdown corto de preparación antes de continuar.
+function configurarCanalDatosReconexion(conn) {
+    canalDatos = conn;
+    conn.on('open', () => {
+        onlineConectado = true;
+        intentandoReconectar = false;
+        ocultarPanelDesconexion();
+        // Cada lado manda su propio número de jugadas para decidir quién
+        // tiene el estado más avanzado (puede que uno haya recibido una
+        // jugada que al otro no le llegó a confirmar antes de la caída).
+        try { conn.send({ tipo: 'reconexion-info', contadorJugadas, estado: estadoCompletoActual() }); } catch(e) {}
+    });
+    conn.on('data', (mensaje) => {
+        if (mensaje && mensaje.tipo === 'reconexion-info') {
+            if (mensaje.contadorJugadas > contadorJugadas) {
+                // El otro lado está más avanzado: adoptamos su estado.
+                aplicarEstadoRecibido(mensaje.estado);
+            } else if (mensaje.contadorJugadas < contadorJugadas) {
+                // Nosotros estamos más avanzados: le mandamos nuestro estado.
+                try { conn.send({ tipo: 'estado', datos: estadoCompletoActual() }); } catch(e) {}
+            }
+            lanzarPreparacionTrasReconexion();
+        } else if (mensaje && mensaje.tipo === 'estado') {
+            aplicarEstadoRecibido(mensaje.datos);
+        } else {
+            // Tras la sincronización inicial, el resto de mensajes se manejan
+            // igual que en una conexión normal.
+            manejarMensajeCanalDatos(mensaje);
+        }
+    });
+    conn.on('close', () => {
+        if (!juegoTerminado) {
+            onlineConectado = false;
+            window.partidaPausadaPorPropuesta = true;
+            if (typeof detenerRelojes === 'function') detenerRelojes();
+            if (typeof mostrarDesconexion === 'function') {
+                mostrarDesconexion('El otro jugador se desconectó de la partida.');
+            }
+            intentarReconexionAutomatica();
+        }
+    });
+}
+
+// Countdown corto (3s) de preparación antes de continuar tras reconectar, con
+// los relojes quedándose pausados hasta que termine.
+function lanzarPreparacionTrasReconexion() {
+    ocultarPanelDesconexion();
+    window.partidaPausadaPorPropuesta = true;
+    if (typeof window.arrancarCountdown === 'function') {
+        window.arrancarCountdown(() => {
+            window.partidaPausadaPorPropuesta = false;
+            if (typeof arrancarRelojes === 'function') arrancarRelojes();
+        });
+    } else {
+        window.partidaPausadaPorPropuesta = false;
+        if (typeof arrancarRelojes === 'function') arrancarRelojes();
+    }
+}
+
+function ocultarPanelDesconexion() {
+    const panel = document.getElementById('panelDesconexion');
+    if (panel) panel.classList.remove('mostrar');
 }
 
 function lanzarInicioOnline() {
@@ -244,6 +424,19 @@ function configurarPanelOnline() {
     window.tableroHabilitado = false;
     mostrarPanelEspera();
 
+    // Si esta página se recargó por accidente (o se cerró) a mitad de una
+    // partida online de esta misma sala, recuperamos el tablero donde se
+    // quedó antes de intentar (re)conectar, en vez de arrancar de cero.
+    const params = new URLSearchParams(window.location.search);
+    const salaURL = (params.get('sala') || '').trim().toUpperCase();
+    if (salaURL && typeof buscarPartidaEnCachePorSala === 'function') {
+        const guardada = buscarPartidaEnCachePorSala(salaURL);
+        if (guardada && guardada.estado) {
+            aplicarEstadoRecibido(guardada.estado);
+            window._idPartidaActualCache = guardada.id; // seguir actualizando el mismo registro
+        }
+    }
+
     cargarScriptPeerJS((error) => {
         if (error) {
             mostrarAvisoEspera('⚠️ Sin conexión. Revisa tu internet y recarga.');
@@ -270,6 +463,7 @@ function iniciarComoAnfitrion(intentoActual = 1) {
     // Si no viene, generamos uno aquí
     const params = new URLSearchParams(window.location.search);
     let codigo = params.get('sala') || generarCodigoSala();
+    _idCodigoSalaPropia = codigo;
     const idCompleto = 'templos-' + codigo;
 
     renderPanelAnfitrion(codigo);

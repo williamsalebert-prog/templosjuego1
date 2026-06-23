@@ -138,7 +138,7 @@ function iniciarJuego() {
     menuCoronacion.style.display = 'none';
     historial.limpiar(); carcela.limpiar();
     if (typeof reiniciarFinJuego === 'function') reiniciarFinJuego();
-    precargarImagenes();
+
     if (typeof actualizarInterfaz === 'function') actualizarInterfaz();
     if (typeof iniciarRelojes === 'function') iniciarRelojes();
     dibujarTablero();
@@ -317,6 +317,7 @@ document.addEventListener('keydown', (e) => {
         coronacionPendiente = null; menuCoronacion.style.display = 'none';
         if (typeof reiniciarFinJuego === 'function') reiniciarFinJuego();
         if (typeof actualizarInterfaz === 'function') actualizarInterfaz();
+        if (typeof actualizarPanelAnalisis === 'function') actualizarPanelAnalisis();
         dibujarTablero();
     } else if (e.ctrlKey && e.key === 'y') {
         e.preventDefault();
@@ -333,6 +334,7 @@ document.addEventListener('keydown', (e) => {
         if (esJaqueMate(turno)) { juegoTerminado = true; mostrarFinJuego('jaquemate', turno); }
         else if (esAhogado(turno)) { juegoTerminado = true; mostrarFinJuego('tablas', turno); }
         if (typeof actualizarInterfaz === 'function') actualizarInterfaz();
+        if (typeof actualizarPanelAnalisis === 'function') actualizarPanelAnalisis();
         dibujarTablero();
     }
 });

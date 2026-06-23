@@ -66,18 +66,35 @@ function tocarNotaPad(frec, duracion, vol) {
 function tocarNotaMelodia(frec, duracion, vol) {
     try {
         const ctx = obtenerContextoMusica();
+        const t0 = ctx.currentTime;
+        const salida = obtenerSalidaMusica();
+
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'triangle';
         osc.frequency.value = frec;
-        const t0 = ctx.currentTime;
         gain.gain.setValueAtTime(0, t0);
         gain.gain.linearRampToValueAtTime(vol, t0 + 0.25);
         gain.gain.exponentialRampToValueAtTime(0.001, t0 + duracion);
         osc.connect(gain);
-        gain.connect(obtenerSalidaMusica());
+        gain.connect(salida);
         osc.start(t0);
         osc.stop(t0 + duracion + 0.1);
+
+        // Armónico suave una octava arriba para dar algo de cuerpo, igual
+        // que en los efectos cortos (ver playTone en sonido.js), en vez de
+        // dejar la melodía como un tono puro plano.
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'triangle';
+        osc2.frequency.value = frec * 2;
+        gain2.gain.setValueAtTime(0, t0);
+        gain2.gain.linearRampToValueAtTime(vol * 0.15, t0 + 0.25);
+        gain2.gain.exponentialRampToValueAtTime(0.0006, t0 + duracion * 0.8);
+        osc2.connect(gain2);
+        gain2.connect(salida);
+        osc2.start(t0);
+        osc2.stop(t0 + duracion + 0.1);
     } catch (e) {}
 }
 

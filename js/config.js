@@ -13,7 +13,7 @@ let destinoRuta = null;
 
 let enroqueRealizado = [false, false];
 
-const imagenesPiezas = {};
+
 const colorBordeEquipo = ['#8B0000', '#00008B'];
 
 // --- Estado de fin de partida (jaque mate / ahogado) ---

@@ -11,6 +11,8 @@ function despuesDeJugada() {
     // para que el rival reproduzca la misma animación y sonido. Aquí solo
     // sincronizamos los relojes, que no viajan dentro de la jugada.
     if (typeof transmitirRelojesSiOnline === 'function') transmitirRelojesSiOnline();
+    if (typeof guardarPartidaEnCache === 'function') guardarPartidaEnCache();
+    if (typeof actualizarPanelAnalisis === 'function') actualizarPanelAnalisis();
     if (typeof programarTurnoIASiCorresponde === 'function') programarTurnoIASiCorresponde();
 }
 
@@ -47,6 +49,7 @@ const FIN_JUEGO_SEGUNDOS_TOTAL = 8;
 
 function mostrarFinJuego(tipo, jugadorEnTurno) {
     if (typeof detenerRelojes === 'function') detenerRelojes();
+    if (typeof quitarPartidaActualDelCache === 'function') quitarPartidaActualDelCache();
 
     // Dejamos ver el tablero 3 segundos (la jugada/posición final) antes de
     // tapar la pantalla con el aviso de fin de partida, para que los jugadores

@@ -150,6 +150,7 @@ function finalizarPorTablasAcordadas() {
     if (juegoTerminado) return;
     juegoTerminado = true;
     if (typeof detenerRelojes === 'function') detenerRelojes();
+    if (typeof quitarPartidaActualDelCache === 'function') quitarPartidaActualDelCache();
     casillaFinJuego = null;
     casillasFinJuego = [];
     let r0 = typeof obtenerPosicionRey === 'function' ? obtenerPosicionRey(0) : null;
@@ -172,6 +173,7 @@ function finalizarPorRendicion(ganador) {
     if (juegoTerminado) return;
     juegoTerminado = true;
     if (typeof detenerRelojes === 'function') detenerRelojes();
+    if (typeof quitarPartidaActualDelCache === 'function') quitarPartidaActualDelCache();
     casillaFinJuego = null;
     casillasFinJuego = [];
     let reyPerdedor = typeof obtenerPosicionRey === 'function' ? obtenerPosicionRey(1 - ganador) : null;

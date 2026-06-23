@@ -1,18 +1,5 @@
 console.log("✅ dibujo.js cargado");
 
-function precargarImagenes() {
-    const extensiones = ['.jpg', '.jpeg', '.png'];
-    for (let tipo of piezasRegistradas.keys()) {
-        if (imagenesPiezas[tipo]) continue;
-        extensiones.forEach(ext => {
-            const img = new Image();
-            img.src = `img/${tipo.toLowerCase()}${ext}`;
-            img.onload = () => { imagenesPiezas[tipo] = img; dibujarTablero(); };
-            img.onerror = () => {};
-        });
-    }
-}
-
 // ------------------------------------------------------------------
 // Generador de "ruido" determinístico (sin dependencias) para dibujar
 // vetas de madera siempre iguales en cada casilla, dándole un aspecto
@@ -181,29 +168,22 @@ function dibujarPiezaTallada(ctx, cx, cy, radio, pieza, estaSeleccionada) {
     ctx.strokeStyle = 'rgba(0,0,0,0.25)';
     ctx.beginPath(); ctx.arc(cx, cy, radio - radio*0.13 - 1, 0, 2*Math.PI); ctx.stroke();
 
-    // Símbolo / imagen de la pieza
-    let img = imagenesPiezas[pieza.tipo];
-    if (img && img.complete && img.naturalWidth > 0) {
-        ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, radio*0.72, 0, 2*Math.PI); ctx.clip();
-        ctx.drawImage(img, cx - radio*0.72, cy - radio*0.72, radio*1.44, radio*1.44);
+    // Símbolo de la pieza (siempre dibujo vectorial, sin imágenes externas)
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.font = `bold ${radio*0.78}px Georgia, serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // Si el canvas está rotado visualmente (móvil en horizontal), el
+    // símbolo se contra-rota para que el jugador siempre lo vea "derecho"
+    // en su pantalla, en vez de tumbado de costado.
+    const gradosCanvas = (typeof canvas !== 'undefined' && canvas.dataset) ? parseInt(canvas.dataset.rotacion || '0', 10) : 0;
+    if (gradosCanvas !== 0) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(-gradosCanvas * Math.PI / 180);
+        ctx.fillText(SIMBOLO_PIEZA[pieza.tipo] || pieza.tipo, 0, radio*0.04);
         ctx.restore();
     } else {
-        ctx.fillStyle = 'rgba(0,0,0,0.75)';
-        ctx.font = `bold ${radio*0.78}px Georgia, serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        // Si el canvas está rotado visualmente (móvil en horizontal), el
-        // símbolo se contra-rota para que el jugador siempre lo vea "derecho"
-        // en su pantalla, en vez de tumbado de costado.
-        const gradosCanvas = (typeof canvas !== 'undefined' && canvas.dataset) ? parseInt(canvas.dataset.rotacion || '0', 10) : 0;
-        if (gradosCanvas !== 0) {
-            ctx.save();
-            ctx.translate(cx, cy);
-            ctx.rotate(-gradosCanvas * Math.PI / 180);
-            ctx.fillText(SIMBOLO_PIEZA[pieza.tipo] || pieza.tipo, 0, radio*0.04);
-            ctx.restore();
-        } else {
-            ctx.fillText(SIMBOLO_PIEZA[pieza.tipo] || pieza.tipo, cx, cy + radio*0.04);
-        }
+        ctx.fillText(SIMBOLO_PIEZA[pieza.tipo] || pieza.tipo, cx, cy + radio*0.04);
     }
 
     // Brillo superior (highlight) para dar aspecto pulido/tallado
@@ -225,8 +205,8 @@ function dibujarPiezaTallada(ctx, cx, cy, radio, pieza, estaSeleccionada) {
     ctx.restore();
 }
 
-// Símbolos tipográficos elegantes (estilo piezas de ajedrez) usados como respaldo
-// cuando no hay imagen cargada para el tipo de pieza.
+// Símbolos tipográficos elegantes (estilo piezas de ajedrez), dibujo vectorial
+// siempre usado para representar cada pieza (sin imágenes externas).
 const SIMBOLO_PIEZA = {
     F0: '\u265C', // torre
     F1: '\u265F', // peón
