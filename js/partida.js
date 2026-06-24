@@ -46,6 +46,12 @@ function exportarPartida() {
         historialPila: historial.pila.map(serializarEstadoHistorial),
         historialFuturos: historial.futuros.map(serializarEstadoHistorial),
 
+        // Notación de jugadas estilo ajedrez (ver js/notacion.js), tanto en
+        // lista como en texto ya formateado, para quien quiera leerla fuera
+        // del propio juego.
+        notacion: (typeof listaNotacionPartida !== 'undefined') ? [...listaNotacionPartida] : [],
+        notacionTexto: (typeof notacionCompletaComoTexto === 'function') ? notacionCompletaComoTexto() : '',
+
         // --- Metadatos de partida pedidos: contadores/relojes de ambos
         // jugadores, quién tiene el turno, tipo de temporizador usado, y si la
         // partida es contra la máquina o entre dos jugadores (mismo o distinto
@@ -122,6 +128,10 @@ function importarPartida(archivo) {
 
             historial.pila = nuevaHistorialPila;
             historial.futuros = nuevaHistorialFuturos;
+
+            if (typeof reiniciarNotacionPartida === 'function') {
+                reiniciarNotacionPartida(datos.notacion || []);
+            }
 
             // Restaurar relojes/cronómetro si el archivo los trae (partidas con
             // temporizador activo guardan cuánto tiempo le quedaba a cada uno).

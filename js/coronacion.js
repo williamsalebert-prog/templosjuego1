@@ -39,6 +39,16 @@ function coronar(tipo, remoto = false) {
     board[f][c] = nuevaPieza;
     menuCoronacion.style.display = 'none';
     coronacionPendiente = null;
+
+    if (typeof generarNotacionJugada === 'function' && _notacionTableroAntes) {
+        let notacion = generarNotacionJugada(
+            _notacionTableroAntes, _notacionOrigenJugada, [f, c],
+            _notacionCaminoJugada, 'F1', true, tipo
+        );
+        notacion = agregarSufijoJaque(notacion, board, 1 - jugador);
+        registrarNotacion(notacion);
+    }
+
     if (!remoto && typeof transmitirMovimientoSiOnline === 'function') {
         transmitirMovimientoSiOnline({ tipo: 'coronar', f, c, jugador, piezaTipo: tipo });
     }

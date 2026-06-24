@@ -31,6 +31,7 @@ function analisisAvanzar() {
     const estadoActual = { board: copiarBoard(), turno, enroqueRealizado: [...enroqueRealizado] };
     const siguiente = historial.rehacer(estadoActual);
     if (!siguiente) return false;
+    if (typeof notacionRehacer === 'function') notacionRehacer();
     aplicarEstadoDeHistorial(siguiente);
     return true;
 }
@@ -41,6 +42,7 @@ function analisisRetroceder() {
     const estadoActual = { board: copiarBoard(), turno, enroqueRealizado: [...enroqueRealizado] };
     const anterior = historial.deshacer(estadoActual);
     if (!anterior) return false;
+    if (typeof notacionDeshacer === 'function') notacionDeshacer();
     aplicarEstadoDeHistorial(anterior);
     return true;
 }
@@ -115,7 +117,11 @@ function actualizarPanelAnalisis() {
             elJugador.textContent = 'Posición inicial';
         } else {
             const turnoDeEsaJugada = historial.pila[actual - 1].turno;
-            elJugador.textContent = turnoDeEsaJugada === 0 ? 'Jugó: Jugador 1 (Rojo)' : 'Jugó: Jugador 2 (Azul)';
+            const notacionDeEsaJugada = listaNotacionPartida[actual - 1] || '';
+            const nombreJugador = turnoDeEsaJugada === 0 ? 'Jugador 1 (Rojo)' : 'Jugador 2 (Azul)';
+            elJugador.textContent = notacionDeEsaJugada
+                ? `${nombreJugador}: ${notacionDeEsaJugada}`
+                : `Jugó: ${nombreJugador}`;
         }
     }
     const btnAtras = document.getElementById('analisisBtnAtras');

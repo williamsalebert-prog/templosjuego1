@@ -83,11 +83,14 @@ function mostrarBannerFinJuego(tipo, jugadorEnTurno) {
         const ganador = 1 - jugadorEnTurno;
         const nombreGanador = ganador === 0 ? 'Jugador 1 (Rojo)' : 'Jugador 2 (Azul)';
         const motivo = tipo === 'jaquemate' ? '♛ ¡Jaque mate!' : '⏱️ ¡Tiempo agotado!';
-        if (texto) texto.textContent = `${motivo} Gana ${nombreGanador}`;
+        const cambioElo = (typeof registrarResultadoElo === 'function') ? registrarResultadoElo(ganador) : null;
+        const sufijoElo = cambioElo ? textoCambioElo(cambioElo, ganador === 0 ? 'rojo' : 'azul') : '';
+        if (texto) texto.textContent = `${motivo} Gana ${nombreGanador}${sufijoElo}`;
         if (banner) { banner.className = 'banner-fin mostrar victoria jugador' + ganador; }
 
         reproducirSonidoResultado(ganador);
     } else {
+        if (typeof registrarResultadoElo === 'function') registrarResultadoElo(null);
         if (texto) texto.textContent = '🤝 ¡Tablas! Partida terminada en empate (ahogado)';
         if (banner) { banner.className = 'banner-fin mostrar tablas'; }
 

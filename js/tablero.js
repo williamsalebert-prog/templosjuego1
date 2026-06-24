@@ -218,9 +218,15 @@ function manejarClicTablero(clientX, clientY) {
 
     let movEnroque = posiblesMovimientos.find(m => m.tipoMov === 'enroque' && m.f === fila && m.c === col);
     if (movEnroque) {
+        const jugadorEnroque = turno;
         ejecutarEnroque(selectedPiece.fila, selectedPiece.col, fila, col, turno);
         if (typeof transmitirMovimientoSiOnline === 'function') {
             transmitirMovimientoSiOnline({ tipo: 'enroque', reyFila: selectedPiece.fila, reyCol: selectedPiece.col, piezaFila: fila, piezaCol: col, jugador: turno });
+        }
+        if (typeof generarNotacionEnroque === 'function') {
+            let notacion = generarNotacionEnroque();
+            notacion = agregarSufijoJaque(notacion, board, 1 - jugadorEnroque);
+            registrarNotacion(notacion);
         }
         turno = 1 - turno;
         selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
@@ -310,6 +316,7 @@ document.addEventListener('keydown', (e) => {
         if (!historial.puedeDeshacer()) return;
         let estadoActual = { board: copiarBoard(), turno, enroqueRealizado: [...enroqueRealizado] };
         let estado = historial.deshacer(estadoActual);
+        if (typeof notacionDeshacer === 'function') notacionDeshacer();
         board = estado.board; turno = estado.turno;
         enroqueRealizado = estado.enroqueRealizado || [false, false];
         selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
@@ -325,6 +332,7 @@ document.addEventListener('keydown', (e) => {
         if (!historial.puedeRehacer()) return;
         let estadoActual = { board: copiarBoard(), turno, enroqueRealizado: [...enroqueRealizado] };
         let estado = historial.rehacer(estadoActual);
+        if (typeof notacionRehacer === 'function') notacionRehacer();
         board = estado.board; turno = estado.turno;
         enroqueRealizado = estado.enroqueRealizado || [false, false];
         selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];

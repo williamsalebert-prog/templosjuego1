@@ -162,6 +162,7 @@ function finalizarPorTablasAcordadas() {
     setTimeout(() => {
         const banner = document.getElementById('bannerFin');
         const texto = document.getElementById('bannerFinTexto');
+        if (typeof registrarResultadoElo === 'function') registrarResultadoElo(null);
         if (texto) texto.textContent = '🤝 ¡Tablas acordadas entre los jugadores!';
         if (banner) banner.className = 'banner-fin mostrar tablas';
         if (typeof reproducirTablas === 'function') reproducirTablas();
@@ -184,7 +185,9 @@ function finalizarPorRendicion(ganador) {
         const banner = document.getElementById('bannerFin');
         const texto = document.getElementById('bannerFinTexto');
         const nombreGanador = ganador === 0 ? 'Jugador 1 (Rojo)' : 'Jugador 2 (Azul)';
-        if (texto) texto.textContent = `🏳️ Rendición. Gana ${nombreGanador}`;
+        const cambioElo = (typeof registrarResultadoElo === 'function') ? registrarResultadoElo(ganador) : null;
+        const sufijoElo = cambioElo ? textoCambioElo(cambioElo, ganador === 0 ? 'rojo' : 'azul') : '';
+        if (texto) texto.textContent = `🏳️ Rendición. Gana ${nombreGanador}${sufijoElo}`;
         if (banner) banner.className = 'banner-fin mostrar victoria jugador' + ganador;
         if (typeof reproducirSonidoResultado === 'function') reproducirSonidoResultado(ganador);
         else if (typeof reproducirVictoria === 'function') reproducirVictoria();

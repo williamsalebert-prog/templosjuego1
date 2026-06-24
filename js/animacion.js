@@ -5,11 +5,26 @@ let colaAnimacion = [];
 let origenAnimacion = null;
 let piezaAnimacion = null;
 
+// Contexto guardado para poder generar la notación de la jugada una vez
+// termine la animación (la cola de pasos se va consumiendo con .shift()).
+let _notacionOrigenJugada = null;
+let _notacionCaminoJugada = null;
+let _notacionTableroAntes = null;
+let _notacionTipoPiezaJugada = null;
+let _notacionJugadorJugada = null;
+
 function iniciarAnimacion(origen, camino) {
     animando = true;
     colaAnimacion = [...camino];
     origenAnimacion = origen;
     piezaAnimacion = board[origen[0]][origen[1]];
+
+    _notacionOrigenJugada = origen;
+    _notacionCaminoJugada = [...camino];
+    _notacionTableroAntes = copiarBoard();
+    _notacionTipoPiezaJugada = piezaAnimacion ? piezaAnimacion.tipo : null;
+    _notacionJugadorJugada = piezaAnimacion ? piezaAnimacion.jugador : null;
+
     board[origen[0]][origen[1]] = null;
     procesarSiguientePaso();
 }
@@ -80,6 +95,17 @@ function finalizarAnimacion() {
             mostrarMenuCoronacion();
             return;
         }
+    }
+
+    // Notación de la jugada (cuando NO hay coronación pendiente; si la hay,
+    // se registra dentro de coronar(), una vez se sabe a qué pieza coronó).
+    if (typeof generarNotacionJugada === 'function' && _notacionTableroAntes) {
+        let notacion = generarNotacionJugada(
+            _notacionTableroAntes, _notacionOrigenJugada, [ff, cc],
+            _notacionCaminoJugada, _notacionTipoPiezaJugada, false, null
+        );
+        notacion = agregarSufijoJaque(notacion, board, 1 - _notacionJugadorJugada);
+        registrarNotacion(notacion);
     }
 
     turno = 1 - turno;
