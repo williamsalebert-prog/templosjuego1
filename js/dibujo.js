@@ -217,10 +217,11 @@ function dibujarTablero() {
             rutasAlternativas.forEach((ruta, idx) => {
                 if (!selectedPiece || !Array.isArray(ruta.pasos)) return;
                 const tono = (210 + idx * 47) % 360;
+                const destacada = (typeof rutaPrevisualizadaIndice !== 'undefined' && rutaPrevisualizadaIndice === idx);
                 ctx.save();
-                ctx.strokeStyle = `hsla(${tono},78%,66%,0.72)`;
-                ctx.lineWidth = Math.max(2, CELL_SIZE * 0.055);
-                ctx.setLineDash([CELL_SIZE * 0.16, CELL_SIZE * 0.10]);
+                ctx.strokeStyle = `hsla(${tono},78%,${destacada ? 75 : 66}%,${destacada ? 0.98 : 0.48})`;
+                ctx.lineWidth = Math.max(destacada ? 4 : 2, CELL_SIZE * (destacada ? 0.075 : 0.045));
+                ctx.setLineDash(destacada ? [] : [CELL_SIZE * 0.16, CELL_SIZE * 0.10]);
                 ctx.lineCap = 'round'; ctx.lineJoin = 'round';
                 ctx.beginPath();
                 ctx.moveTo(selectedPiece.col * CELL_SIZE + CELL_SIZE/2, selectedPiece.fila * CELL_SIZE + CELL_SIZE/2);

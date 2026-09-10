@@ -119,7 +119,7 @@ function mostrarBannerFinJuego(tipo, jugadorEnTurno) {
 
         reproducirSonidoResultado(ganador);
     } else {
-        if (texto) texto.textContent = '🤝 ¡Tablas! Partida terminada en empate (ahogado)';
+        if (texto) texto.textContent = `🤝 ¡Tablas! Partida terminada en empate (ahogado)${textoCambioElo(cambioEloFinActual)}`;
         if (banner) { banner.className = 'banner-fin mostrar tablas'; }
 
         if (typeof reproducirTablas === 'function') reproducirTablas();
@@ -154,14 +154,25 @@ function iniciarPanelFinPartida() {
     const btnListo = document.getElementById('btnFinListo');
     const btnExportar = document.getElementById('btnFinExportar');
     const btnRevisar = document.getElementById('btnFinRevisar');
+    const btnReabrir = document.getElementById('btnReabrirResultado');
     const contadorEl = document.getElementById('finJuegoContador');
 
+    if (btnReabrir) btnReabrir.classList.remove('mostrar');
     if (contadorEl) contadorEl.textContent = 'La partida terminó. Puedes inspeccionar la posición final o guardar el registro antes de salir.';
     if (btnRevisar) {
         btnRevisar.disabled = false;
         btnRevisar.onclick = () => {
             const banner = document.getElementById('bannerFin');
             if (banner) banner.classList.remove('mostrar');
+            if (btnReabrir) btnReabrir.classList.add('mostrar');
+        };
+    }
+    if (btnReabrir) {
+        btnReabrir.title = 'Volver a mostrar el resultado (R)';
+        btnReabrir.onclick = () => {
+            const banner = document.getElementById('bannerFin');
+            if (banner) banner.classList.add('mostrar');
+            btnReabrir.classList.remove('mostrar');
         };
     }
     if (btnExportar) {
@@ -175,6 +186,7 @@ function iniciarPanelFinPartida() {
         btnListo.textContent = 'Menú principal →';
         btnListo.onclick = () => {
             detenerPanelFinPartida();
+            if (btnReabrir) btnReabrir.classList.remove('mostrar');
             window.location.href = 'index.html';
         };
     }
@@ -198,5 +210,20 @@ function reiniciarFinJuego(preservarRegistroElo = false) {
     }
     const banner = document.getElementById('bannerFin');
     if (banner) { banner.className = 'banner-fin'; }
+    const btnReabrir = document.getElementById('btnReabrirResultado');
+    if (btnReabrir) btnReabrir.classList.remove('mostrar');
     if (typeof reanudarMusicaNormal === 'function') reanudarMusicaNormal();
 }
+
+
+// Tras pulsar "Revisar tablero", además del botón flotante se puede usar R
+// para recuperar el panel de resultado sin abandonar la posición final.
+document.addEventListener('keydown', (e) => {
+    if (String(e.key || '').toLowerCase() !== 'r' || !juegoTerminado) return;
+    const banner = document.getElementById('bannerFin');
+    const btn = document.getElementById('btnReabrirResultado');
+    if (banner && !banner.classList.contains('mostrar')) {
+        banner.classList.add('mostrar');
+        if (btn) btn.classList.remove('mostrar');
+    }
+});

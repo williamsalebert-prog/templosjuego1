@@ -139,10 +139,17 @@ function reproducirCicloMusical() {
 }
 
 function iniciarMusica() {
-    if (musicaIniciada) return;
-    musicaIniciada = true;
-    obtenerContextoMusica();
-    reproducirCicloMusical();
+    if (musicaIniciada || !musicaActiva) return;
+    try {
+        const ctx = obtenerContextoMusica();
+        if (!ctx || ctx.state !== 'running') {
+            const r = ctx && ctx.resume ? ctx.resume() : null;
+            if (r && typeof r.then === 'function') r.then(() => iniciarMusica()).catch(()=>{});
+            return;
+        }
+        musicaIniciada = true;
+        reproducirCicloMusical();
+    } catch (e) {}
 }
 
 // El usuario puede pausar la música manualmente con el botón; esto es independiente
@@ -203,16 +210,17 @@ iniciarMusica();
 // Respaldo: si el navegador igualmente bloqueó el audio (AudioContext en "suspended"),
 // lo reanudamos en el primer toque/clic/tecla que ocurra en la página.
 function manejarPrimeraInteraccion() {
-    const ctx = obtenerContextoMusica();
-    if (ctx && ctx.state === 'suspended') ctx.resume();
-    if (!musicaIniciada) iniciarMusica();
-    document.removeEventListener('click', manejarPrimeraInteraccion);
-    document.removeEventListener('keydown', manejarPrimeraInteraccion);
-    document.removeEventListener('touchstart', manejarPrimeraInteraccion);
+    try {
+        const ctx = obtenerContextoMusica();
+        const r = ctx && ctx.state === 'suspended' ? ctx.resume() : null;
+        if (r && typeof r.then === 'function') r.then(() => iniciarMusica()).catch(()=>{});
+        else iniciarMusica();
+    } catch(e) {}
 }
-document.addEventListener('click', manejarPrimeraInteraccion);
-document.addEventListener('keydown', manejarPrimeraInteraccion);
-document.addEventListener('touchstart', manejarPrimeraInteraccion);
+// pointerdown ocurre antes que click y es más fiable si el click navega/cambia UI.
+document.addEventListener('pointerdown', manejarPrimeraInteraccion, {capture:true, passive:true});
+document.addEventListener('keydown', manejarPrimeraInteraccion, {capture:true});
+document.addEventListener('touchstart', manejarPrimeraInteraccion, {capture:true, passive:true});
 
 // ------------------------------------------------------------------
 // Música especial de fin de partida: una más alegre/triunfal para la

@@ -10,6 +10,7 @@ let piezasAmenazadas = [];
 let modoRuta = false;
 let rutasAlternativas = [];
 let destinoRuta = null;
+let rutaPrevisualizadaIndice = -1;
 
 let enroqueRealizado = [false, false];
 
@@ -42,7 +43,7 @@ const MODOS_TIEMPO = {
 const parametrosURL = new URLSearchParams(window.location.search);
 const CONFIG_JUEGO = {
     modo: parametrosURL.get('mode') === '1' ? 1 : 2,           // 1 = vs IA, 2 = 2 jugadores
-    dificultad: parseInt(parametrosURL.get('diff') || '1', 10),
+    dificultad: (() => { const d = parseInt(parametrosURL.get('diff') || '3', 10); return [1,2,3,4,5].includes(d) ? d : 3; })(),
     timer: parametrosURL.get('timer') === '1',
     timerMode: MODOS_TIEMPO[parametrosURL.get('timerMode')] ? parametrosURL.get('timerMode') : 'blitz5',
     online: parametrosURL.get('online') === '1',

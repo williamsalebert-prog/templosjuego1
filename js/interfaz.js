@@ -42,6 +42,66 @@ function actualizarHUDContexto() {
 }
 window.actualizarHUDContexto = actualizarHUDContexto;
 
+function _resumenRutaHumana(ruta) {
+    const pasos = Array.isArray(ruta?.pasos) ? ruta.pasos : [];
+    let saltos = 0, capturas = 0;
+    for (const paso of pasos) {
+        if (paso.tipo === 'jump' || paso.tipo === 'captureDirect') saltos++;
+        if (paso.tipo === 'captureDirect' || paso.tipo === 'removePiece') capturas++;
+        else if (paso.tipo === 'jump' && Array.isArray(paso.over) && typeof selectedPiece !== 'undefined' && selectedPiece) {
+            const p = board?.[paso.over[0]]?.[paso.over[1]];
+            if (p && p.jugador !== turno) capturas++;
+        }
+    }
+    const segmentos = [];
+    if (saltos) segmentos.push(`${saltos} ${saltos === 1 ? 'salto' : 'saltos'}`);
+    else segmentos.push(`${pasos.length} ${pasos.length === 1 ? 'paso' : 'pasos'}`);
+    if (capturas) segmentos.push(`${capturas} ${capturas === 1 ? 'captura' : 'capturas'}`);
+    return segmentos.join(' · ');
+}
+
+function mostrarSelectorRutas() {
+    const panel = document.getElementById('selectorRutasPanel');
+    if (!panel || !Array.isArray(rutasAlternativas) || rutasAlternativas.length < 2) return;
+    panel.innerHTML = '';
+    const titulo = document.createElement('span');
+    titulo.className = 'selector-rutas-titulo';
+    titulo.textContent = 'Elige camino:';
+    panel.appendChild(titulo);
+    rutasAlternativas.forEach((ruta, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'selector-ruta-btn';
+        btn.textContent = `Ruta ${idx + 1} · ${_resumenRutaHumana(ruta)}`;
+        btn.setAttribute('aria-label', `Elegir ruta ${idx + 1}: ${_resumenRutaHumana(ruta)}`);
+        const previsualizar = () => {
+            rutaPrevisualizadaIndice = idx;
+            panel.querySelectorAll('.selector-ruta-btn').forEach((b,i)=>b.classList.toggle('previa', i===idx));
+            if (typeof dibujarTablero === 'function') dibujarTablero();
+        };
+        btn.addEventListener('mouseenter', previsualizar);
+        btn.addEventListener('focus', previsualizar);
+        btn.addEventListener('click', () => {
+            if (typeof window.elegirRutaPorIndice === 'function') window.elegirRutaPorIndice(idx);
+        });
+        panel.appendChild(btn);
+    });
+    const cancelar = document.createElement('button');
+    cancelar.type = 'button'; cancelar.className = 'selector-ruta-cancelar'; cancelar.textContent = 'Cancelar';
+    cancelar.addEventListener('click', () => { if (typeof window.cancelarSeleccionRutas === 'function') window.cancelarSeleccionRutas(true); });
+    panel.appendChild(cancelar);
+    panel.classList.add('mostrar');
+}
+
+function ocultarSelectorRutas() {
+    const panel = document.getElementById('selectorRutasPanel');
+    if (panel) { panel.classList.remove('mostrar'); panel.innerHTML = ''; }
+    rutaPrevisualizadaIndice = -1;
+}
+window.mostrarSelectorRutas = mostrarSelectorRutas;
+window.ocultarSelectorRutas = ocultarSelectorRutas;
+
+
 function actualizarTurnoUI(analisisTurno = null) {
     const turnoTexto = document.getElementById('turnoTexto');
     if (!turnoTexto) return;

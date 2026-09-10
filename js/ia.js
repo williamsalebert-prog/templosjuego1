@@ -6,10 +6,12 @@ console.log("✅ ia.js cargado");
 // Se ejecuta en otro hilo para que pensar varios segundos en Difícil no
 // congele el tablero, las animaciones ni los relojes.
 //
-// Dificultad 1 (Fácil): búsqueda corta + algo de azar entre buenas opciones.
-// Dificultad 2 (Medio): búsqueda media, juega de forma sólida.
-// Dificultad 3 (Difícil): búsqueda profunda con varios segundos de tiempo,
-// la más fuerte posible sin dejar de responder en un tiempo razonable.
+// Dificultad 1 (Principiante): una mirada superficial y bastante variedad.
+// Dificultad 2 (Fácil): búsqueda corta, todavía comete errores razonables.
+// Dificultad 3 (Normal): juego consistente sin calcular demasiado lejos.
+// Dificultad 4 (Difícil): búsqueda media-alta y casi sin concesiones.
+// Dificultad 5 (Maestro): equivale aproximadamente al antiguo Difícil; es la
+// IA más fuerte disponible y puede encontrar tácticas profundas rápidamente.
 // ============================================================================
 
 const JUGADOR_IA = 1;

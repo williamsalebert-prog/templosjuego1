@@ -139,7 +139,8 @@ function finalizarAnimacion() {
 
     turno = 1 - turno;
     selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
-    modoRuta = false; rutasAlternativas = []; destinoRuta = null;
+    modoRuta = false; rutasAlternativas = []; destinoRuta = null; rutaPrevisualizadaIndice = -1;
+    if (typeof ocultarSelectorRutas === 'function') ocultarSelectorRutas();
     dibujarTablero();
     if (typeof despuesDeJugada === 'function') despuesDeJugada();
 }

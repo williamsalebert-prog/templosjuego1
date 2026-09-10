@@ -8,6 +8,7 @@ window.coronacionRemotaEnEspera = null;
 window.estadoRemotoPendiente = null;
 window.relojesRemotosPendientes = null;
 window.solicitudEstadoRemotaPendiente = false;
+window.perfilRivalOnline = null;
 let ultimaSecuenciaRemotaAceptada = 0;
 
 // Confirmación ligera de jugadas principales. PeerJS ya usa canal fiable, pero
@@ -568,7 +569,28 @@ function aplicarJugadaRemota(jugada, seq = null) {
     return false;
 }
 
+
+function enviarPerfilLocalOnline() {
+    if (!canalDatos || !onlineConectado || typeof datosPerfilParaOnline !== 'function') return;
+    const perfil = datosPerfilParaOnline();
+    if (!perfil) return;
+    try { canalDatos.send({ tipo: 'perfil-online', perfil }); } catch (e) {}
+}
+
 function manejarMensajeCanalDatos(mensaje) {
+    if (mensaje && mensaje.tipo === 'perfil-online') {
+        const p = mensaje.perfil || {};
+        const nombre = String(p.nombre || '').trim().slice(0, 20);
+        const elo = Number(p.elo);
+        if (nombre && Number.isFinite(elo)) {
+            window.perfilRivalOnline = { nombre, elo: Math.max(100, Math.round(elo)), partidasOnline: Number(p.partidasOnline) || 0 };
+            if (typeof mostrarToastJuego === 'function' && !window._perfilRivalAnunciado) {
+                window._perfilRivalAnunciado = true;
+                mostrarToastJuego(`Rival: ${nombre} · ELO ${Math.max(100, Math.round(elo))}`, '');
+            }
+        }
+        return;
+    }
     if (mensaje && mensaje.tipo === 'sync-check') {
         procesarSyncCheck(mensaje);
         return;
@@ -700,6 +722,7 @@ function configurarCanalDatos(conn) {
         conexionRechazadaPorSala = false;
         onlineConectado = true;
         actualizarEstadoConexionOnline('conectado', 'En línea');
+        enviarPerfilLocalOnline();
         ocultarPanelEspera();
         if (contadorJugadas > 0 || window.onlinePartidaIniciada) {
             // Una partida puede haberse iniciado y todavía estar en jugada 0.
@@ -953,6 +976,7 @@ function configurarCanalDatosReconexion(conn) {
     canalDatos = conn;
     conn.on('open', () => {
         onlineConectado = true;
+        enviarPerfilLocalOnline();
         intentandoReconectar = true; // sigue "reconectando" hasta validar hash
         sincronizacionReconexionEnCurso = true;
         _reconexionGeneracion++;
@@ -1092,6 +1116,9 @@ function ocultarPanelDesconexion() {
 }
 
 function lanzarInicioOnline() {
+    // La negociación ya terminó: el panel de color/espera no debe quedarse
+    // encima del tablero del invitado durante el countdown.
+    ocultarPanelEspera();
     // Un doble clic en la confirmación de color o un paquete duplicado no debe
     // crear dos countdowns ni, sobre todo, dos intervalos de reloj.
     if (window.onlinePartidaIniciada) return;

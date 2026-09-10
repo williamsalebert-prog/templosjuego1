@@ -186,7 +186,7 @@ function finalizarPorTablasAcordadas() {
     const presentar = () => {
         const banner = document.getElementById('bannerFin');
         const texto = document.getElementById('bannerFinTexto');
-        if (texto) texto.textContent = '🤝 ¡Tablas acordadas entre los jugadores!';
+        if (texto) texto.textContent = `🤝 ¡Tablas acordadas entre los jugadores!${typeof textoCambioElo === 'function' ? textoCambioElo(cambioEloFinActual) : ''}`;
         if (banner) banner.className = 'banner-fin mostrar tablas';
         if (typeof reproducirTablas === 'function') reproducirTablas();
         if (typeof iniciarPanelFinPartida === 'function') iniciarPanelFinPartida();

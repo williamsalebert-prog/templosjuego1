@@ -144,7 +144,7 @@ function restaurarEstadoHistorial(estado) {
     if (Array.isArray(estado.bonoJugadaAplicado) && typeof bonoJugadaAplicado !== 'undefined') bonoJugadaAplicado = [...estado.bonoJugadaAplicado];
 
     selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
-    modoRuta = false; rutasAlternativas = []; destinoRuta = null;
+    modoRuta = false; rutasAlternativas = []; destinoRuta = null; rutaPrevisualizadaIndice = -1;
     ultimaJugadaVisual = null; casillaHover = null;
     coronacionPendiente = null;
     if (typeof menuCoronacion !== 'undefined' && menuCoronacion) menuCoronacion.style.display = 'none';
@@ -169,6 +169,8 @@ function aplicarMovimiento(origen, destino, caminoElegido = null, remoto = false
         } else camino = info;
     }
     if (!Array.isArray(camino)) return false;
+    if (typeof ocultarSelectorRutas === 'function') ocultarSelectorRutas();
+    rutaPrevisualizadaIndice = -1;
     ultimaJugadaVisual = { origen: [...origen], destino: [...destino], tipo: 'mover' };
     guardarEstado();
     if (!remoto && typeof transmitirMovimientoSiOnline === 'function') {
@@ -210,7 +212,7 @@ function iniciarJuego() {
     board[3][13] = new F4(1); board[4][13] = new F6(1); board[5][13] = new F3(1); board[6][13] = new F4(1);
 
     turno = 0; selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
-    modoRuta = false; rutasAlternativas = []; destinoRuta = null;
+    modoRuta = false; rutasAlternativas = []; destinoRuta = null; rutaPrevisualizadaIndice = -1;
     ultimaJugadaVisual = null; casillaHover = null;
     enroqueRealizado = [false, false]; coronacionPendiente = null;
     contadorJugadas = 0; jugadasPorJugador = [0, 0];
@@ -303,6 +305,33 @@ function obtenerCasillaDesdeCliente(clientX, clientY) {
     return { fila, col };
 }
 
+
+function cancelarSeleccionRutas(mantenerPieza = false) {
+    modoRuta = false;
+    rutasAlternativas = [];
+    destinoRuta = null;
+    rutaPrevisualizadaIndice = -1;
+    if (typeof ocultarSelectorRutas === 'function') ocultarSelectorRutas();
+    if (!mantenerPieza) {
+        selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
+    }
+    if (typeof actualizarHUDContexto === 'function') actualizarHUDContexto();
+    dibujarTablero();
+}
+window.cancelarSeleccionRutas = cancelarSeleccionRutas;
+
+function elegirRutaPorIndice(indice) {
+    if (!modoRuta || !selectedPiece || !Array.isArray(destinoRuta)) return false;
+    const ruta = rutasAlternativas[indice];
+    if (!ruta || !Array.isArray(ruta.pasos)) return false;
+    const origen = [selectedPiece.fila, selectedPiece.col];
+    const destino = [...destinoRuta];
+    if (typeof ocultarSelectorRutas === 'function') ocultarSelectorRutas();
+    rutaPrevisualizadaIndice = -1;
+    return aplicarMovimiento(origen, destino, ruta.pasos);
+}
+window.elegirRutaPorIndice = elegirRutaPorIndice;
+
 function manejarClicTablero(clientX, clientY) {
     // Bloquear si el countdown no ha terminado
     if (!window.tableroHabilitado) return;
@@ -324,13 +353,16 @@ function manejarClicTablero(clientX, clientY) {
         }
         let fichaClicRuta = board[fila][col];
         if (fichaClicRuta && fichaClicRuta.jugador === turno) {
-            modoRuta = false; rutasAlternativas = [];
+            cancelarSeleccionRutas(true);
             seleccionarNuevaPieza(fila, col);
             return;
         }
-        modoRuta = false; rutasAlternativas = []; selectedPiece = null;
-        posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
-        dibujarTablero(); return;
+        // Una casilla compartida por dos caminos NO puede decidir por el
+        // jugador. Mantenemos todas las rutas y pedimos elección explícita.
+        if (candidatas.length > 1 && typeof mostrarToastJuego === 'function') {
+            mostrarToastJuego('Ese punto pertenece a varias rutas. Elige Ruta 1, Ruta 2… en el selector.', '');
+        }
+        return;
     }
 
     if (!selectedPiece) {
@@ -371,16 +403,15 @@ function manejarClicTablero(clientX, clientY) {
         let info = caminosDestino[clave];
         if (Array.isArray(info) && info.length > 0 && info[0].hasOwnProperty('pasos')) {
             if (info.length > 1) {
-                let algunaConEnemigo = info.some(ruta => ruta.tieneEnemigo);
-                if (algunaConEnemigo) {
-                    rutasAlternativas = prepararSelectoresRutas(info, [fila, col]);
-                    destinoRuta = [fila, col]; modoRuta = true;
-                    if (typeof actualizarHUDContexto === 'function') actualizarHUDContexto();
-                    dibujarTablero(); return;
-                } else {
-                    aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], info[0].pasos);
-                    return;
-                }
+                // Si el motor encontró más de un camino real hacia el mismo
+                // destino, la interfaz NUNCA adivina cuál quería el jugador.
+                // Incluso dos rutas sin captura pueden tener valor estratégico
+                // distinto por su longitud/recorrido o por información futura.
+                rutasAlternativas = prepararSelectoresRutas(info, [fila, col]);
+                destinoRuta = [fila, col]; modoRuta = true; rutaPrevisualizadaIndice = 0;
+                if (typeof actualizarHUDContexto === 'function') actualizarHUDContexto();
+                if (typeof mostrarSelectorRutas === 'function') mostrarSelectorRutas();
+                dibujarTablero(); return;
             } else {
                 aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], info[0].pasos);
                 return;
@@ -426,6 +457,8 @@ canvas.addEventListener('mouseleave', () => {
 });
 
 function seleccionarNuevaPieza(fila, col) {
+    if (typeof ocultarSelectorRutas === 'function') ocultarSelectorRutas();
+    modoRuta = false; rutasAlternativas = []; destinoRuta = null; rutaPrevisualizadaIndice = -1;
     let ficha = board[fila][col];
     if (ficha && ficha.jugador === turno) {
         selectedPiece = { fila, col };
@@ -447,7 +480,8 @@ function seleccionarNuevaPieza(fila, col) {
         dibujarTablero();
     } else {
         selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
-        modoRuta = false;
+        modoRuta = false; rutasAlternativas = []; destinoRuta = null; rutaPrevisualizadaIndice = -1;
+        if (typeof ocultarSelectorRutas === 'function') ocultarSelectorRutas();
         if (typeof actualizarHUDContexto === 'function') actualizarHUDContexto();
         dibujarTablero();
     }

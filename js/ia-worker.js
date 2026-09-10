@@ -551,8 +551,8 @@ function deserializarBoardIA(data) {
 // partida lo permite (clásico/infinito). En partidas rápidas (bala/blitz) se
 // recortan más abajo, en calcularPresupuestoReal, para no pensar 7-8s en una
 // partida de 1 minuto; y en partidas largas no se acelera de más.
-const PRESUPUESTO_MS = { 1: 350, 2: 850, 3: 2200 };
-const PROFUNDIDAD_MAX = { 1: 2, 2: 3, 3: 4 };
+const PRESUPUESTO_MS = { 1: 180, 2: 300, 3: 550, 4: 1000, 5: 2200 };
+const PROFUNDIDAD_MAX = { 1: 1, 2: 2, 3: 2, 4: 3, 5: 4 };
 
 // Tiempo mínimo de pensada incluso en el modo más rápido, para que la IA no
 // se sienta "instantánea"/robótica ni siquiera en Bala.
@@ -617,7 +617,7 @@ function elegirMejorJugada(boardData, jugador, enroqueEstado, dificultad, infoTi
     // objetivamente óptimo siempre), para que sea vencible y no se sienta
     // "perfecta" ni "puramente aleatoria": elige entre las mejores opciones
     // razonables, no necesariamente LA mejor.
-    const margenAzarFacil = dificultad === 1 ? 1.0 : 0;
+    const usaAzar = dificultad <= 3;
 
     let duracionIteracionAnterior = null;
     for (let profundidad = 1; profundidad <= profMax; profundidad++) {
@@ -650,25 +650,30 @@ function elegirMejorJugada(boardData, jugador, enroqueEstado, dificultad, infoTi
         return null;
     }
 
-    if (margenAzarFacil > 0) {
-        // Fácil conserva variedad, pero ya no mezcla la puntuación profunda
-        // del minimax con evaluaciones estáticas de otra escala. Ordenamos las
-        // alternativas por una evaluación homogénea y sorteamos únicamente
-        // entre el pequeño grupo superior. Sigue siendo vencible sin regalar
-        // piezas por puro azar.
+    // No convertir la dificultad baja en ceguera: si minimax encontró una
+    // captura grande y evidente (aprox. Torre o superior), no la sustituimos
+    // por azar. Los errores de Principiante/Fácil se concentran en decisiones
+    // menos obvias, no en regalar una Reina delante de los ojos.
+    const hayTacticaObvia = Number(mejorJugada?.prioridad || 0) >= 500;
+    if (usaAzar && !hayTacticaObvia) {
+        // Los tres niveles inferiores conservan personalidad y errores humanos,
+        // pero el azar se restringe a candidatos razonables. Principiante mira
+        // un grupo mayor; Fácil uno mediano; Normal apenas varía entre 2-3.
         const jugadasRaiz = generarJugadas(tablero, jugador, enroqueEstado);
         const evaluadas = jugadasRaiz.map(j => ({
             jugada: j,
             valor: evaluarPosicion(j.tablero, j.enroqueRealizado, 1 - jugador, false)
         }));
         evaluadas.sort((a, b) => jugador === 0 ? b.valor - a.valor : a.valor - b.valor);
-        const cantidad = Math.min(4, Math.max(1, Math.ceil(evaluadas.length * 0.12)));
+        const proporcion = dificultad === 1 ? 0.28 : (dificultad === 2 ? 0.16 : 0.08);
+        const maximas = dificultad === 1 ? 8 : (dificultad === 2 ? 5 : 3);
+        const cantidad = Math.min(maximas, Math.max(1, Math.ceil(evaluadas.length * proporcion)));
         const candidatas = evaluadas.slice(0, cantidad);
         if (candidatas.length > 0) {
-            // Sesgo suave hacia las primeras: la mejor sale más a menudo, pero
-            // no siempre, evitando que Fácil sea determinista.
-            const r = Math.random();
-            const idx = Math.min(candidatas.length - 1, Math.floor(r * r * candidatas.length));
+            // Sesgo creciente hacia la mejor conforme sube el nivel.
+            const exponente = dificultad === 1 ? 1.15 : (dificultad === 2 ? 1.7 : 2.6);
+            const r = Math.pow(Math.random(), exponente);
+            const idx = Math.min(candidatas.length - 1, Math.floor(r * candidatas.length));
             mejorJugada = candidatas[idx].jugada;
         }
     }

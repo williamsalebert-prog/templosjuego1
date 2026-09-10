@@ -138,3 +138,11 @@ window.addEventListener('pagehide', () => {
         if (typeof CONFIG_JUEGO !== 'undefined' && !CONFIG_JUEGO.modoPrueba) guardarPartidaEnCache();
     } catch (e) {}
 });
+
+// Herramienta temporal durante la etapa de pruebas. Borra únicamente los
+// snapshots automáticos; conserva perfiles, ELO y preferencias del usuario.
+function borrarCachePartidas() {
+    try { localStorage.removeItem(CACHE_KEY); return true; }
+    catch (e) { return false; }
+}
+window.borrarCachePartidas = borrarCachePartidas;
