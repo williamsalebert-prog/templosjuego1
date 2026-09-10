@@ -266,6 +266,132 @@
 #panelAnalisis button:disabled { opacity:0.4; cursor:default; }
 #panelAnalisis select { border-radius:6px; padding:4px; }
 #analisisNumeroJugada, #analisisJugador { color:#f4e3c4; font-size:0.8rem; padding:0 6px; }
+
+
+/* ===== PULIDO 05 · INTERFAZ DE PARTIDA ===== */
+:root{--barra-h:58px;--ui-bg:#0e0b09;--ui-panel:#18120e;--ui-line:rgba(231,207,156,.15);--ui-muted:#9b8b72;--ui-text:#f0e3ca}
+body{
+    background:
+        radial-gradient(circle at 50% 48%,rgba(205,168,107,.06),transparent 42%),
+        linear-gradient(145deg,#100c09,#070605 72%);
+}
+.barra-top{
+    height:var(--barra-h);padding:0 14px;gap:10px;
+    background:rgba(14,11,9,.94);backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--ui-line);box-shadow:0 8px 30px rgba(0,0,0,.16);
+}
+.btn-menu-top{width:38px;height:38px;border-radius:11px;background:#17120e;border-color:var(--ui-line);box-shadow:none;color:#dac5a3;transition:.15s ease}
+.btn-menu-top:hover{border-color:rgba(205,168,107,.42);background:#211810}
+.marca-partida{display:flex;align-items:center;gap:8px;padding-right:10px;border-right:1px solid var(--ui-line);min-width:0}
+.marca-partida-sello{width:27px;height:27px;border-radius:8px;display:grid;place-items:center;background:linear-gradient(145deg,#e5cc96,#b88c4d);color:#21150c;font-size:.82rem;box-shadow:0 4px 14px rgba(205,168,107,.13)}
+.marca-partida-texto{font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:.92rem;letter-spacing:.04em;color:#eadabd}
+.info-turno{display:flex;align-items:center;gap:7px;min-width:0}
+.info-turno-label{font-size:.62rem;color:#81745f;text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+#turnoTexto{font-size:.72rem;padding:5px 10px;box-shadow:none!important;border:1px solid transparent}
+#turnoTexto.turno-rojo{background:rgba(181,48,47,.17);border-color:rgba(181,48,47,.42);color:#ffb2ad}
+#turnoTexto.turno-azul{background:rgba(43,79,158,.22);border-color:rgba(77,119,210,.42);color:#a9c5ff}
+#estadoJuego{font-size:.72rem;color:#e8bd70;background:rgba(232,189,112,.07);padding:4px 8px;border-radius:8px;min-width:0;white-space:nowrap}
+.relojes-barra{gap:7px}
+.reloj{min-width:84px;justify-content:space-between;font-family:'Segoe UI',sans-serif;font-variant-numeric:tabular-nums;font-size:.83rem;padding:6px 9px;border-radius:10px;background:#12100d;border-color:var(--ui-line);color:#dfcfb2}
+.reloj-label{font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:#786b58}
+.reloj-activo{box-shadow:0 0 0 1px rgba(205,168,107,.35),0 0 18px rgba(205,168,107,.1);border-color:rgba(205,168,107,.46);background:#19130e}
+.estado-conexion-online{display:flex;align-items:center;gap:5px;min-width:max-content;padding:5px 8px;border-radius:999px;border:1px solid var(--ui-line);font-size:.62rem;font-weight:750;letter-spacing:.02em;color:#9f927c;background:#13100d;transition:.2s ease}
+.estado-conexion-online[hidden]{display:none!important}.conexion-punto{font-size:.66rem;line-height:1}.estado-conexion-online[data-estado=conectado]{color:#a8d3a3;border-color:rgba(111,160,104,.27);background:rgba(81,130,76,.08)}
+.estado-conexion-online[data-estado=conectando],.estado-conexion-online[data-estado=sincronizando]{color:#dfc58f;border-color:rgba(205,168,107,.28)}
+.estado-conexion-online[data-estado=reconectando]{color:#e2bd73;border-color:rgba(226,189,115,.32);background:rgba(226,189,115,.06)}
+.estado-conexion-online[data-estado=desconectado],.estado-conexion-online[data-estado=error]{color:#e29b95;border-color:rgba(181,48,47,.3);background:rgba(181,48,47,.07)}
+.reconexion-meta{display:flex;gap:8px;justify-content:center;margin:11px 0 3px;flex-wrap:wrap}.reconexion-pill{padding:5px 8px;border-radius:999px;background:#15110e;border:1px solid var(--ui-line);font-size:.67rem;color:#9d8e77}.reconexion-pill b{color:#e0cda9;font-variant-numeric:tabular-nums}
+#btnReintentarDesconexion{background:rgba(205,168,107,.11);border-color:rgba(205,168,107,.28);color:#e1c896}
+@media(max-width:700px){.marca-partida-texto{display:none}.estado-conexion-online{padding:5px 7px}.conexion-texto{max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.info-turno-label{display:none}}
+.zona-tablero{padding:14px 14px 16px}
+.marco-tablero{padding:8px;border-radius:13px;background:linear-gradient(145deg,#5a3921,#362215);box-shadow:0 0 0 1px #100b08,0 0 0 3px rgba(205,168,107,.52),0 18px 45px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,240,205,.08)}
+canvas{border-radius:6px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.55),0 8px 22px rgba(0,0,0,.42)}
+.menu-overlay{background:rgba(5,4,3,.56);backdrop-filter:blur(5px)}
+.menu-panel{
+    top:0;left:0;height:100dvh;width:min(290px,86vw);min-width:0;border:0;border-right:1px solid var(--ui-line);border-radius:0;
+    padding:18px 14px;background:linear-gradient(165deg,#21170f,#100c09 75%);box-shadow:18px 0 55px rgba(0,0,0,.4);
+    transform:translateX(-100%);opacity:1;gap:6px;
+}
+.menu-panel.abierto{transform:translateX(0)}
+.menu-cabecera{padding:8px 8px 15px;margin-bottom:5px;border-bottom:1px solid var(--ui-line)}
+.menu-cabecera strong{display:block;font-family:Georgia,'Times New Roman',serif;color:#eadabd;font-size:1.1rem}
+.menu-cabecera span{display:block;margin-top:4px;color:#7f725f;font-size:.67rem;line-height:1.35}
+.menu-separador{font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:#6f6251;padding:9px 9px 3px;font-weight:800}
+.menu-item{padding:10px 11px;border-radius:10px;background:transparent;border-color:transparent;font-size:.78rem;color:#cdbb9d;font-weight:650;box-shadow:none}
+.menu-item:hover{background:rgba(255,255,255,.045);border-color:var(--ui-line)}
+.menu-item .mi-icon{font-size:1rem;width:22px;opacity:.9}
+.menu-item.peligro{border-color:transparent;color:#d89a96}.menu-item.peligro:hover{background:rgba(181,48,47,.08);border-color:rgba(181,48,47,.2)}
+.modal-base,#panelEsperaOnline,#panelDesconexion{background:rgba(5,4,3,.72);backdrop-filter:blur(8px)}
+.modal-contenido,.espera-box{
+    padding:23px;max-width:370px;border-radius:19px;background:linear-gradient(155deg,#21170f,#110d0a);border:1px solid rgba(205,168,107,.24);box-shadow:0 30px 90px rgba(0,0,0,.58)
+}
+.modal-contenido h3,.espera-box h3{font-family:Georgia,'Times New Roman',serif;color:#eadabd;font-size:1.15rem}
+.modal-contenido p,.espera-box p{color:#9c8c73;opacity:1;font-size:.79rem}
+.modal-btn{min-height:39px;border-radius:10px;padding:9px 14px;font-size:.76rem;transition:.15s ease}
+.modal-btn-ok{background:linear-gradient(145deg,#ead39f,#c89b57)}
+.modal-btn-cancel{background:#17120e;border-color:var(--ui-line);color:#cbb896}
+.modal-btn-danger{background:rgba(181,48,47,.16);border:1px solid rgba(181,48,47,.35);color:#efaaa4}
+.modal-btn-export{background:rgba(81,130,76,.14);border-color:rgba(111,160,104,.26);color:#a8d3a3}
+.menu-coronacion{background:linear-gradient(155deg,#21170f,#100c09);border-color:rgba(205,168,107,.35);border-radius:19px;padding:20px;box-shadow:0 30px 90px rgba(0,0,0,.6);backdrop-filter:blur(8px)}
+.menu-coronacion p{margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:1rem}
+.menu-coronacion button{width:76px;margin:4px;padding:9px;background:#17120e;color:#d9c6a5;border:1px solid var(--ui-line);box-shadow:none}
+.menu-coronacion button:hover{border-color:var(--oro);background:rgba(205,168,107,.08)}
+.banner-fin{
+    min-width:min(440px,92vw);padding:26px 26px 22px;border-radius:22px;background:linear-gradient(155deg,rgba(34,24,16,.98),rgba(14,11,8,.98));
+    border:1px solid rgba(205,168,107,.3);box-shadow:0 34px 100px rgba(0,0,0,.68);backdrop-filter:blur(10px)
+}
+.banner-fin.mostrar{gap:12px}.banner-fin h2{font-family:Georgia,'Times New Roman',serif;font-size:1.45rem;color:#eadabd!important}
+#bannerFinTexto{font-size:.91rem;line-height:1.45}
+#finJuegoContador{font-size:.68rem;color:#877963;max-width:330px;line-height:1.45}
+.fin-botones{width:100%;gap:7px;margin-top:3px}.fin-botones button{flex:1;min-width:120px;padding:10px 11px;border-radius:10px;font-size:.73rem}
+#btnFinRevisar{background:#18130f;color:#d8c5a5;border:1px solid var(--ui-line)}
+#btnFinListo{background:linear-gradient(145deg,#ead39f,#c89b57);color:#25180e!important}
+#btnFinExportar{background:#17120e!important;color:#cdbb9d!important;border:1px solid var(--ui-line)}
+.codigo-sala{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#100c09;border-color:rgba(205,168,107,.2);color:#ead9ba}
+.espera-btn{border-radius:10px;background:linear-gradient(145deg,#ead39f,#c89b57)}
+#panelAnalisis{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:18;width:auto;max-width:calc(100vw - 20px);border:1px solid var(--ui-line);border-radius:13px;background:rgba(17,13,10,.94);backdrop-filter:blur(9px);padding:7px;box-shadow:0 12px 35px rgba(0,0,0,.32)}
+#panelAnalisis button{background:#1a140f;color:#d8c6a6;border-color:var(--ui-line);box-shadow:none}
+#panelAnalisis select{background:#15110d;color:#d8c6a6;border:1px solid var(--ui-line)}
+#analisisNumeroJugada,#analisisJugador{color:#9c8c72}
+.countdown-num{font-family:Georgia,'Times New Roman',serif;font-size:4.6rem;color:#ead7b2;text-shadow:0 0 35px rgba(205,168,107,.35),0 8px 25px rgba(0,0,0,.7)}
+button:focus-visible,select:focus-visible{outline:2px solid var(--oro-claro);outline-offset:2px}
+@media(max-width:700px){
+    :root{--barra-h:52px}.barra-top{padding:0 8px;gap:6px}.marca-partida{padding-right:6px}.marca-partida-texto,.info-turno-label{display:none}.marca-partida-sello{width:25px;height:25px}
+    .btn-menu-top{width:34px;height:34px}.info-turno{gap:3px}#turnoTexto{padding:4px 7px;font-size:.67rem}#estadoJuego{font-size:.62rem;padding:3px 5px}
+    .relojes-barra{gap:3px}.reloj{min-width:62px;padding:4px 6px;font-size:.69rem}.reloj-label{display:none}
+    .zona-tablero{padding:7px}.marco-tablero{padding:5px;border-radius:9px;box-shadow:0 0 0 1px #100b08,0 0 0 2px rgba(205,168,107,.5),0 10px 28px rgba(0,0,0,.48)}
+    .banner-fin{padding:22px 17px}.fin-botones{flex-direction:column}.fin-botones button{width:100%;flex:auto}
+    #panelAnalisis{bottom:7px;gap:3px;padding:5px}#panelAnalisis button{padding:5px 8px}#analisisJugador{display:none}
+}
+@media(max-width:390px){.marca-partida{display:none}.reloj{min-width:57px}.barra-top{gap:4px}#estadoJuego{max-width:64px;overflow:hidden;text-overflow:ellipsis}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+
+/* ===== PULIDO 08 · RESPONSIVE / FEEDBACK / AUDIO ===== */
+:root{--safe-t:env(safe-area-inset-top,0px);--safe-r:env(safe-area-inset-right,0px);--safe-b:env(safe-area-inset-bottom,0px);--safe-l:env(safe-area-inset-left,0px)}
+body{padding-left:var(--safe-l);padding-right:var(--safe-r);padding-bottom:var(--safe-b)}
+.barra-top{height:calc(var(--barra-h) + var(--safe-t));padding-top:var(--safe-t);padding-left:max(10px,var(--safe-l));padding-right:max(10px,var(--safe-r))}
+button,.menu-item,input[type=range],select{touch-action:manipulation}
+button:focus-visible,.menu-item:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid rgba(231,207,156,.95);outline-offset:2px}
+.menu-item{min-height:42px}.menu-item .mi-texto{flex:1}.mi-estado{margin-left:auto;font-size:.62rem;color:#81745f;font-weight:700;letter-spacing:.03em}
+.menu-audio-panel{display:grid;gap:9px;margin:2px 4px 7px;padding:10px 9px;border:1px solid var(--ui-line);border-radius:11px;background:rgba(8,7,5,.33)}
+.control-volumen{display:grid;grid-template-columns:58px 1fr 34px;gap:7px;align-items:center;font-size:.66rem;color:#a99980}
+.control-volumen input{width:100%;accent-color:#cda86b}.control-volumen output{text-align:right;font-variant-numeric:tabular-nums;color:#d7c39f;font-size:.62rem}
+.hud-contexto{position:absolute;z-index:4;left:50%;bottom:12px;transform:translateX(-50%);max-width:min(680px,calc(100vw - 28px));display:flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;border:1px solid rgba(231,207,156,.14);background:rgba(12,9,7,.78);backdrop-filter:blur(9px);box-shadow:0 8px 24px rgba(0,0,0,.24);color:#ad9d84;font-size:.66rem;line-height:1.2;pointer-events:none;opacity:.9;transition:opacity .18s,transform .18s}
+.hud-contexto[data-activo="1"]{color:#e3d1b1;border-color:rgba(205,168,107,.27);background:rgba(20,15,11,.88)}.hud-contexto[data-ruta="1"]{color:#b9d3ff;border-color:rgba(91,135,220,.34)}
+.hud-punto{font-size:.48rem;color:#cda86b}.hud-contexto[data-ruta="1"] .hud-punto{color:#70a7ff}
+.toast-juego{position:fixed;left:50%;bottom:max(20px,calc(var(--safe-b) + 14px));z-index:80;transform:translate(-50%,14px);max-width:min(440px,calc(100vw - 28px));padding:9px 13px;border-radius:11px;background:rgba(24,18,14,.96);border:1px solid rgba(205,168,107,.26);box-shadow:0 14px 42px rgba(0,0,0,.42);color:#e1cfad;font-size:.72rem;text-align:center;opacity:0;visibility:hidden;pointer-events:none;transition:.2s ease}
+.toast-juego.mostrar{opacity:1;visibility:visible;transform:translate(-50%,0)}.toast-juego.error{border-color:rgba(181,48,47,.38);color:#efaaa4}.toast-juego.ok{border-color:rgba(111,160,104,.35);color:#afd8aa}
+canvas{image-rendering:auto;-webkit-tap-highlight-color:transparent;touch-action:none}
+.marco-tablero{transition:box-shadow .2s ease}.marco-tablero:focus-within{box-shadow:0 0 0 1px #100b08,0 0 0 3px rgba(205,168,107,.65),0 20px 50px rgba(0,0,0,.58)}
+.reloj-bajo{animation:relojUrgente 1s ease-in-out infinite}@keyframes relojUrgente{50%{box-shadow:0 0 0 1px rgba(255,80,80,.32),0 0 18px rgba(255,80,80,.18)}}
+@media (orientation:landscape) and (max-height:540px){:root{--barra-h:46px}.barra-top{gap:5px}.zona-tablero{padding:5px}.marco-tablero{padding:4px}.hud-contexto{bottom:5px;padding:5px 9px;font-size:.59rem}.menu-panel{width:min(275px,70vw)}}
+@media(max-width:700px){.btn-menu-top{min-width:40px;min-height:40px}.reloj{min-height:38px}.menu-item{min-height:46px}.hud-contexto{bottom:7px;max-width:calc(100vw - 18px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.control-volumen{grid-template-columns:54px 1fr 32px}.toast-juego{font-size:.68rem}}
+@media(max-width:430px){#estadoJuego{display:none}.estado-conexion-online .conexion-texto{max-width:70px}.reloj-label{display:none}.reloj{min-width:61px;justify-content:center}.hud-contexto{font-size:.6rem}}
+@media(prefers-reduced-motion:reduce){.reloj-bajo{animation:none!important}.toast-juego,.hud-contexto{transition:none!important}}
+
+.capturas-menu{display:grid;gap:6px;margin:0 4px 4px;padding:9px;border:1px solid var(--ui-line);border-radius:10px;background:rgba(8,7,5,.28)}
+.capturas-menu>div{display:grid;grid-template-columns:42px 1fr;gap:8px;align-items:center;min-height:22px;font-size:.69rem;color:#c9b99e}.capturas-equipo{font-size:.57rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}.capturas-equipo.rojo{color:#e89b96}.capturas-equipo.azul{color:#9ab8f4}
 </style>
 </head>
 <body>
@@ -273,28 +399,44 @@
 <!-- BARRA SUPERIOR (siempre visible) -->
 <div class="barra-top">
     <button class="btn-menu-top" id="btnMenuTop" title="Menú" aria-label="Abrir menú" aria-haspopup="true" aria-expanded="false">☰</button>
-    <div id="turnoTexto" class="turno-rojo" role="status" aria-live="polite">J1</div>
+    <div class="marca-partida" aria-hidden="true"><span class="marca-partida-sello">♜</span><span class="marca-partida-texto">Templos</span></div>
+    <div class="info-turno"><span class="info-turno-label">Turno</span><div id="turnoTexto" class="turno-rojo" role="status" aria-live="polite">J1</div></div>
     <div id="estadoJuego" role="status" aria-live="polite"></div>
+    <div id="estadoConexionOnline" class="estado-conexion-online" data-estado="conectando" role="status" aria-live="polite" hidden><span class="conexion-punto">◌</span><span class="conexion-texto">Conectando</span></div>
     <div id="panelRelojes" class="relojes-barra">
-        <div class="reloj" id="relojJ0"><span class="reloj-label">J1</span><span id="relojJ0Val">5:00</span></div>
-        <div class="reloj" id="relojJ1"><span class="reloj-label">J2</span><span id="relojJ1Val">5:00</span></div>
+        <div class="reloj" id="relojJ0"><span class="reloj-label">Rojo</span><span id="relojJ0Val">5:00</span></div>
+        <div class="reloj" id="relojJ1"><span class="reloj-label">Azul</span><span id="relojJ1Val">5:00</span></div>
     </div>
 </div>
 
 <!-- OVERLAY MENU -->
 <div class="menu-overlay" id="menuOverlay"></div>
-<div class="menu-panel" id="menuPanel">
-    <button class="menu-item" id="menuMusica" aria-label="Activar o pausar música"><span class="mi-icon">🎵</span>Música</button>
+<div class="menu-panel" id="menuPanel" role="dialog" aria-label="Menú de partida">
+    <div class="menu-cabecera"><strong>Templos</strong><span>Pausa visual: la partida continúa salvo cuando una confirmación lo indique.</span></div>
+    <div class="menu-separador">Partida</div>
+    <button class="menu-item" id="menuMusica" aria-label="Activar o pausar música"><span class="mi-icon">🎵</span><span class="mi-texto">Música</span><span class="mi-estado" id="menuMusicaEstado">Activa</span></button>
+    <div class="menu-audio-panel" id="menuAudioPanel" aria-label="Volumen de audio">
+        <label class="control-volumen" for="sliderMusica"><span>Ambiente</span><input id="sliderMusica" type="range" min="0" max="100" step="5" value="45"><output id="valorMusica" for="sliderMusica">45%</output></label>
+        <label class="control-volumen" for="sliderEfectos"><span>Efectos</span><input id="sliderEfectos" type="range" min="0" max="100" step="5" value="70"><output id="valorEfectos" for="sliderEfectos">70%</output></label>
+    </div>
     <button class="menu-item" id="menuImportar" aria-label="Importar partida"><span class="mi-icon">📂</span>Importar</button>
     <button class="menu-item" id="menuExportar" aria-label="Exportar partida"><span class="mi-icon">💾</span>Exportar</button>
-    <button class="menu-item" id="menuTablas" title="Pedir tablas" aria-label="Pedir tablas"><span class="mi-icon">🤝</span></button>
-    <button class="menu-item peligro" id="menuRendirse" title="Rendirse" aria-label="Rendirse"><span class="mi-icon">🏳️</span></button>
+    <div class="menu-separador">Material capturado</div>
+    <div class="capturas-menu" id="capturasMenu" aria-live="polite">
+        <div><span class="capturas-equipo rojo">Rojo</span><span id="capturasJ0">—</span></div>
+        <div><span class="capturas-equipo azul">Azul</span><span id="capturasJ1">—</span></div>
+    </div>
+    <div class="menu-separador">Acuerdo</div>
+    <button class="menu-item" id="menuTablas" title="Proponer tablas" aria-label="Proponer tablas"><span class="mi-icon">🤝</span>Proponer tablas</button>
+    <button class="menu-item peligro" id="menuRendirse" title="Rendirse" aria-label="Rendirse"><span class="mi-icon">🏳️</span>Rendirse</button>
+    <div class="menu-separador">Salir</div>
     <button class="menu-item peligro" id="menuSalir" aria-label="Volver al menú principal"><span class="mi-icon">🚪</span>Menú principal</button>
 </div>
 <input type="file" id="inputImportarPartida" accept=".json" style="display:none;">
 
 <!-- TABLERO -->
 <div class="zona-tablero">
+    <div id="hudContexto" class="hud-contexto" role="status" aria-live="polite" aria-atomic="true"><span class="hud-punto" aria-hidden="true">●</span><span id="hudContextoTexto">Selecciona una pieza para ver sus movimientos</span></div>
     <div class="marco-tablero">
         <div id="canvasWrapper" class="canvas-wrapper">
             <canvas id="tableroCanvas" width="900" height="600" role="img" aria-label="Tablero de Templos: usa el ratón o el dedo para mover piezas"></canvas>
@@ -311,11 +453,14 @@
         <div id="bannerFinTexto"></div>
         <div id="finJuegoContador"></div>
         <div class="fin-botones">
-            <button id="btnFinListo">✅ Listo</button>
-            <button id="btnFinExportar">💾 Exportar (3 disp.)</button>
+            <button id="btnFinRevisar">👁 Revisar tablero</button>
+            <button id="btnFinExportar">💾 Guardar</button>
+            <button id="btnFinListo">Menú principal →</button>
         </div>
     </div>
 </div>
+
+<div id="toastJuego" class="toast-juego" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <!-- MODAL CONFIRMAR SALIDA -->
 <div class="modal-base" id="modalConfirmarSalida">
@@ -398,10 +543,15 @@
     <div class="modal-contenido">
         <h3>📡 Conexión perdida</h3>
         <p id="textoDesconexion">El otro jugador se desconectó.</p>
-        <p id="textoReconectando" style="font-size:0.8rem;opacity:0.75;margin-top:-4px;">🔄 Intentando reconectar automáticamente... la partida se guardó y los relojes están en pausa.</p>
+        <p id="textoReconectando" style="font-size:0.8rem;opacity:0.82;margin-top:-4px;">La partida está congelada y guardada localmente. Los relojes no avanzan mientras falta la conexión.</p>
+        <div class="reconexion-meta" aria-label="Estado de reconexión">
+            <span class="reconexion-pill">Tiempo: <b id="reconexionTiempo">0s</b></span>
+            <span class="reconexion-pill">Intentos: <b id="reconexionIntentos">0</b></span>
+        </div>
         <div class="modal-btns">
+            <button class="modal-btn" id="btnReintentarDesconexion">↻ Reintentar ahora</button>
             <button class="modal-btn modal-btn-export" id="btnExportarDesconexion">💾 Exportar partida</button>
-            <button class="modal-btn modal-btn-ok" id="btnOkDesconexion">Volver al menú</button>
+            <button class="modal-btn modal-btn-cancel" id="btnOkDesconexion">Volver al menú</button>
         </div>
     </div>
 </div>
@@ -427,20 +577,20 @@ window.arrancarCountdown = function(cb) {
 
     function siguiente() {
         n--;
-        if (n < 0) {
-            // Arranca de inmediato apenas termina el conteo (sin demora extra).
+        if (n <= 0) {
+            // 3 → 2 → 1 y comienza exactamente al cumplirse el tercer segundo.
             overlay.classList.remove('mostrar');
             window.tableroHabilitado = true;
             if (typeof sonidoInicio === 'function') sonidoInicio();
             if (cb) cb();
-        } else {
-            num.textContent = n > 0 ? n : '...';
-            num.style.animation = 'none';
-            void num.offsetWidth;
-            num.style.animation = '';
-            if (typeof sonidoCountdown === 'function') sonidoCountdown(n);
-            setTimeout(siguiente, 1000);
+            return;
         }
+        num.textContent = n;
+        num.style.animation = 'none';
+        void num.offsetWidth;
+        num.style.animation = '';
+        if (typeof sonidoCountdown === 'function') sonidoCountdown(n);
+        setTimeout(siguiente, 1000);
     }
     setTimeout(siguiente, 1000);
 };
@@ -489,22 +639,53 @@ const menuPanel = document.getElementById('menuPanel');
 function abrirMenu() {
     menuOverlay.classList.add('abierto');
     menuPanel.classList.add('abierto');
+    btnMenuTop.setAttribute('aria-expanded','true');
 }
 function cerrarMenu() {
     menuOverlay.classList.remove('abierto');
     menuPanel.classList.remove('abierto');
+    btnMenuTop.setAttribute('aria-expanded','false');
 }
 btnMenuTop.addEventListener('click', () => {
     if (menuPanel.classList.contains('abierto')) cerrarMenu();
     else abrirMenu();
 });
 menuOverlay.addEventListener('click', cerrarMenu);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && menuPanel.classList.contains('abierto')) cerrarMenu(); });
+
+function sincronizarControlesAudio() {
+    const sliderM = document.getElementById('sliderMusica');
+    const sliderE = document.getElementById('sliderEfectos');
+    const outM = document.getElementById('valorMusica');
+    const outE = document.getElementById('valorEfectos');
+    const estadoM = document.getElementById('menuMusicaEstado');
+    const vm = typeof obtenerVolumenMusica === 'function' ? obtenerVolumenMusica() : Number(localStorage.getItem('templos_vol_musica') || .45);
+    const ve = typeof obtenerVolumenEfectos === 'function' ? obtenerVolumenEfectos() : Number(localStorage.getItem('templos_vol_efectos') || .70);
+    if (sliderM) sliderM.value = String(Math.round(vm * 100));
+    if (sliderE) sliderE.value = String(Math.round(ve * 100));
+    if (outM) outM.value = `${Math.round(vm * 100)}%`;
+    if (outE) outE.value = `${Math.round(ve * 100)}%`;
+    if (estadoM) estadoM.textContent = (typeof musicaActiva !== 'undefined' && musicaActiva) ? 'Activa' : 'Silenciada';
+}
 
 document.getElementById('menuMusica').addEventListener('click', () => {
-    cerrarMenu();
     if (typeof toggleMusica === 'function') toggleMusica();
     else if (typeof alternarMusica === 'function') alternarMusica();
+    sincronizarControlesAudio();
 });
+const _sliderMusica = document.getElementById('sliderMusica');
+const _sliderEfectos = document.getElementById('sliderEfectos');
+if (_sliderMusica) _sliderMusica.addEventListener('input', (e) => {
+    const v = Number(e.target.value) / 100;
+    if (typeof establecerVolumenMusica === 'function') establecerVolumenMusica(v);
+    const out = document.getElementById('valorMusica'); if (out) out.value = `${e.target.value}%`;
+});
+if (_sliderEfectos) _sliderEfectos.addEventListener('input', (e) => {
+    const v = Number(e.target.value) / 100;
+    if (typeof establecerVolumenEfectos === 'function') establecerVolumenEfectos(v);
+    const out = document.getElementById('valorEfectos'); if (out) out.value = `${e.target.value}%`;
+});
+sincronizarControlesAudio();
 document.getElementById('menuExportar').addEventListener('click', () => {
     cerrarMenu();
     if (typeof exportarPartida === 'function') exportarPartida();
@@ -539,6 +720,10 @@ document.getElementById('inputImportarPartida').addEventListener('change', (e) =
 });
 
 // ===== DESCONEXIÓN ONLINE =====
+const btnReintentarDesconexion = document.getElementById('btnReintentarDesconexion');
+if (btnReintentarDesconexion) btnReintentarDesconexion.addEventListener('click', () => {
+    if (typeof window.forzarReconexionOnlineAhora === 'function') window.forzarReconexionOnlineAhora();
+});
 document.getElementById('btnOkDesconexion').addEventListener('click', () => {
     if (typeof intentandoReconectar !== 'undefined') intentandoReconectar = false;
     if (typeof peerConexion !== 'undefined' && peerConexion) { try { peerConexion.destroy(); } catch(e) {} }
@@ -557,6 +742,10 @@ function mostrarDesconexion(msg) {
     window.partidaPausadaPorPropuesta = true;
     if (typeof detenerRelojes === 'function') detenerRelojes();
     document.getElementById('textoDesconexion').textContent = msg || 'El otro jugador se desconectó.';
+    const btnExportar = document.getElementById('btnExportarDesconexion');
+    if (btnExportar) { btnExportar.textContent = '💾 Exportar partida'; btnExportar.disabled = false; }
+    const btnRetry = document.getElementById('btnReintentarDesconexion');
+    if (btnRetry) { btnRetry.textContent = '↻ Reintentar ahora'; btnRetry.disabled = false; }
     document.getElementById('panelDesconexion').classList.add('mostrar');
 }
 window.mostrarDesconexion = mostrarDesconexion;

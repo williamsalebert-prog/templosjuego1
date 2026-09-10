@@ -62,7 +62,16 @@ button:active { transform: translateY(0); filter: brightness(1.15); }
 .seccion { margin-top: 14px; padding-top: 12px; border-top: 1px solid #3a2a1c; text-align:left; }
 .seccion h3 { margin: 0 0 8px; font-size: 0.72rem; letter-spacing: 1.5px; text-transform: uppercase; color:#a98a5a; text-align:center; }
 
-.grid-tiempo { display:grid; grid-template-columns: 1fr 1fr; gap:6px; }
+.btn-config-tiempo {
+    width:100%; margin:0; padding:9px 11px; display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:linear-gradient(160deg,#2d2118,#1a130d); color:var(--oro-claro); border:1px solid #4a3424;
+    box-shadow:none; font-size:0.82rem;
+}
+.btn-config-tiempo:hover { border-color:var(--oro); box-shadow:0 3px 8px rgba(0,0,0,0.35); }
+.btn-config-tiempo .flecha-tiempo { opacity:.7; transition:transform .15s; }
+.btn-config-tiempo[aria-expanded="true"] .flecha-tiempo { transform:rotate(180deg); }
+.grid-tiempo { display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-top:7px; }
+.grid-tiempo.colapsada { display:none; }
 .opcion-tiempo {
     background: linear-gradient(160deg,#2d2118,#1a130d); border:1px solid #4a3424; border-radius: 10px;
     padding: 7px 5px; cursor:pointer; text-align:center; font-size: 0.75rem; color:#cbb892;
@@ -152,60 +161,240 @@ button:active { transform: translateY(0); filter: brightness(1.15); }
     display:flex; align-items:center; justify-content:center; overflow:hidden;
 }
 .tutorial-visual svg { width:100%; height:100%; display:block; }
+
+
+/* ===== PULIDO 05 · SISTEMA VISUAL / FLUJO DE INICIO ===== */
+:root{
+    --fondo:#0b0907; --superficie:#17120e; --superficie-2:#211810;
+    --linea:rgba(231,207,156,.16); --texto:#f2e7d0; --muted:#a99778;
+    --sombra:0 24px 70px rgba(0,0,0,.48);
+}
+body{
+    align-items:stretch; padding:0;
+    background:
+        radial-gradient(circle at 14% 18%, rgba(181,48,47,.12), transparent 28%),
+        radial-gradient(circle at 84% 76%, rgba(43,79,158,.14), transparent 30%),
+        radial-gradient(circle at 50% 45%, rgba(205,168,107,.07), transparent 36%),
+        linear-gradient(145deg,#100c09 0%,#070605 72%);
+}
+body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; opacity:.32;
+    background-image:linear-gradient(rgba(255,255,255,.014) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px);
+    background-size:32px 32px; mask-image:linear-gradient(to bottom,black,transparent 88%);
+}
+.pantalla-inicio{
+    width:min(1040px,calc(100% - 32px)); max-width:none; max-height:none; overflow:visible;
+    margin:auto; padding:0; border:none; border-radius:26px; text-align:left;
+    background:rgba(18,13,10,.86); backdrop-filter:blur(18px);
+    box-shadow:var(--sombra); outline:1px solid var(--linea);
+    display:grid; grid-template-columns:minmax(260px,.82fr) minmax(420px,1.18fr); min-height:620px;
+}
+.portada-juego{
+    position:relative; overflow:hidden; padding:44px 38px; border-radius:26px 0 0 26px;
+    background:
+        linear-gradient(165deg,rgba(205,168,107,.13),rgba(0,0,0,0) 45%),
+        linear-gradient(150deg,#271910,#130e0a 70%);
+    border-right:1px solid var(--linea); display:flex; flex-direction:column;
+}
+.portada-juego::after{
+    content:""; position:absolute; width:280px; height:280px; border:1px solid rgba(205,168,107,.14);
+    border-radius:50%; right:-145px; bottom:-80px; box-shadow:0 0 0 35px rgba(205,168,107,.025),0 0 0 70px rgba(205,168,107,.018);
+}
+.marca-templos{display:flex;align-items:center;gap:12px;margin-bottom:28px;position:relative;z-index:1}
+.marca-sello{width:50px;height:50px;border-radius:15px;display:grid;place-items:center;font-size:1.5rem;color:#23170e;background:linear-gradient(145deg,#f0dfb5,#c79c59);box-shadow:0 8px 24px rgba(205,168,107,.18)}
+.marca-titulos h1{font-family:Georgia,'Times New Roman',serif;font-size:clamp(2rem,4vw,3rem);line-height:.95;letter-spacing:.04em;margin:0;color:var(--texto);text-shadow:none}
+.marca-titulos small{display:block;margin-top:7px;color:var(--oro);font-size:.68rem;letter-spacing:.22em;text-transform:uppercase;font-weight:700}
+.portada-juego .subtitulo{font-family:Georgia,'Times New Roman',serif;font-size:clamp(1.16rem,2.2vw,1.55rem);line-height:1.36;color:#ead9ba;opacity:1;margin:16px 0 10px;max-width:320px}
+.descripcion-portada{font-size:.87rem;color:var(--muted);line-height:1.65;max-width:330px;margin:0}
+.portada-spacer{flex:1;min-height:28px}
+.acciones-portada{display:flex;gap:9px;align-items:center;position:relative;z-index:1;flex-wrap:wrap}
+.btn-ayuda-global{width:auto;height:38px;border-radius:11px;padding:0 12px;gap:7px;font-size:.78rem;background:rgba(255,255,255,.035);border:1px solid var(--linea);box-shadow:none;color:#d9c6a4}
+.btn-ayuda-global:hover{background:rgba(255,255,255,.07);border-color:rgba(205,168,107,.38)}
+#eloDisplay{margin:14px 0 0!important;text-align:left!important;font-size:.72rem!important;color:#8f7e63!important;min-height:1.1em}
+.panel-inicio{padding:38px 40px 34px;display:flex;flex-direction:column;min-width:0}
+.encabezado-panel{margin-bottom:20px}
+.encabezado-panel .eyebrow{font-size:.69rem;letter-spacing:.18em;text-transform:uppercase;color:var(--oro);font-weight:800}
+.encabezado-panel h2{font-family:Georgia,'Times New Roman',serif;margin:5px 0 5px;font-size:1.58rem;color:var(--texto)}
+.encabezado-panel p{margin:0;color:var(--muted);font-size:.82rem;line-height:1.45}
+.fila-modos{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0}
+button{font-family:inherit}
+.modo-btn{
+    margin:0; width:100%; min-height:104px; padding:16px 15px; border-radius:15px;
+    background:linear-gradient(155deg,rgba(255,255,255,.045),rgba(255,255,255,.018));
+    border:1px solid var(--linea); color:var(--texto); box-shadow:none; text-align:left;
+    display:grid;grid-template-columns:42px 1fr;grid-template-rows:auto auto;column-gap:11px;align-content:center;
+}
+.modo-btn:hover{transform:translateY(-2px);filter:none;border-color:rgba(205,168,107,.42);box-shadow:0 10px 26px rgba(0,0,0,.22);background:linear-gradient(155deg,rgba(205,168,107,.09),rgba(255,255,255,.025))}
+.modo-btn.activo{border-color:var(--oro);background:linear-gradient(155deg,rgba(205,168,107,.14),rgba(205,168,107,.045));box-shadow:inset 0 0 0 1px rgba(205,168,107,.11)}
+.modo-icono{grid-row:1/3;width:42px;height:42px;border-radius:12px;background:#100c09;display:grid;place-items:center;font-size:1.25rem;border:1px solid rgba(255,255,255,.06)}
+.modo-titulo{font-size:.91rem;font-weight:800;line-height:1.2;color:#f0e5ce}
+.modo-desc{font-size:.7rem;font-weight:500;color:#8f816b;line-height:1.28;margin-top:4px}
+.config-shell{display:none;margin-top:18px;padding-top:18px;border-top:1px solid var(--linea);animation:configIn .18s ease-out}
+.config-shell.visible{display:block}
+@keyframes configIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.config-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:13px}
+.config-head h3{margin:0;color:#eee0c6;font-size:.96rem}
+.config-head p{margin:3px 0 0;color:#847761;font-size:.69rem}
+.btn-cerrar-config{margin:0;padding:5px 8px;background:transparent;color:#8f816b;border:0;box-shadow:none;font-size:.75rem;font-weight:600}
+.btn-cerrar-config:hover{transform:none;box-shadow:none;color:#e6d4b6;background:rgba(255,255,255,.04)}
+.dificultad{display:none;grid-template-columns:repeat(3,1fr);gap:7px;margin:0 0 12px}
+.dificultad.visible{display:grid}
+.dificultad button{margin:0;min-width:0;padding:9px 6px;background:#14100d;border:1px solid var(--linea);box-shadow:none;color:#b9a98e;font-size:.77rem}
+.dificultad button.activa{border-color:var(--oro);color:#f0dfbe;background:rgba(205,168,107,.11)}
+.seccion{margin:0;padding:0;border:0;text-align:left}
+.seccion h3{display:none}
+.btn-config-tiempo{padding:11px 12px;border-radius:11px;background:#14100d;border:1px solid var(--linea);font-size:.76rem}
+.btn-config-tiempo:hover{transform:none;border-color:rgba(205,168,107,.4)}
+.grid-tiempo{grid-template-columns:repeat(4,1fr);gap:6px;margin-top:7px}
+.opcion-tiempo{border-radius:9px;padding:8px 4px;font-size:.66rem;background:#120e0b;border-color:var(--linea);color:#897b66}
+.opcion-tiempo b{font-size:.72rem;color:#d4c2a2}
+.opcion-tiempo.sin-reloj{grid-column:auto}
+.opcion-tiempo.activa{background:rgba(205,168,107,.11);border-color:var(--oro);box-shadow:none;color:#bba98a}
+.accion-comenzar{display:none;margin-top:11px;width:100%;padding:12px 16px;border-radius:11px;border:1px solid #d1ac6d;background:linear-gradient(150deg,#ead39f,#c89b57);color:#24170d;box-shadow:0 8px 22px rgba(205,168,107,.12);font-size:.87rem}
+.accion-comenzar.visible{display:block}
+.panel-online-inicio{display:none;margin-top:11px;padding:13px;border:1px solid var(--linea);border-radius:13px;background:rgba(255,255,255,.02);gap:8px}
+.panel-online-inicio.visible{display:flex}
+.panel-online-inicio h4{margin:0;font-size:.72rem;text-align:left;color:#cdb88e}
+.online-nota{text-align:left;font-size:.68rem;margin:0 0 4px;color:#82745f;opacity:1}
+.online-recuperable{display:none;gap:7px;padding:10px 11px;border-radius:11px;border:1px solid rgba(111,160,104,.24);background:rgba(81,130,76,.07);margin-bottom:2px}.online-recuperable.visible{display:grid}.online-recuperable strong{font-size:.73rem;color:#b8d5b4}.online-recuperable span{font-size:.64rem;color:#8f9e87;line-height:1.35}.online-recuperable button{padding:8px 10px!important;background:rgba(111,160,104,.16)!important;border-color:rgba(111,160,104,.28)!important;color:#c8dfc4!important}
+.recuperable-general{margin:4px 0 12px;text-align:left}.recuperable-general button{width:100%;margin:0!important}
+.grid-color-j1{gap:7px;margin:0}
+.seccion-color-j1 p{font-size:.7rem!important;color:#96866e;margin:4px 0 6px!important}
+.opcion-color{margin:0;padding:8px;background:#120e0b;border-color:var(--linea);font-size:.73rem}
+.panel-online-inicio>button{margin:0;width:100%;padding:10px 12px;border-radius:10px;font-size:.77rem}
+.panel-online-inicio>button:last-child{background:#17120e;color:#d9c7a5;border-color:var(--linea);box-shadow:none}
+.modal-sala,.modal-ayuda{backdrop-filter:blur(8px);background:rgba(5,4,3,.76)}
+.sala-box,.modal-ayuda-contenido{background:linear-gradient(155deg,#221810,#120e0b);border:1px solid rgba(205,168,107,.28);box-shadow:0 28px 80px rgba(0,0,0,.58);border-radius:20px}
+.input-codigo{height:48px;border-color:rgba(205,168,107,.25);outline:none}
+.input-codigo:focus{border-color:var(--oro);box-shadow:0 0 0 3px rgba(205,168,107,.08)}
+button:focus-visible,[tabindex]:focus-visible,input:focus-visible{outline:2px solid var(--oro-claro);outline-offset:2px}
+@media(max-width:760px){
+    body{overflow:auto;padding:14px 0;min-height:100dvh;height:auto}
+    .pantalla-inicio{width:min(94%,520px);grid-template-columns:1fr;min-height:0;margin:auto}
+    .portada-juego{border-radius:24px 24px 0 0;border-right:0;border-bottom:1px solid var(--linea);padding:24px 22px 20px}
+    .portada-juego .subtitulo{font-size:1.08rem;margin:8px 0 5px}
+    .descripcion-portada{display:none}.portada-spacer{display:none}.acciones-portada{position:absolute;right:18px;top:18px}
+    .acciones-portada .btn-texto{display:none}.btn-ayuda-global{width:36px;padding:0;justify-content:center}
+    #eloDisplay{display:none}.marca-templos{margin:0;padding-right:90px}.marca-sello{width:42px;height:42px;border-radius:12px}.marca-titulos h1{font-size:1.8rem}
+    .panel-inicio{padding:22px}.encabezado-panel{margin-bottom:14px}.encabezado-panel h2{font-size:1.25rem}
+    .fila-modos{grid-template-columns:1fr 1fr;gap:8px}.modo-btn{min-height:92px;padding:12px 10px;grid-template-columns:34px 1fr;column-gap:8px}.modo-icono{width:34px;height:34px;font-size:1rem}.modo-titulo{font-size:.78rem}.modo-desc{font-size:.62rem}
+    .grid-tiempo{grid-template-columns:1fr 1fr}.opcion-tiempo.sin-reloj{grid-column:1/-1}
+}
+@media(max-width:390px){.fila-modos{grid-template-columns:1fr}.modo-btn{min-height:76px}.panel-inicio{padding:18px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+
+/* ===== PULIDO 08 · AJUSTES FINALES DEL MENÚ ===== */
+:root{--safe-t:env(safe-area-inset-top,0px);--safe-r:env(safe-area-inset-right,0px);--safe-b:env(safe-area-inset-bottom,0px);--safe-l:env(safe-area-inset-left,0px)}
+body{padding:max(12px,var(--safe-t)) max(12px,var(--safe-r)) max(12px,var(--safe-b)) max(12px,var(--safe-l))}
+button,.opcion-tiempo,.opcion-color{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button:focus-visible,.opcion-tiempo:focus-visible,.opcion-color:focus-visible,input:focus-visible{outline:2px solid rgba(231,207,156,.95);outline-offset:2px}
+.modo-btn,.accion-comenzar{will-change:transform}.modo-btn:hover .modo-icono{transform:scale(1.05)}.modo-icono{transition:transform .16s ease}
+.opcion-tiempo,.opcion-color{min-height:46px}
+@media(max-width:760px){body{align-items:flex-start}.pantalla-inicio{margin:auto 0}.acciones-portada .btn-ayuda-global{min-height:44px}.modo-btn{min-height:74px}.accion-comenzar{min-height:48px}}
+@media(max-width:430px){.descripcion-portada{display:none}.portada-juego{padding-bottom:14px}.panel-inicio{padding-top:16px}.grid-tiempo{grid-template-columns:1fr 1fr}.opcion-tiempo{padding:9px 5px}}
+@media (orientation:landscape) and (max-height:540px){body{padding:6px}.pantalla-inicio{max-height:calc(100dvh - 12px);grid-template-columns:minmax(180px,.75fr) minmax(370px,1.45fr)}.portada-juego{padding:18px}.descripcion-portada{display:none}.portada-spacer{min-height:8px}.panel-inicio{padding:16px}.modo-btn{min-height:62px}.encabezado-panel p{display:none}.config-shell{margin-top:10px;padding-top:10px}}
 </style>
 </head>
 <body>
 <div class="pantalla-inicio">
-    <div class="fila-titulo">
-        <h1>⚔️ Templos ⚔️</h1>
-        <button class="btn-ayuda-global" id="btnAyudaGlobal" title="Ayuda">?</button>
-    </div>
-    <p class="subtitulo">Estrategia: damas chinas + ajedrez</p>
-    <p id="eloDisplay" style="text-align:center;font-size:0.78rem;color:#cbb892;margin:-6px 0 8px;" role="status" aria-live="polite"></p>
-
-    <div class="fila-modos">
-        <button class="modo-btn" onclick="mostrarDificultad()">🤖 <span>1 Jugador (vs PC)</span></button>
-        <button class="modo-btn" onclick="seleccionarModo(2)">👥 <span>2 Jugadores (mismo dispositivo)</span></button>
-        <button class="modo-btn" onclick="mostrarPanelOnline()">🌐 <span>2 Jugadores (otro dispositivo)</span></button>
-        <button class="modo-btn" onclick="irModoPrueba()">🧪 <span>Modo Prueba</span></button>
-    </div>
-
-    <div id="dificultad" class="dificultad">
-        <button onclick="seleccionarModo(1,1)">Fácil</button>
-        <button onclick="seleccionarModo(1,2)">Medio</button>
-        <button onclick="seleccionarModo(1,3)">Difícil</button>
-    </div>
-
-    <div id="panelOnlineInicio" class="panel-online-inicio">
-        <h4>Multijugador en tiempo real</h4>
-        <p class="online-nota">Gratis, sin cuentas. El Jugador 1 crea la sala eligiendo color y tipo de partida; el Jugador 2 solo ingresa el código.</p>
-
-        <div class="seccion-color-j1">
-            <p style="margin:8px 0 4px;font-size:0.85rem;">Tus fichas:</p>
-            <div class="grid-color-j1" id="gridColorJ1" role="radiogroup" aria-label="Elegir color de fichas para el Jugador 1">
-                <button type="button" class="opcion-color activa" data-color="0" role="radio" aria-checked="true">🔴 Rojas</button>
-                <button type="button" class="opcion-color" data-color="1" role="radio" aria-checked="false">🔵 Azules</button>
+    <section class="portada-juego" aria-label="Templos">
+        <div class="marca-templos">
+            <div class="marca-sello" aria-hidden="true">♜</div>
+            <div class="marca-titulos">
+                <h1>Templos</h1>
+                <small>Juego de estrategia</small>
             </div>
         </div>
-
-        <button onclick="abrirModalCrearSala()">Crear sala (Jugador 1)</button>
-        <button onclick="abrirModalUnirse()" style="margin-top:4px;">Unirme con código (Jugador 2)</button>
-    </div>
-
-    <div class="seccion" id="seccionTiempo">
-        <h3>Temporizador</h3>
-        <div class="grid-tiempo" id="gridTiempo" role="radiogroup" aria-label="Elegir tipo de temporizador">
-            <div class="opcion-tiempo" data-modo="bala" role="radio" aria-checked="false" tabindex="0"><b>Bala</b>1 min</div>
-            <div class="opcion-tiempo" data-modo="blitz5" role="radio" aria-checked="true" tabindex="0"><b>Blitz 5</b>5 min</div>
-            <div class="opcion-tiempo" data-modo="blitz32" role="radio" aria-checked="false" tabindex="0"><b>Blitz 3+2</b>3 min +2s/jug.</div>
-            <div class="opcion-tiempo" data-modo="rapidoA" role="radio" aria-checked="false" tabindex="0"><b>Rápido A</b>10 min +10s</div>
-            <div class="opcion-tiempo" data-modo="rapidoB" role="radio" aria-checked="false" tabindex="0"><b>Rápido B</b>15 min +10s</div>
-            <div class="opcion-tiempo" data-modo="clasico" role="radio" aria-checked="false" tabindex="0"><b>Clásico</b>90 min +30s</div>
-            <div class="opcion-tiempo sin-reloj" data-modo="infinito" role="radio" aria-checked="false" tabindex="0"><b>Infinito</b>Solo cronómetro</div>
+        <p class="subtitulo">Domina el jardín. Alcanza el templo. Protege a tu rey.</p>
+        <p class="descripcion-portada">Una partida de posicionamiento, rutas de salto y jaque donde cada pieza puede abrir o cerrar caminos decisivos.</p>
+        <div class="portada-spacer"></div>
+        <div class="acciones-portada">
+            <button class="btn-ayuda-global" id="btnAudioMenu" title="Activar o silenciar música" aria-label="Activar o silenciar música"><span aria-hidden="true">🎵</span><span class="btn-texto">Audio</span></button>
+            <button class="btn-ayuda-global" id="btnAyudaGlobal" title="Reglas y ayuda"><span aria-hidden="true">?</span><span class="btn-texto">Reglas</span></button>
         </div>
-    </div>
-</div>
+        <p id="eloDisplay" role="status" aria-live="polite"></p>
+    </section>
 
+    <main class="panel-inicio">
+        <header class="encabezado-panel">
+            <span class="eyebrow">Nueva partida</span>
+            <h2>¿Cómo quieres jugar?</h2>
+            <p>Elige un modo y después configura solo lo necesario.</p>
+        </header>
+
+        <div class="fila-modos" id="selectorModos">
+            <button class="modo-btn" data-modo-ui="ia" onclick="mostrarDificultad()">
+                <span class="modo-icono">🤖</span><span class="modo-titulo">Contra la IA</span><span class="modo-desc">Tres niveles de dificultad</span>
+            </button>
+            <button class="modo-btn" data-modo-ui="local" onclick="prepararModoLocal(2)">
+                <span class="modo-icono">👥</span><span class="modo-titulo">Dos jugadores</span><span class="modo-desc">En este dispositivo</span>
+            </button>
+            <button class="modo-btn" data-modo-ui="online" onclick="mostrarPanelOnline()">
+                <span class="modo-icono">🌐</span><span class="modo-titulo">Partida online</span><span class="modo-desc">Sala privada por código</span>
+            </button>
+            <button class="modo-btn" data-modo-ui="prueba" onclick="irModoPrueba()">
+                <span class="modo-icono">🧪</span><span class="modo-titulo">Modo prueba</span><span class="modo-desc">Análisis, deshacer y pruebas</span>
+            </button>
+        </div>
+
+        <div id="partidaRecuperableLocal" class="online-recuperable recuperable-general" aria-live="polite">
+            <strong>↻ Partida sin terminar</strong>
+            <span id="partidaRecuperableLocalDetalle">Hay una partida reciente guardada en este navegador.</span>
+            <button type="button" id="btnContinuarPartidaLocal">Continuar partida</button>
+        </div>
+
+        <section class="config-shell" id="panelConfiguracion" aria-live="polite">
+            <div class="config-head">
+                <div><h3 id="tituloConfiguracion">Configurar partida</h3><p id="notaConfiguracion">Ajusta las opciones y comienza cuando quieras.</p></div>
+                <button class="btn-cerrar-config" type="button" onclick="cerrarConfiguracion()">Cambiar modo</button>
+            </div>
+
+            <div id="dificultad" class="dificultad" aria-label="Dificultad de la IA">
+                <button type="button" data-diff="1" onclick="seleccionarDificultad(1)">Fácil</button>
+                <button type="button" data-diff="2" class="activa" onclick="seleccionarDificultad(2)">Medio</button>
+                <button type="button" data-diff="3" onclick="seleccionarDificultad(3)">Difícil</button>
+            </div>
+
+            <div class="seccion" id="seccionTiempo">
+                <h3>Configuración</h3>
+                <button type="button" class="btn-config-tiempo" id="btnToggleTiempo" aria-expanded="false" aria-controls="gridTiempo">
+                    <span>⏱ Ritmo de partida</span><span><span id="resumenTiempo">Blitz 5 · 5 min</span> <span class="flecha-tiempo">▾</span></span>
+                </button>
+                <div class="grid-tiempo colapsada" id="gridTiempo" role="radiogroup" aria-label="Elegir ritmo de partida">
+                    <div class="opcion-tiempo" data-modo="bala" role="radio" aria-checked="false" tabindex="0"><b>Bala</b>1 min</div>
+                    <div class="opcion-tiempo" data-modo="blitz5" role="radio" aria-checked="true" tabindex="0"><b>Blitz 5</b>5 min</div>
+                    <div class="opcion-tiempo" data-modo="blitz32" role="radio" aria-checked="false" tabindex="0"><b>Blitz 3+2</b>3 min +2s/jug.</div>
+                    <div class="opcion-tiempo" data-modo="rapidoA" role="radio" aria-checked="false" tabindex="0"><b>Rápido A</b>10 min +10s</div>
+                    <div class="opcion-tiempo" data-modo="rapidoB" role="radio" aria-checked="false" tabindex="0"><b>Rápido B</b>15 min +10s</div>
+                    <div class="opcion-tiempo" data-modo="clasico" role="radio" aria-checked="false" tabindex="0" title="90 min iniciales, +30 s por jugada y +30 min al completar la jugada 40"><b>Clásico</b>90 min +30s · bono j.40</div>
+                    <div class="opcion-tiempo sin-reloj" data-modo="infinito" role="radio" aria-checked="false" tabindex="0"><b>Infinito</b>Solo cronómetro</div>
+                </div>
+            </div>
+
+            <div id="panelOnlineInicio" class="panel-online-inicio">
+                <h4>Partida privada en tiempo real</h4>
+                <p class="online-nota">Al crear la sala eliges color y ritmo. Al unirte, adoptarás automáticamente la configuración del anfitrión.</p>
+                <div id="onlineRecuperable" class="online-recuperable">
+                    <strong>↻ Partida online interrumpida</strong>
+                    <span id="onlineRecuperableDetalle">Hay una sala reciente guardada en este navegador.</span>
+                    <button type="button" id="btnContinuarOnlineCache">Continuar partida</button>
+                </div>
+                <div class="seccion-color-j1">
+                    <p>Tus fichas si creas la sala:</p>
+                    <div class="grid-color-j1" id="gridColorJ1" role="radiogroup" aria-label="Elegir color de fichas para el Jugador 1">
+                        <button type="button" class="opcion-color activa" data-color="0" role="radio" aria-checked="true">🔴 Rojas</button>
+                        <button type="button" class="opcion-color" data-color="1" role="radio" aria-checked="false">🔵 Azules</button>
+                    </div>
+                </div>
+                <button onclick="abrirModalCrearSala()">Crear sala</button>
+                <button onclick="abrirModalUnirse()">Unirme con código</button>
+            </div>
+
+            <button type="button" class="accion-comenzar" id="btnComenzarPartida" onclick="comenzarPartidaConfigurada()">Comenzar partida →</button>
+        </section>
+    </main>
+</div>
 <!-- MODAL UNIRSE -->
 <div class="modal-sala" id="modalUnirse">
     <div class="sala-box">
@@ -248,9 +437,11 @@ button:active { transform: translateY(0); filter: brightness(1.15); }
     </div>
 </div>
 
+<script src="js/cache.js"></script>
 <script>
 // ===== Parámetros de tiempo (selección en el menú) =====
-let modoTiempoSeleccionado = 'blitz5';
+const _tiemposValidosMenu = ['bala','blitz5','blitz32','rapidoA','rapidoB','clasico','infinito'];
+let modoTiempoSeleccionado = (() => { try { const v = localStorage.getItem('templos_timer_mode'); return _tiemposValidosMenu.includes(v) ? v : 'blitz5'; } catch(e) { return 'blitz5'; } })();
 
 // Temporizador (siempre hay uno activo: un reloj con cuenta atrás, o el modo
 // "Infinito" que es un cronómetro ascendente sin límite. Por eso ya no existe
@@ -260,23 +451,156 @@ document.querySelectorAll('.opcion-tiempo').forEach(el => {
         document.querySelectorAll('.opcion-tiempo').forEach(o => { o.classList.remove('activa'); o.setAttribute('aria-checked','false'); });
         el.classList.add('activa'); el.setAttribute('aria-checked','true');
         modoTiempoSeleccionado = el.dataset.modo;
+        try { localStorage.setItem('templos_timer_mode', modoTiempoSeleccionado); } catch(e) {}
+        const resumen = document.getElementById('resumenTiempo');
+        if (resumen) {
+            const titulo = el.querySelector('b')?.textContent || 'Ritmo';
+            const detalle = Array.from(el.childNodes).filter(n => n.nodeType === Node.TEXT_NODE).map(n => n.textContent.trim()).filter(Boolean).join(' ');
+            resumen.textContent = detalle ? `${titulo} · ${detalle}` : titulo;
+        }
     };
     el.addEventListener('click', activar);
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activar(); } });
 });
-document.querySelector('.opcion-tiempo[data-modo="blitz5"]').classList.add('activa');
+const _opcionTiempoInicial = document.querySelector(`.opcion-tiempo[data-modo="${modoTiempoSeleccionado}"]`);
+if (_opcionTiempoInicial) {
+    document.querySelectorAll('.opcion-tiempo').forEach(o => { o.classList.remove('activa'); o.setAttribute('aria-checked','false'); });
+    _opcionTiempoInicial.classList.add('activa'); _opcionTiempoInicial.setAttribute('aria-checked','true');
+    const resumen = document.getElementById('resumenTiempo');
+    const titulo = _opcionTiempoInicial.querySelector('b')?.textContent || 'Ritmo';
+    const detalle = Array.from(_opcionTiempoInicial.childNodes).filter(n => n.nodeType === Node.TEXT_NODE).map(n => n.textContent.trim()).filter(Boolean).join(' ');
+    if (resumen) resumen.textContent = detalle ? `${titulo} · ${detalle}` : titulo;
+}
+
+const btnToggleTiempo = document.getElementById('btnToggleTiempo');
+const gridTiempo = document.getElementById('gridTiempo');
+if (btnToggleTiempo && gridTiempo) {
+    btnToggleTiempo.addEventListener('click', () => {
+        const abrir = gridTiempo.classList.contains('colapsada');
+        gridTiempo.classList.toggle('colapsada', !abrir);
+        btnToggleTiempo.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+    });
+}
 
 function construirParametrosTiempo() {
     return `&timer=1&timerMode=${modoTiempoSeleccionado}`;
 }
 
-function mostrarDificultad() {
-    document.getElementById('dificultad').style.display = 'flex';
-    document.getElementById('panelOnlineInicio').style.display = 'none';
+let modoPreparado = null;
+let dificultadSeleccionada = (() => { try { const v=Number(localStorage.getItem('templos_diff')); return [1,2,3].includes(v) ? v : 2; } catch(e) { return 2; } })();
+
+function marcarModoActivo(clave) {
+    document.querySelectorAll('.modo-btn[data-modo-ui]').forEach(btn => {
+        btn.classList.toggle('activo', btn.dataset.modoUi === clave);
+    });
 }
+function abrirConfiguracion() {
+    const panel = document.getElementById('panelConfiguracion');
+    if (panel) {
+        panel.classList.add('visible');
+        setTimeout(() => panel.scrollIntoView({ behavior:'smooth', block:'nearest' }), 20);
+    }
+}
+function cerrarConfiguracion() {
+    modoPreparado = null;
+    document.getElementById('panelConfiguracion')?.classList.remove('visible');
+    document.getElementById('dificultad')?.classList.remove('visible');
+    document.getElementById('panelOnlineInicio')?.classList.remove('visible');
+    document.getElementById('btnComenzarPartida')?.classList.remove('visible');
+    document.querySelectorAll('.modo-btn[data-modo-ui]').forEach(btn => btn.classList.remove('activo'));
+}
+function prepararModoLocal(modo) {
+    modoPreparado = modo;
+    marcarModoActivo('local');
+    document.getElementById('tituloConfiguracion').textContent = 'Dos jugadores · configuración';
+    document.getElementById('notaConfiguracion').textContent = 'Ambos jugadores comparten este dispositivo.';
+    document.getElementById('dificultad').classList.remove('visible');
+    document.getElementById('panelOnlineInicio').classList.remove('visible');
+    document.getElementById('btnComenzarPartida').classList.add('visible');
+    abrirConfiguracion();
+}
+function mostrarDificultad() {
+    modoPreparado = 1;
+    marcarModoActivo('ia');
+    document.getElementById('tituloConfiguracion').textContent = 'Contra la IA · configuración';
+    document.getElementById('notaConfiguracion').textContent = 'Elige dificultad y ritmo antes de comenzar.';
+    document.getElementById('dificultad').classList.add('visible');
+    seleccionarDificultad(dificultadSeleccionada);
+    document.getElementById('panelOnlineInicio').classList.remove('visible');
+    document.getElementById('btnComenzarPartida').classList.add('visible');
+    abrirConfiguracion();
+}
+function seleccionarDificultad(nivel) {
+    dificultadSeleccionada = nivel;
+    try { localStorage.setItem('templos_diff', String(nivel)); } catch(e) {}
+    document.querySelectorAll('#dificultad [data-diff]').forEach(btn => btn.classList.toggle('activa', Number(btn.dataset.diff) === nivel));
+}
+function obtenerPartidaLocalRecuperableMenu() {
+    if (typeof listarPartidasEnCache !== 'function') return null;
+    try {
+        return listarPartidasEnCache().find(p => p && !p.online && !p.modoPrueba && p.estado && !p.estado.juegoTerminado) || null;
+    } catch(e) { return null; }
+}
+function actualizarRecuperacionLocalMenu() {
+    const caja = document.getElementById('partidaRecuperableLocal');
+    const detalle = document.getElementById('partidaRecuperableLocalDetalle');
+    const btn = document.getElementById('btnContinuarPartidaLocal');
+    if (!caja || !btn) return;
+    const partida = obtenerPartidaLocalRecuperableMenu();
+    caja.classList.toggle('visible', !!partida);
+    if (!partida) { btn.onclick = null; return; }
+    const nivel = ['', 'Fácil', 'Medio', 'Difícil'][partida.dificultad] || 'IA';
+    const modo = partida.modo === 1 ? `Contra IA · ${nivel}` : 'Dos jugadores';
+    const minutos = Math.max(0, Math.round((Date.now() - (partida.fecha || Date.now())) / 60000));
+    if (detalle) detalle.textContent = `${modo} · ${minutos < 1 ? 'guardada hace menos de 1 min' : `guardada hace ${minutos} min`}.`;
+    btn.onclick = () => {
+        const params = new URLSearchParams(String(partida.urlParams || '').replace(/^\?/, ''));
+        params.set('resume', partida.id);
+        window.location.href = `tablero.html?${params.toString()}`;
+    };
+}
+
+function obtenerPartidaOnlineRecuperableMenu() {
+    if (typeof listarPartidasEnCache !== 'function') return null;
+    try {
+        return listarPartidasEnCache().find(p => {
+            if (!p || !p.online || !p.estado || p.estado.juegoTerminado) return false;
+            const sala = p.sala || (() => { try { return new URLSearchParams(p.urlParams || '').get('sala'); } catch(e) { return null; } })();
+            return !!sala && typeof p.urlParams === 'string';
+        }) || null;
+    } catch(e) { return null; }
+}
+function actualizarRecuperacionOnlineMenu() {
+    const caja = document.getElementById('onlineRecuperable');
+    const detalle = document.getElementById('onlineRecuperableDetalle');
+    const btn = document.getElementById('btnContinuarOnlineCache');
+    if (!caja || !btn) return;
+    const partida = obtenerPartidaOnlineRecuperableMenu();
+    caja.classList.toggle('visible', !!partida);
+    if (!partida) { btn.onclick = null; return; }
+    const sala = partida.sala || new URLSearchParams(partida.urlParams || '').get('sala') || '—';
+    const rol = (typeof partida.onlineEsAnfitrion === 'boolean') ? (partida.onlineEsAnfitrion ? 'Anfitrión' : 'Invitado') : 'Partida';
+    const minutos = Math.max(0, Math.round((Date.now() - (partida.fecha || Date.now())) / 60000));
+    if (detalle) detalle.textContent = `${rol} · Sala ${sala} · guardada ${minutos < 1 ? 'hace menos de 1 min' : `hace ${minutos} min`}.`;
+    btn.onclick = () => { window.location.href = `tablero.html${partida.urlParams}`; };
+}
+
+actualizarRecuperacionLocalMenu();
+
 function mostrarPanelOnline() {
-    document.getElementById('panelOnlineInicio').style.display = 'flex';
-    document.getElementById('dificultad').style.display = 'none';
+    modoPreparado = 'online';
+    actualizarRecuperacionOnlineMenu();
+    marcarModoActivo('online');
+    document.getElementById('tituloConfiguracion').textContent = 'Partida online';
+    document.getElementById('notaConfiguracion').textContent = 'Crea una sala privada o entra con el código de otra persona.';
+    document.getElementById('panelOnlineInicio').classList.add('visible');
+    document.getElementById('dificultad').classList.remove('visible');
+    document.getElementById('btnComenzarPartida').classList.remove('visible');
+    abrirConfiguracion();
+}
+function comenzarPartidaConfigurada() {
+    if (modoPreparado === 1) seleccionarModo(1, dificultadSeleccionada);
+    else if (modoPreparado === 2) seleccionarModo(2);
 }
 function seleccionarModo(modo, dificultad) {
     let url = `tablero.html?mode=${modo}${construirParametrosTiempo()}`;
@@ -344,6 +668,16 @@ if (inputUnirse) {
 function cerrarModalUnirse() {
     document.getElementById('modalUnirse').classList.remove('mostrar');
 }
+
+const modalUnirse = document.getElementById('modalUnirse');
+if (modalUnirse) modalUnirse.addEventListener('click', (e) => { if (e.target === modalUnirse) cerrarModalUnirse(); });
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (document.getElementById('modalTutorial')?.classList.contains('mostrar')) cerrarAyuda();
+        else if (document.getElementById('modalAyuda')?.classList.contains('mostrar')) cerrarAyuda();
+        else if (modalUnirse?.classList.contains('mostrar')) cerrarModalUnirse();
+    }
+});
 
 // ===== AYUDA =====
 document.getElementById('btnAyudaGlobal').addEventListener('click', () => {
@@ -472,6 +806,7 @@ function mostrarTutorial(tema) {
 // Arranca con la primera interacción del usuario, como exige el navegador.
 let _audioMenuCtx = null;
 let _audioMenuIniciado = false;
+let _audioMenuActivo = (() => { try { return localStorage.getItem('templos_musica_off') !== '1'; } catch (e) { return true; } })();
 function _obtenerCtxMenu() {
     if (!_audioMenuCtx) _audioMenuCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (_audioMenuCtx.state === 'suspended') _audioMenuCtx.resume();
@@ -479,6 +814,10 @@ function _obtenerCtxMenu() {
 }
 function _tocarNotaMenu(frec, duracion, vol) {
     try {
+        const volumenGuardado = Number(localStorage.getItem('templos_vol_musica'));
+        const multiplicador = Number.isFinite(volumenGuardado) ? Math.max(0, Math.min(1, volumenGuardado)) : 0.45;
+        vol *= multiplicador;
+        if (vol <= 0.0005) return;
         const ctx = _obtenerCtxMenu();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -492,9 +831,11 @@ function _tocarNotaMenu(frec, duracion, vol) {
     } catch (e) {}
 }
 function _cicloAudioMenu() {
-    const acorde = [261.63, 329.63, 392.00];
-    acorde.forEach((f, i) => setTimeout(() => _tocarNotaMenu(f, 3.2, 0.045), i * 200));
-    setTimeout(_cicloAudioMenu, 4200);
+    if (_audioMenuActivo) {
+        const acorde = [196.00, 246.94, 293.66];
+        acorde.forEach((f, i) => setTimeout(() => { if (_audioMenuActivo) _tocarNotaMenu(f, 7.0, 0.014); }, i * 500));
+    }
+    setTimeout(_cicloAudioMenu, 11500);
 }
 function _iniciarAudioMenu() {
     if (_audioMenuIniciado) return;
@@ -509,6 +850,24 @@ document.addEventListener('click', _iniciarAudioMenu);
 document.addEventListener('keydown', _iniciarAudioMenu);
 document.addEventListener('touchstart', _iniciarAudioMenu);
 
+const _btnAudioMenu = document.getElementById('btnAudioMenu');
+function _actualizarBotonAudioMenu() {
+    if (!_btnAudioMenu) return;
+    _btnAudioMenu.innerHTML = `<span aria-hidden="true">${_audioMenuActivo ? '🎵' : '🔇'}</span><span class="btn-texto">Audio</span>`;
+    _btnAudioMenu.title = _audioMenuActivo ? 'Silenciar música' : 'Activar música';
+    _btnAudioMenu.setAttribute('aria-label', _btnAudioMenu.title);
+}
+if (_btnAudioMenu) {
+    _btnAudioMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        _audioMenuActivo = !_audioMenuActivo;
+        try { localStorage.setItem('templos_musica_off', _audioMenuActivo ? '0' : '1'); } catch (err) {}
+        if (_audioMenuActivo) _iniciarAudioMenu();
+        _actualizarBotonAudioMenu();
+    });
+}
+_actualizarBotonAudioMenu();
+
 // ===== Mostrar puntaje ELO actual (guardado localmente) =====
 (function mostrarEloMenu() {
     try {
@@ -516,7 +875,7 @@ document.addEventListener('touchstart', _iniciarAudioMenu);
         const datos = raw ? JSON.parse(raw) : null;
         const el = document.getElementById('eloDisplay');
         if (el && datos) {
-            el.textContent = `Puntaje: 🔴 ${datos.rojo}  ·  🔵 ${datos.azul}`;
+            el.textContent = `Puntuación local · 🔴 ${datos.rojo}  ·  🔵 ${datos.azul}`;
         }
     } catch (e) {}
 })();
