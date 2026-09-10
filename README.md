@@ -15,7 +15,7 @@ Templos es un juego de mesa de estrategia para dos jugadores, inspirado en el aj
 
 ### Modos de juego
 
-- **1 Jugador**: contra la IA del juego, en tres niveles de dificultad (Fácil, Medio, Difícil).
+- **1 Jugador**: contra la IA del juego, en cinco niveles de dificultad (Principiante, Fácil, Normal, Difícil, Maestro).
 - **2 Jugadores (mismo dispositivo)**: para jugar por turnos compartiendo pantalla.
 - **2 Jugadores (otro dispositivo)**: partida en línea entre dos navegadores, usando un código de sala (sin necesidad de cuentas ni servidores propios).
 - **Modo Prueba**: pensado para practicar, probar el juego y revisar partidas jugada por jugada (incluye deshacer/rehacer y un panel de análisis con reproducción automática).
@@ -38,3 +38,8 @@ Bala, Blitz 5, Blitz 3+2, Rápido A, Rápido B, Clásico y modo Infinito (solo c
 - Modo Prueba con deshacer/rehacer ilimitado, importación y exportación de partidas, y un panel de análisis (jugada por jugada o reproducción automática a distintas velocidades).
 - Exportación de partidas a un archivo, con toda la información necesaria para continuarlas más adelante (posición, relojes, turno, tipo de partida).
 - Música y efectos de sonido generados con Web Audio (sin archivos de audio externos), con vibración táctil en dispositivos móviles.
+
+
+## Perfil y ELO
+
+El perfil de jugador es local al navegador. El ELO asociado a ese perfil solo se modifica en partidas online jugador contra jugador; las partidas contra IA, locales y de prueba no alteran la puntuación.

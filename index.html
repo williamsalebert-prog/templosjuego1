@@ -294,6 +294,16 @@ button:focus-visible,.opcion-tiempo:focus-visible,.opcion-color:focus-visible,in
 @media(max-width:760px){body{align-items:flex-start}.pantalla-inicio{margin:auto 0}.acciones-portada .btn-ayuda-global{min-height:44px}.modo-btn{min-height:74px}.accion-comenzar{min-height:48px}}
 @media(max-width:430px){.descripcion-portada{display:none}.portada-juego{padding-bottom:14px}.panel-inicio{padding-top:16px}.grid-tiempo{grid-template-columns:1fr 1fr}.opcion-tiempo{padding:9px 5px}}
 @media (orientation:landscape) and (max-height:540px){body{padding:6px}.pantalla-inicio{max-height:calc(100dvh - 12px);grid-template-columns:minmax(180px,.75fr) minmax(370px,1.45fr)}.portada-juego{padding:18px}.descripcion-portada{display:none}.portada-spacer{min-height:8px}.panel-inicio{padding:16px}.modo-btn{min-height:62px}.encabezado-panel p{display:none}.config-shell{margin-top:10px;padding-top:10px}}
+
+/* ===== PULIDO 10 · PERFIL LOCAL / HERRAMIENTAS TEMPORALES ===== */
+.perfil-local-card{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px;padding:9px 10px;border:1px solid var(--linea);border-radius:11px;background:rgba(255,255,255,.025);text-align:left}
+.perfil-local-info{min-width:0;display:grid;gap:2px}.perfil-local-info small{font-size:.6rem;text-transform:uppercase;letter-spacing:1.1px;color:#8f8068}.perfil-local-info strong{font-size:.76rem;color:#eadabd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.perfil-local-info span{font-size:.64rem;color:#a99778}.perfil-local-card button{margin:0;padding:7px 9px;font-size:.68rem;flex:0 0 auto;background:#17120e;color:#d9c7a5;border-color:var(--linea);box-shadow:none}
+.modal-perfil-lista{display:grid;gap:6px;margin:10px 0}.perfil-opcion{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border:1px solid var(--linea);border-radius:10px;background:#14100d;color:#d9c7a5;cursor:pointer}.perfil-opcion.activo{border-color:var(--oro);background:rgba(205,168,107,.10)}.perfil-opcion b{font-size:.78rem}.perfil-opcion span{font-size:.65rem;color:#9c8c73}
+.perfil-nuevo{display:flex;gap:6px;margin-top:9px}.perfil-nuevo input{flex:1;min-width:0;padding:10px;border-radius:10px;border:1px solid #4a3424;background:#100b08;color:var(--oro-claro);font:inherit}.perfil-nuevo button{margin:0;padding:9px 11px}
+.perfil-nota{font-size:.68rem!important;line-height:1.45!important;color:#8f8068!important}.cache-tools{display:flex;justify-content:flex-end;margin:7px 0 0}.btn-cache-temporal{margin:0;padding:7px 9px;font-size:.65rem;background:transparent;color:#8f8068;border:1px dashed rgba(205,168,107,.22);box-shadow:none}.btn-cache-temporal:hover{color:#d9c7a5;border-color:rgba(205,168,107,.5);background:rgba(205,168,107,.04)}
+.dificultad{grid-template-columns:repeat(5,1fr)!important}.dificultad button{font-size:.7rem!important;padding:9px 3px!important}
+@media(max-width:760px){.dificultad{grid-template-columns:repeat(3,1fr)!important}.perfil-local-card{align-items:flex-start}.perfil-nuevo{flex-direction:column}}
+
 </style>
 </head>
 <body>
@@ -313,7 +323,10 @@ button:focus-visible,.opcion-tiempo:focus-visible,.opcion-color:focus-visible,in
             <button class="btn-ayuda-global" id="btnAudioMenu" title="Activar o silenciar música" aria-label="Activar o silenciar música"><span aria-hidden="true">🎵</span><span class="btn-texto">Audio</span></button>
             <button class="btn-ayuda-global" id="btnAyudaGlobal" title="Reglas y ayuda"><span aria-hidden="true">?</span><span class="btn-texto">Reglas</span></button>
         </div>
-        <p id="eloDisplay" role="status" aria-live="polite"></p>
+        <div class="perfil-local-card" id="perfilLocalCard">
+            <div class="perfil-local-info"><small>Perfil local</small><strong id="perfilLocalNombre">Invitado</strong><span id="eloDisplay" role="status" aria-live="polite">Inicia sesión para guardar ELO online</span></div>
+            <button type="button" id="btnPerfilLocal">Perfil</button>
+        </div>
     </section>
 
     <main class="panel-inicio">
@@ -325,7 +338,7 @@ button:focus-visible,.opcion-tiempo:focus-visible,.opcion-color:focus-visible,in
 
         <div class="fila-modos" id="selectorModos">
             <button class="modo-btn" data-modo-ui="ia" onclick="mostrarDificultad()">
-                <span class="modo-icono">🤖</span><span class="modo-titulo">Contra la IA</span><span class="modo-desc">Tres niveles de dificultad</span>
+                <span class="modo-icono">🤖</span><span class="modo-titulo">Contra la IA</span><span class="modo-desc">Cinco niveles de dificultad</span>
             </button>
             <button class="modo-btn" data-modo-ui="local" onclick="prepararModoLocal(2)">
                 <span class="modo-icono">👥</span><span class="modo-titulo">Dos jugadores</span><span class="modo-desc">En este dispositivo</span>
@@ -343,6 +356,7 @@ button:focus-visible,.opcion-tiempo:focus-visible,.opcion-color:focus-visible,in
             <span id="partidaRecuperableLocalDetalle">Hay una partida reciente guardada en este navegador.</span>
             <button type="button" id="btnContinuarPartidaLocal">Continuar partida</button>
         </div>
+        <div class="cache-tools"><button type="button" class="btn-cache-temporal" id="btnBorrarCacheTemporal" title="Herramienta temporal mientras se estabiliza el guardado local">Borrar caché de partidas</button></div>
 
         <section class="config-shell" id="panelConfiguracion" aria-live="polite">
             <div class="config-head">
@@ -351,9 +365,11 @@ button:focus-visible,.opcion-tiempo:focus-visible,.opcion-color:focus-visible,in
             </div>
 
             <div id="dificultad" class="dificultad" aria-label="Dificultad de la IA">
-                <button type="button" data-diff="1" onclick="seleccionarDificultad(1)">Fácil</button>
-                <button type="button" data-diff="2" class="activa" onclick="seleccionarDificultad(2)">Medio</button>
-                <button type="button" data-diff="3" onclick="seleccionarDificultad(3)">Difícil</button>
+                <button type="button" data-diff="1" onclick="seleccionarDificultad(1)" title="Busca jugadas básicas y comete errores razonables">Principiante</button>
+                <button type="button" data-diff="2" onclick="seleccionarDificultad(2)">Fácil</button>
+                <button type="button" data-diff="3" class="activa" onclick="seleccionarDificultad(3)">Normal</button>
+                <button type="button" data-diff="4" onclick="seleccionarDificultad(4)">Difícil</button>
+                <button type="button" data-diff="5" onclick="seleccionarDificultad(5)" title="Equivale aproximadamente al antiguo nivel Difícil">Maestro</button>
             </div>
 
             <div class="seccion" id="seccionTiempo">
@@ -395,6 +411,22 @@ button:focus-visible,.opcion-tiempo:focus-visible,.opcion-color:focus-visible,in
         </section>
     </main>
 </div>
+<!-- MODAL PERFIL LOCAL -->
+<div class="modal-sala" id="modalPerfilLocal">
+    <div class="sala-box">
+        <h3>👤 Perfil local</h3>
+        <p class="perfil-nota">Este perfil existe solo en este navegador. No es una cuenta de servidor. Su ELO cambia únicamente en partidas online jugador contra jugador.</p>
+        <div id="listaPerfilesLocales" class="modal-perfil-lista"></div>
+        <div class="perfil-nuevo">
+            <input id="inputNuevoPerfil" type="text" maxlength="20" autocomplete="nickname" placeholder="Nombre del jugador" aria-label="Nombre del perfil local">
+            <button type="button" id="btnGuardarPerfil">Entrar</button>
+        </div>
+        <div id="avisoPerfilLocal" style="font-size:.72rem;color:#cbb892;min-height:1.2em;margin:7px 0" role="status" aria-live="polite"></div>
+        <button class="sala-btn cancelar" id="btnCerrarSesionPerfil" type="button">Cerrar sesión</button>
+        <button class="sala-btn cancelar" id="btnCerrarPerfilLocal" type="button">Cerrar</button>
+    </div>
+</div>
+
 <!-- MODAL UNIRSE -->
 <div class="modal-sala" id="modalUnirse">
     <div class="sala-box">
@@ -437,6 +469,7 @@ button:focus-visible,.opcion-tiempo:focus-visible,.opcion-color:focus-visible,in
     </div>
 </div>
 
+<script src="js/perfil.js"></script>
 <script src="js/cache.js"></script>
 <script>
 // ===== Parámetros de tiempo (selección en el menú) =====
@@ -487,7 +520,20 @@ function construirParametrosTiempo() {
 }
 
 let modoPreparado = null;
-let dificultadSeleccionada = (() => { try { const v=Number(localStorage.getItem('templos_diff')); return [1,2,3].includes(v) ? v : 2; } catch(e) { return 2; } })();
+let dificultadSeleccionada = (() => {
+    try {
+        let v = Number(localStorage.getItem('templos_diff'));
+        // Migración una sola vez desde el esquema antiguo de 3 niveles:
+        // Fácil→2, Medio→3 y el antiguo Difícil→5 (Maestro).
+        if (localStorage.getItem('templos_diff_scheme_v2') !== '1') {
+            const mapa = {1:2, 2:3, 3:5};
+            if (mapa[v]) v = mapa[v];
+            localStorage.setItem('templos_diff_scheme_v2','1');
+            localStorage.setItem('templos_diff', String(v || 3));
+        }
+        return [1,2,3,4,5].includes(v) ? v : 3;
+    } catch(e) { return 3; }
+})();
 
 function marcarModoActivo(clave) {
     document.querySelectorAll('.modo-btn[data-modo-ui]').forEach(btn => {
@@ -549,7 +595,7 @@ function actualizarRecuperacionLocalMenu() {
     const partida = obtenerPartidaLocalRecuperableMenu();
     caja.classList.toggle('visible', !!partida);
     if (!partida) { btn.onclick = null; return; }
-    const nivel = ['', 'Fácil', 'Medio', 'Difícil'][partida.dificultad] || 'IA';
+    const nivel = ['', 'Principiante', 'Fácil', 'Normal', 'Difícil', 'Maestro'][partida.dificultad] || 'IA';
     const modo = partida.modo === 1 ? `Contra IA · ${nivel}` : 'Dos jugadores';
     const minutos = Math.max(0, Math.round((Date.now() - (partida.fecha || Date.now())) / 60000));
     if (detalle) detalle.textContent = `${modo} · ${minutos < 1 ? 'guardada hace menos de 1 min' : `guardada hace ${minutos} min`}.`;
@@ -588,6 +634,10 @@ function actualizarRecuperacionOnlineMenu() {
 actualizarRecuperacionLocalMenu();
 
 function mostrarPanelOnline() {
+    if (typeof obtenerPerfilLocalActivo === 'function' && !obtenerPerfilLocalActivo()) {
+        abrirPerfilLocal(true);
+        return;
+    }
     modoPreparado = 'online';
     actualizarRecuperacionOnlineMenu();
     marcarModoActivo('online');
@@ -631,6 +681,7 @@ document.querySelectorAll('.opcion-color').forEach(btn => {
 });
 
 function abrirModalCrearSala() {
+    if (typeof obtenerPerfilLocalActivo === 'function' && !obtenerPerfilLocalActivo()) { abrirPerfilLocal(true); return; }
     window.location.href = `tablero.html?mode=2&online=1&jugador=0&colorJ1=${colorJ1Elegido}${construirParametrosTiempo()}`;
 }
 
@@ -643,6 +694,7 @@ function abrirModalUnirse() {
 }
 
 function confirmarUnirse() {
+    if (typeof obtenerPerfilLocalActivo === 'function' && !obtenerPerfilLocalActivo()) { abrirPerfilLocal(true); return; }
     const input = document.getElementById('inputCodigoUnirseIdx');
     const codigo = (input ? input.value : '').trim().toUpperCase();
     if (codigo.length < 4) {
@@ -673,7 +725,8 @@ const modalUnirse = document.getElementById('modalUnirse');
 if (modalUnirse) modalUnirse.addEventListener('click', (e) => { if (e.target === modalUnirse) cerrarModalUnirse(); });
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        if (document.getElementById('modalTutorial')?.classList.contains('mostrar')) cerrarAyuda();
+        if (document.getElementById('modalPerfilLocal')?.classList.contains('mostrar')) cerrarPerfilLocal();
+        else if (document.getElementById('modalTutorial')?.classList.contains('mostrar')) cerrarAyuda();
         else if (document.getElementById('modalAyuda')?.classList.contains('mostrar')) cerrarAyuda();
         else if (modalUnirse?.classList.contains('mostrar')) cerrarModalUnirse();
     }
@@ -837,18 +890,28 @@ function _cicloAudioMenu() {
     }
     setTimeout(_cicloAudioMenu, 11500);
 }
-function _iniciarAudioMenu() {
-    if (_audioMenuIniciado) return;
+function _arrancarCicloAudioMenuSiPosible() {
+    if (_audioMenuIniciado || !_audioMenuActivo) return;
+    const ctx = _obtenerCtxMenu();
+    if (!ctx || ctx.state !== 'running') return;
     _audioMenuIniciado = true;
-    _obtenerCtxMenu();
     _cicloAudioMenu();
-    document.removeEventListener('click', _iniciarAudioMenu);
-    document.removeEventListener('keydown', _iniciarAudioMenu);
-    document.removeEventListener('touchstart', _iniciarAudioMenu);
 }
-document.addEventListener('click', _iniciarAudioMenu);
-document.addEventListener('keydown', _iniciarAudioMenu);
-document.addEventListener('touchstart', _iniciarAudioMenu);
+function _iniciarAudioMenu() {
+    if (!_audioMenuActivo) return;
+    try {
+        const ctx = _obtenerCtxMenu();
+        const r = ctx && ctx.resume ? ctx.resume() : null;
+        if (r && typeof r.then === 'function') r.then(_arrancarCicloAudioMenuSiPosible).catch(()=>{});
+        _arrancarCicloAudioMenuSiPosible();
+    } catch(e) {}
+}
+// Se intenta desde el primer frame (funciona si el sitio ya tiene permiso) y,
+// cuando el navegador exige gesto, se desbloquea en pointerdown ANTES del click.
+_iniciarAudioMenu();
+document.addEventListener('pointerdown', _iniciarAudioMenu, {capture:true, passive:true});
+document.addEventListener('keydown', _iniciarAudioMenu, {capture:true});
+document.addEventListener('touchstart', _iniciarAudioMenu, {capture:true, passive:true});
 
 const _btnAudioMenu = document.getElementById('btnAudioMenu');
 function _actualizarBotonAudioMenu() {
@@ -868,17 +931,85 @@ if (_btnAudioMenu) {
 }
 _actualizarBotonAudioMenu();
 
-// ===== Mostrar puntaje ELO actual (guardado localmente) =====
-(function mostrarEloMenu() {
-    try {
-        const raw = localStorage.getItem('templos_elo_v1');
-        const datos = raw ? JSON.parse(raw) : null;
-        const el = document.getElementById('eloDisplay');
-        if (el && datos) {
-            el.textContent = `Puntuación local · 🔴 ${datos.rojo}  ·  🔵 ${datos.azul}`;
-        }
-    } catch (e) {}
-})();
+// ===== PERFIL LOCAL / ELO ONLINE =====
+let _abrirOnlineTrasPerfil = false;
+function renderPerfilLocalMenu() {
+    const perfil = typeof obtenerPerfilLocalActivo === 'function' ? obtenerPerfilLocalActivo() : null;
+    const nombre = document.getElementById('perfilLocalNombre');
+    const elo = document.getElementById('eloDisplay');
+    const salir = document.getElementById('btnCerrarSesionPerfil');
+    if (nombre) nombre.textContent = perfil ? perfil.nombre : 'Invitado';
+    if (elo) elo.textContent = perfil
+        ? `ELO online ${perfil.elo || 1000} · ${perfil.partidasOnline || 0} partidas`
+        : 'Inicia sesión para guardar ELO online';
+    if (salir) salir.style.display = perfil ? '' : 'none';
+}
+function renderListaPerfilesLocales() {
+    const cont = document.getElementById('listaPerfilesLocales');
+    if (!cont) return;
+    const activo = typeof obtenerPerfilLocalActivo === 'function' ? obtenerPerfilLocalActivo() : null;
+    const perfiles = typeof listarPerfilesLocales === 'function' ? listarPerfilesLocales() : [];
+    cont.innerHTML = '';
+    for (const p of perfiles) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `perfil-opcion${activo && activo.id === p.id ? ' activo' : ''}`;
+        const izq = document.createElement('b'); izq.textContent = p.nombre;
+        const der = document.createElement('span'); der.textContent = `ELO ${p.elo || 1000} · ${p.partidasOnline || 0} online`;
+        btn.append(izq, der);
+        btn.addEventListener('click', () => {
+            activarPerfilLocal(p.id);
+            renderPerfilLocalMenu(); renderListaPerfilesLocales();
+            document.getElementById('avisoPerfilLocal').textContent = `Sesión activa: ${p.nombre}`;
+            if (_abrirOnlineTrasPerfil) setTimeout(cerrarPerfilLocal, 180);
+        });
+        cont.appendChild(btn);
+    }
+}
+function abrirPerfilLocal(abrirOnlineDespues = false) {
+    _abrirOnlineTrasPerfil = !!abrirOnlineDespues;
+    renderListaPerfilesLocales(); renderPerfilLocalMenu();
+    document.getElementById('avisoPerfilLocal').textContent = abrirOnlineDespues ? 'Necesitas un perfil local para jugar online con ELO.' : '';
+    document.getElementById('modalPerfilLocal').classList.add('mostrar');
+    setTimeout(() => document.getElementById('inputNuevoPerfil')?.focus(), 80);
+}
+function cerrarPerfilLocal() {
+    document.getElementById('modalPerfilLocal').classList.remove('mostrar');
+    const seguir = _abrirOnlineTrasPerfil && !!obtenerPerfilLocalActivo();
+    _abrirOnlineTrasPerfil = false;
+    if (seguir) mostrarPanelOnline();
+}
+function guardarPerfilDesdeUI() {
+    const input = document.getElementById('inputNuevoPerfil');
+    const r = crearOActivarPerfilLocal(input?.value || '');
+    const aviso = document.getElementById('avisoPerfilLocal');
+    if (!r.ok) { if (aviso) aviso.textContent = `⚠️ ${r.error}`; return; }
+    if (input) input.value = '';
+    renderPerfilLocalMenu(); renderListaPerfilesLocales();
+    if (aviso) aviso.textContent = `✓ Sesión iniciada como ${r.perfil.nombre}`;
+    if (_abrirOnlineTrasPerfil) setTimeout(cerrarPerfilLocal, 180);
+}
+document.getElementById('btnPerfilLocal')?.addEventListener('click', () => abrirPerfilLocal(false));
+document.getElementById('btnGuardarPerfil')?.addEventListener('click', guardarPerfilDesdeUI);
+document.getElementById('inputNuevoPerfil')?.addEventListener('keydown', e => { if (e.key === 'Enter') guardarPerfilDesdeUI(); });
+document.getElementById('btnCerrarPerfilLocal')?.addEventListener('click', cerrarPerfilLocal);
+document.getElementById('btnCerrarSesionPerfil')?.addEventListener('click', () => {
+    cerrarSesionPerfilLocal(); renderPerfilLocalMenu(); renderListaPerfilesLocales();
+    document.getElementById('avisoPerfilLocal').textContent = 'Sesión local cerrada.';
+});
+document.getElementById('modalPerfilLocal')?.addEventListener('click', e => { if (e.target.id === 'modalPerfilLocal') cerrarPerfilLocal(); });
+renderPerfilLocalMenu();
+
+// Herramienta TEMPORAL de desarrollo: borra únicamente snapshots de partidas.
+// No borra perfiles, ELO ni preferencias de audio.
+document.getElementById('btnBorrarCacheTemporal')?.addEventListener('click', () => {
+    if (typeof borrarCachePartidas === 'function') borrarCachePartidas();
+    actualizarRecuperacionLocalMenu();
+    const onlineBox = document.getElementById('onlineRecuperable');
+    if (onlineBox) onlineBox.classList.remove('visible');
+    const btn = document.getElementById('btnBorrarCacheTemporal');
+    if (btn) { const original = btn.textContent; btn.textContent = '✓ Caché borrada'; setTimeout(()=>btn.textContent=original, 1600); }
+});
 </script>
 </body>
 </html>
