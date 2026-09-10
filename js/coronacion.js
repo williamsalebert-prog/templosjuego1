@@ -36,6 +36,7 @@ function coronar(tipo, remoto = false) {
         case 'F3': nuevaPieza = new F3(jugador); break;
         default: return;
     }
+    nuevaPieza.haMovido = true;
     board[f][c] = nuevaPieza;
     menuCoronacion.style.display = 'none';
     coronacionPendiente = null;

@@ -18,6 +18,7 @@ importScripts(
     'pieza.js',
     'f0.js', 'f1.js', 'f2.js', 'f3.js', 'f4.js', 'f5.js', 'f6.js',
     'jaque.js',
+    'enroque.js',
     'jaquemate.js',
     'ahogado.js'
 );
@@ -42,25 +43,78 @@ const VALOR_PIEZA = {
 // invadir el templo rival, que es como se gana la partida).
 function avanceBonus(tipo, fila, col, jugador) {
     if (tipo !== 'F1') return 0;
-    // Cuanta más cerca esté de coronar (columna objetivo), más vale.
-    const colObjetivoMin = jugador === 0 ? 11 : 3;
-    const distancia = jugador === 0 ? Math.max(0, 11 - col) : Math.max(0, col - 3);
-    return Math.max(0, (8 - distancia)) * 0.05;
+    // Progreso normalizado desde la base del templo propio (3/11) hasta la
+    // entrada del templo rival (11/3). Crece de forma no lineal: un peón que
+    // está a una o dos jugadas de coronar debe importar mucho más que uno que
+    // apenas salió.
+    const bruto = jugador === 0 ? (col - 3) / 8 : (11 - col) / 8;
+    const progreso = Math.max(0, Math.min(1, bruto));
+    return 0.10 * progreso + 0.70 * progreso * progreso;
+}
+
+function bonusPosicional(tipo, fila, col, jugador) {
+    if (tipo === 'F1') return avanceBonus(tipo, fila, col, jugador);
+
+    let bonus = 0;
+    const zona = getZona(fila, col);
+    const progresoCols = jugador === 0 ? col - 3 : 11 - col;
+
+    // Sacar piezas al jardín suele aumentar opciones de salto y control. Es un
+    // incentivo pequeño: nunca debe superar una ventaja material real.
+    if (zona === 'jardin' && tipo !== 'F6') bonus += 0.06;
+    bonus += Math.max(-2, Math.min(8, progresoCols)) * 0.012;
+
+    // El Trampero gana valor práctico cuando participa en la zona central,
+    // donde puede bloquear rutas sin ser capturable por la mayoría de piezas.
+    if (tipo === 'F4' && zona === 'jardin') bonus += 0.08;
+
+    // Infiltrarse en el templo enemigo con una pieza mayor suele restringir
+    // muchísimo al rival. Bonus moderado para no forzar aventuras suicidas.
+    const temploEnemigo = jugador === 0 ? 'templo2' : 'templo1';
+    if (zona === temploEnemigo && tipo !== 'F6') bonus += 0.10;
+    return bonus;
+}
+// Potencial inmediato de salto de un peón. En Templos una pieza propia
+// también puede ser una plataforma, así que dos posiciones con el mismo
+// material no son equivalentes: una red de apoyos puede abrir cadenas hacia
+// el templo rival. El bonus es pequeño para no sustituir cálculo táctico real.
+function bonusRedSaltosPeon(tablero, fila, col, pieza) {
+    if (!pieza || pieza.tipo !== 'F1') return 0;
+    const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
+    let bonus = 0;
+    for (const [df, dc] of dirs) {
+        const af = fila + df, ac = col + dc;
+        const lf = fila + 2 * df, lc = col + 2 * dc;
+        if (af < 0 || af >= FILAS || ac < 0 || ac >= COLUMNAS ||
+            lf < 0 || lf >= FILAS || lc < 0 || lc >= COLUMNAS || !esJugable(lf, lc)) continue;
+        const apoyo = tablero[af][ac];
+        if (!apoyo || tablero[lf][lc] !== null) continue;
+        if (apoyo.jugador !== pieza.jugador && !capturaPermitida(pieza.tipo, apoyo)) continue;
+        const avanza = pieza.jugador === 0 ? lc > col : lc < col;
+        if (!avanza) continue;
+        bonus += apoyo.jugador === pieza.jugador ? 0.025 : 0.06;
+        const zonaDestino = getZona(lf, lc);
+        const temploEnemigo = pieza.jugador === 0 ? 'templo2' : 'templo1';
+        if (zonaDestino === temploEnemigo) bonus += 0.06;
+    }
+    return Math.min(0.18, bonus);
 }
 
 function clonarTableroIA(tablero) {
-    return tablero.map(fila => fila.map(celda => {
-        if (celda === null) return null;
-        const Clase = piezasRegistradas.get(celda.tipo);
-        return Clase ? new Clase(celda.jugador) : null;
-    }));
+    // Copia estructural barata: el árbol de búsqueda no muta piezas que no se
+    // mueven. La pieza móvil se clona justo antes de cambiar haMovido. Evita
+    // crear decenas de objetos por candidato y reduce mucho la presión del GC.
+    return tablero.map(fila => fila.slice());
 }
 
 // Aplica un movimiento (camino de pasos) sobre un tablero, igual que hace el
 // juego real (animacion.js), pero sin sonido ni dibujo: solo el resultado.
-function aplicarCaminoEnTablero(tablero, origen, camino) {
+function aplicarCaminoEnTablero(tablero, origen, camino, tipoPromocion = 'F3') {
     let [f, c] = origen;
-    let pieza = tablero[f][c];
+    let piezaOriginal = tablero[f][c];
+    if (!piezaOriginal) return tablero;
+    // Es la única pieza cuyo estado persistente cambia en un movimiento.
+    let pieza = clonarPieza(piezaOriginal);
     tablero[f][c] = null;
     for (const paso of camino) {
         if (paso.tipo === 'move') {
@@ -94,71 +148,155 @@ function aplicarCaminoEnTablero(tablero, origen, camino) {
             if (objetivo && objetivo.jugador !== pieza.jugador) tablero[of][oc] = null;
         }
     }
-    // Coronación automática del peón (la IA siempre corona a Reina: es la
-    // pieza más fuerte y simplifica la búsqueda; un jugador humano sí puede
-    // elegir otra cosa, pero para la IA esto es lo más fuerte).
-    if (pieza && pieza.tipo === 'F1') {
+    if (pieza) pieza.haMovido = true;
+
+    // La búsqueda puede indicar qué promoción probar. El valor por defecto
+    // mantiene compatibilidad con llamadas auxiliares antiguas, pero el
+    // generador principal crea las cinco variantes legales cuando corresponde.
+    if (pieza && pieza.tipo === 'F1' && tipoPromocion) {
         const zona = getZona(f, c);
         if ((pieza.jugador === 0 && zona === 'templo2') || (pieza.jugador === 1 && zona === 'templo1')) {
-            tablero[f][c] = new F3(pieza.jugador);
+            const ClasePromocion = piezasRegistradas.get(tipoPromocion) || F3;
+            const promovida = new ClasePromocion(pieza.jugador);
+            promovida.haMovido = true;
+            tablero[f][c] = promovida;
         }
     }
     return tablero;
 }
 
 function aplicarEnroqueEnTablero(tablero, reyFila, reyCol, piezaFila, piezaCol, jugador) {
-    tablero[piezaFila][piezaCol] = tablero[reyFila][reyCol];
+    const reyOriginal = tablero[reyFila][reyCol];
+    const rey = reyOriginal ? clonarPieza(reyOriginal) : null;
+    tablero[piezaFila][piezaCol] = rey;
     tablero[reyFila][reyCol] = null;
+    if (rey) rey.haMovido = true;
+}
+
+
+function valorCapturadoPorCamino(tablero, jugador, tipoAtacante, camino) {
+    let valor = 0;
+    const contadas = new Set();
+    for (const paso of (camino || [])) {
+        if (!Array.isArray(paso.over)) continue;
+        const clave = `${paso.over[0]},${paso.over[1]}`;
+        if (contadas.has(clave)) continue;
+        const objetivo = tablero[paso.over[0]]?.[paso.over[1]];
+        if (!objetivo || objetivo.jugador === jugador) continue;
+        if ((paso.tipo === 'jump' || paso.tipo === 'captureDirect') && !capturaPermitida(tipoAtacante, objetivo)) continue;
+        if (paso.tipo === 'jump' || paso.tipo === 'captureDirect' || paso.tipo === 'removePiece') {
+            contadas.add(clave);
+            valor += VALOR_PIEZA[objetivo.tipo] || 0;
+        }
+    }
+    return valor;
+}
+
+function prioridadOrdenJugada(tableroAntes, pieza, camino, tableroDespues, origen, destino, tipoMovimiento) {
+    if (tipoMovimiento === 'enroque') return 2;
+    let prioridad = valorCapturadoPorCamino(tableroAntes, pieza.jugador, pieza.tipo, camino) * 100;
+    if (pieza.tipo === 'F1') {
+        const final = tableroDespues[destino[0]]?.[destino[1]];
+        if (final && final.tipo !== 'F1') prioridad += 850; // coronación
+    }
+    // Para las jugadas tranquilas, probar primero las que mejoran realmente
+    // la posición de ESA pieza; antes se usaba solo la columna absoluta y el
+    // orden podía ser casi arbitrario para piezas del mismo bando.
+    const antes = bonusPosicional(pieza.tipo, origen[0], origen[1], pieza.jugador);
+    const despues = bonusPosicional(pieza.tipo, destino[0], destino[1], pieza.jugador);
+    prioridad += (despues - antes) * 12;
+    return prioridad;
 }
 
 // Genera todas las jugadas legales de "jugador" en forma de lista plana, cada
 // una con su tablero resultante ya calculado (listo para evaluar/recursar).
-function generarJugadas(tablero, jugador, enroqueEstado) {
+function generarJugadas(tablero, jugador, enroqueEstado, fechaLimite = null) {
     const turnoPrevio = turno, boardPrevio = board, enroquePrevio = enroqueRealizado;
     board = tablero; turno = jugador; enroqueRealizado = enroqueEstado;
 
     const jugadas = [];
-    const movs = obtenerTodosMovimientosLegales(jugador, tablero);
+    const fueraDeTiempo = () => fechaLimite !== null && Date.now() > fechaLimite;
+    const cerrar = (agotado = false) => {
+        board = boardPrevio; turno = turnoPrevio; enroqueRealizado = enroquePrevio;
+        if (agotado) jugadas.agotado = true;
+        return jugadas;
+    };
 
-    for (const entrada of movs) {
-        const { fila, col, movimientos } = entrada;
-        const pieza = tablero[fila][col];
-        for (const mov of movimientos) {
-            if (mov.tipoMov === 'enroque') {
-                const nuevoTab = clonarTableroIA(tablero);
-                aplicarEnroqueEnTablero(nuevoTab, fila, col, mov.f, mov.c, jugador);
-                const nuevoEnroque = [...enroqueEstado];
-                nuevoEnroque[jugador] = true;
-                jugadas.push({ tipo: 'enroque', origen: [fila, col], destino: [mov.f, mov.c], tablero: nuevoTab, enroqueRealizado: nuevoEnroque });
-                continue;
-            }
-            const fDest = Array.isArray(mov) ? mov[0] : mov.f;
-            const cDest = Array.isArray(mov) ? mov[1] : mov.c;
+    // Antes se construía primero obtenerTodosMovimientosLegales() para TODO el
+    // bando y luego se recorría esa estructura una segunda vez para crear los
+    // tableros hijos. Aquí hacemos ambas cosas pieza por pieza, ahorrando una
+    // capa intermedia y permitiendo respetar el deadline entre piezas/rutas.
+    for (let fila = 0; fila < FILAS; fila++) {
+        for (let col = 0; col < COLUMNAS; col++) {
+            if (fueraDeTiempo()) return cerrar(true);
+            const pieza = tablero[fila][col];
+            if (!pieza || pieza.jugador !== jugador) continue;
+
             const res = pieza.obtenerMovimientos(fila, col, tablero);
-            const info = res.caminos[`${fDest},${cDest}`];
-            let rutas = [];
-            if (Array.isArray(info) && info.length > 0 && info[0].hasOwnProperty('pasos')) {
-                rutas = info.map(r => r.pasos);
-            } else if (Array.isArray(info)) {
-                rutas = [info];
+            const movimientosBase = [...res.destinos];
+            if (pieza.tipo === 'F6' && typeof obtenerEnroquesLegales === 'function') {
+                movimientosBase.push(...obtenerEnroquesLegales(fila, col, jugador, tablero, enroqueEstado));
             }
-            for (const camino of rutas) {
-                const nuevoTab = clonarTableroIA(tablero);
-                aplicarCaminoEnTablero(nuevoTab, [fila, col], camino);
-                jugadas.push({ tipo: 'mover', origen: [fila, col], destino: [fDest, cDest], camino, tablero: nuevoTab, enroqueRealizado: [...enroqueEstado] });
+            const filtrado = filtrarMovimientosJaque(
+                { fila, col }, movimientosBase, res.caminos, tablero, jugador
+            );
+
+            for (const mov of filtrado.posiblesMovimientos) {
+                if (fueraDeTiempo()) return cerrar(true);
+                if (mov.tipoMov === 'enroque') {
+                    const nuevoTab = clonarTableroIA(tablero);
+                    aplicarEnroqueEnTablero(nuevoTab, fila, col, mov.f, mov.c, jugador);
+                    const nuevoEnroque = [...enroqueEstado];
+                    nuevoEnroque[jugador] = true;
+                    jugadas.push({
+                        tipo: 'enroque', origen: [fila, col], destino: [mov.f, mov.c],
+                        tablero: nuevoTab, enroqueRealizado: nuevoEnroque, prioridad: 2
+                    });
+                    continue;
+                }
+
+                const fDest = Array.isArray(mov) ? mov[0] : mov.f;
+                const cDest = Array.isArray(mov) ? mov[1] : mov.c;
+                const info = filtrado.caminosDestino?.[`${fDest},${cDest}`];
+                let rutas = [];
+                if (Array.isArray(info) && info.length > 0 && info[0] && Object.prototype.hasOwnProperty.call(info[0], 'pasos')) {
+                    rutas = info.map(r => r.pasos);
+                } else if (Array.isArray(info)) {
+                    rutas = [info];
+                }
+
+                for (const camino of rutas) {
+                    if (fueraDeTiempo()) return cerrar(true);
+                    const zonaDestino = getZona(fDest, cDest);
+                    const esPromocion = pieza.tipo === 'F1' &&
+                        ((jugador === 0 && zonaDestino === 'templo2') || (jugador === 1 && zonaDestino === 'templo1'));
+                    const promociones = esPromocion ? ['F0', 'F2', 'F3', 'F4', 'F5'] : [null];
+
+                    for (const promocion of promociones) {
+                        if (fueraDeTiempo()) return cerrar(true);
+                        const nuevoTab = clonarTableroIA(tablero);
+                        if (esPromocion) aplicarCaminoEnTablero(nuevoTab, [fila, col], camino, promocion);
+                        else aplicarCaminoEnTablero(nuevoTab, [fila, col], camino, null);
+                        let prioridad = prioridadOrdenJugada(tablero, pieza, camino, nuevoTab, [fila, col], [fDest, cDest], 'mover');
+                        if (promocion) prioridad += (VALOR_PIEZA[promocion] || 0) * 2;
+                        jugadas.push({
+                            tipo: 'mover', origen: [fila, col], destino: [fDest, cDest], camino,
+                            promocion, tablero: nuevoTab, enroqueRealizado: [...enroqueEstado], prioridad
+                        });
+                    }
+                }
             }
         }
     }
-
-    board = boardPrevio; turno = turnoPrevio; enroqueRealizado = enroquePrevio;
-    return jugadas;
+    return cerrar(false);
 }
 
 // --- Evaluación de posición (mayor = mejor para el jugador 0 / rojo) ---
-function evaluarPosicion(tablero, enroqueEstado) {
+// En una posición legal, tras una jugada solo el jugador al que le toca mover
+// puede estar en jaque. Recibir ese dato ya calculado evita volver a generar
+// TODOS los caminos enemigos dos veces en cada hoja del árbol.
+function evaluarPosicion(tablero, enroqueEstado, jugadorAMover = null, enJaqueJugador = false) {
     let total = 0;
-    const turnoPrevio = turno, boardPrevio = board, enroquePrevio = enroqueRealizado;
-    board = tablero; enroqueRealizado = enroqueEstado;
 
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
@@ -166,72 +304,206 @@ function evaluarPosicion(tablero, enroqueEstado) {
             if (!pieza) continue;
             const signo = pieza.jugador === 0 ? 1 : -1;
             total += signo * VALOR_PIEZA[pieza.tipo];
-            total += signo * avanceBonus(pieza.tipo, i, j, pieza.jugador);
+            total += signo * bonusPosicional(pieza.tipo, i, j, pieza.jugador);
+            if (pieza.tipo === 'F1') total += signo * bonusRedSaltosPeon(tablero, i, j, pieza);
         }
     }
 
-    // Seguridad del rey: estar en jaque es muy malo; tener pocas casillas de
-    // huida también penaliza levemente (rey acorralado).
-    turno = 0;
-    if (esJaque(0, tablero)) total -= 1.5;
-    turno = 1;
-    if (esJaque(1, tablero)) total += 1.5;
-
-    board = boardPrevio; turno = turnoPrevio; enroqueRealizado = enroquePrevio;
+    if (enJaqueJugador && jugadorAMover === 0) total -= 1.5;
+    else if (enJaqueJugador && jugadorAMover === 1) total += 1.5;
     return total;
 }
 
+
+let tablaTransposicion = new Map();
+const TT_MAX = 80000;
+const MATE_SCORE = 100000;
+
+// Heurísticas de ordenación que sobreviven entre profundidades de una misma
+// pensada. No cambian qué jugadas son legales ni su evaluación: simplemente
+// ayudan a alfa-beta a probar antes las jugadas que históricamente provocaron
+// cortes, reduciendo muchísimo ramas inútiles.
+let killerMoves = [];
+let historyMoves = new Map();
+
+// La profundidad ya NO forma parte de la clave. Una misma posición puede
+// reutilizar una entrada calculada a mayor profundidad; la entrada conserva
+// su profundidad y si el valor es exacto o un límite alfa/beta.
+function clavePosicionIA(tablero, enroqueEstado, jugadorAMover) {
+    let h1 = 2166136261 >>> 0;
+    let h2 = 2246822519 >>> 0;
+    const mezclar = (n) => {
+        h1 ^= n & 0xff; h1 = Math.imul(h1, 16777619) >>> 0;
+        h2 ^= (n + 0x9d) & 0xff; h2 = Math.imul(h2, 3266489917) >>> 0;
+    };
+    mezclar(jugadorAMover + 11);
+    mezclar(enroqueEstado?.[0] ? 1 : 0);
+    mezclar(enroqueEstado?.[1] ? 1 : 0);
+    for (let f = 0; f < FILAS; f++) {
+        for (let c = 0; c < COLUMNAS; c++) {
+            const p = tablero[f][c];
+            if (!p) { mezclar(0); continue; }
+            mezclar((parseInt(p.tipo.slice(1), 10) || 0) + 1);
+            mezclar(p.jugador + 1);
+            mezclar(p.haMovido ? 1 : 0);
+        }
+    }
+    return `${h1.toString(36)}:${h2.toString(36)}:${jugadorAMover}`;
+}
+
+function guardarTT(clave, entrada) {
+    if (!clave || !entrada) return;
+    // Evitar el viejo "clear()" total: justo cuando la tabla se llenaba se
+    // perdía de golpe toda la información útil de la búsqueda. Map conserva
+    // orden de inserción, así que retiramos solo una fracción de lo más viejo.
+    if (tablaTransposicion.size >= TT_MAX) {
+        let quitar = Math.ceil(TT_MAX * 0.15);
+        for (const k of tablaTransposicion.keys()) {
+            tablaTransposicion.delete(k);
+            if (--quitar <= 0) break;
+        }
+    }
+    tablaTransposicion.set(clave, entrada);
+}
+
+function firmaJugadaIA(jugada) {
+    if (!jugada) return '';
+    const o = jugada.origen || [];
+    const d = jugada.destino || [];
+    let pasos = '';
+    if (Array.isArray(jugada.camino)) {
+        pasos = jugada.camino.map(p => `${p.tipo}:${(p.over || []).join(',')}>${(p.to || []).join(',')}`).join('|');
+    }
+    return `${jugada.tipo}:${o.join(',')}:${d.join(',')}:${jugada.promocion || ''}:${pasos}`;
+}
+
+function valorMate(jugadorAMover, ply) {
+    // Distancia REAL al mate desde la raíz. Con la fórmula antigua basada en
+    // "profundidad restante" podían invertirse preferencias: ahora el bando
+    // ganador siempre prefiere mate antes y el condenado retrasa el mate.
+    return jugadorAMover === 0 ? -MATE_SCORE + ply : MATE_SCORE - ply;
+}
+
+function puntuacionOrdenDinamica(jugada, ply, firmaTT) {
+    const firma = firmaJugadaIA(jugada);
+    let p = jugada.prioridad || 0;
+    if (firmaTT && firma === firmaTT) p += 1000000;
+    const killers = killerMoves[ply];
+    if (killers) {
+        if (firma === killers[0]) p += 90;
+        else if (firma === killers[1]) p += 70;
+    }
+    p += Math.min(60, (historyMoves.get(firma) || 0) * 0.02);
+    return p;
+}
+
+function registrarCorteOrden(jugada, profundidad, ply) {
+    if (!jugada) return;
+    const firma = firmaJugadaIA(jugada);
+    // Capturas/coronaciones ya tienen una prioridad táctica alta. Killer es
+    // más útil para recordar movimientos tranquilos que sorprendentemente
+    // refutan una rama.
+    if ((jugada.prioridad || 0) < 100) {
+        if (!killerMoves[ply]) killerMoves[ply] = [null, null];
+        if (killerMoves[ply][0] !== firma) {
+            killerMoves[ply][1] = killerMoves[ply][0];
+            killerMoves[ply][0] = firma;
+        }
+    }
+    historyMoves.set(firma, Math.min(3000, (historyMoves.get(firma) || 0) + profundidad * profundidad));
+}
+
 // --- Minimax con poda alfa-beta + límite de tiempo (iterative deepening) ---
-// El jugador 0 maximiza, el jugador 1 minimiza (convención interna fija,
-// independiente de a quién le toque jugar en la posición raíz).
-function minimax(tablero, enroqueEstado, profundidad, alfa, beta, jugadorAMover, fechaLimite) {
+function minimax(tablero, enroqueEstado, profundidad, alfa, beta, jugadorAMover, fechaLimite, ply = 0, preferidaRaiz = null) {
     if (Date.now() > fechaLimite) {
         return { valor: evaluarPosicion(tablero, enroqueEstado), agotado: true };
     }
 
+    const alfaEntrada = alfa;
+    const betaEntrada = beta;
+    const claveTT = ply > 0 ? clavePosicionIA(tablero, enroqueEstado, jugadorAMover) : null;
+    let firmaPreferidaTT = null;
+    const tt = claveTT ? tablaTransposicion.get(claveTT) : null;
+    if (tt) {
+        firmaPreferidaTT = tt.mejorFirma || null;
+        if (tt.profundidad >= profundidad) {
+            if (tt.tipo === 'EXACT') return { valor: tt.valor };
+            if (tt.tipo === 'LOWER') alfa = Math.max(alfa, tt.valor);
+            else if (tt.tipo === 'UPPER') beta = Math.min(beta, tt.valor);
+            if (alfa >= beta) return { valor: tt.valor };
+        }
+    }
+
     const turnoPrevio = turno, boardPrevio = board, enroquePrevio = enroqueRealizado;
     board = tablero; turno = jugadorAMover; enroqueRealizado = enroqueEstado;
-    const enJaqueMate = esJaqueMate(jugadorAMover, tablero);
-    const enAhogado = !enJaqueMate && esAhogado(jugadorAMover, tablero);
-    board = boardPrevio; turno = turnoPrevio; enroqueRealizado = enroquePrevio;
+    const enJaque = esJaque(jugadorAMover, tablero);
 
-    if (enJaqueMate) {
-        // Jaque mate: muy bueno para quien lo dio, muy malo para quien lo recibe.
-        const valor = jugadorAMover === 0 ? -1000 + (10 - profundidad) : 1000 - (10 - profundidad);
+    if (profundidad <= 0) {
+        const hayMovimientos = tieneMovimientosLegales(jugadorAMover, tablero);
+        if (!hayMovimientos) {
+            board = boardPrevio; turno = turnoPrevio; enroqueRealizado = enroquePrevio;
+            const valor = enJaque ? valorMate(jugadorAMover, ply) : 0;
+            guardarTT(claveTT, { profundidad: 0, valor, tipo: 'EXACT', mejorFirma: null });
+            return { valor };
+        }
+        board = boardPrevio; turno = turnoPrevio; enroqueRealizado = enroquePrevio;
+        const valor = evaluarPosicion(tablero, enroqueEstado, jugadorAMover, enJaque);
+        guardarTT(claveTT, { profundidad: 0, valor, tipo: 'EXACT', mejorFirma: null });
         return { valor };
     }
-    if (enAhogado) return { valor: 0 };
-    if (profundidad <= 0) return { valor: evaluarPosicion(tablero, enroqueEstado) };
 
-    const jugadas = generarJugadas(tablero, jugadorAMover, enroqueEstado);
-    if (jugadas.length === 0) return { valor: evaluarPosicion(tablero, enroqueEstado) };
+    const jugadas = generarJugadas(tablero, jugadorAMover, enroqueEstado, fechaLimite);
+    board = boardPrevio; turno = turnoPrevio; enroqueRealizado = enroquePrevio;
 
-    // Orden simple: las jugadas que capturan material se exploran primero
-    // (mejora mucho la poda alfa-beta sin necesitar una búsqueda extra).
-    jugadas.sort((a, b) => contarMaterial(b.tablero) - contarMaterial(a.tablero));
+    if (jugadas.agotado) return { valor: evaluarPosicion(tablero, enroqueEstado, jugadorAMover, enJaque), agotado: true };
+
+    if (jugadas.length === 0) {
+        const valor = enJaque ? valorMate(jugadorAMover, ply) : 0;
+        guardarTT(claveTT, { profundidad, valor, tipo: 'EXACT', mejorFirma: null });
+        return { valor };
+    }
+
+    jugadas.sort((a, b) => puntuacionOrdenDinamica(b, ply, firmaPreferidaTT) - puntuacionOrdenDinamica(a, ply, firmaPreferidaTT));
+
+    if (ply === 0 && preferidaRaiz) {
+        const idx = jugadas.findIndex(j => firmaJugadaIA(j) === preferidaRaiz);
+        if (idx > 0) jugadas.unshift(jugadas.splice(idx, 1)[0]);
+    }
 
     let mejor = null;
+    let mejorValor = jugadorAMover === 0 ? -Infinity : Infinity;
+    let huboCorte = false;
+
     if (jugadorAMover === 0) {
-        let valorMax = -Infinity;
         for (const j of jugadas) {
-            const resultado = minimax(j.tablero, j.enroqueRealizado, profundidad - 1, alfa, beta, 1, fechaLimite);
-            if (resultado.valor > valorMax) { valorMax = resultado.valor; mejor = j; }
-            alfa = Math.max(alfa, valorMax);
-            if (Date.now() > fechaLimite) break;
-            if (alfa >= beta) break;
+            const resultado = minimax(j.tablero, j.enroqueRealizado, profundidad - 1, alfa, beta, 1, fechaLimite, ply + 1, null);
+            if (resultado.agotado) return { valor: mejorValor, jugada: mejor, agotado: true };
+            if (resultado.valor > mejorValor) { mejorValor = resultado.valor; mejor = j; }
+            alfa = Math.max(alfa, mejorValor);
+            if (Date.now() > fechaLimite) return { valor: mejorValor, jugada: mejor, agotado: true };
+            if (alfa >= beta) { huboCorte = true; registrarCorteOrden(j, profundidad, ply); break; }
         }
-        return { valor: valorMax, jugada: mejor };
     } else {
-        let valorMin = Infinity;
         for (const j of jugadas) {
-            const resultado = minimax(j.tablero, j.enroqueRealizado, profundidad - 1, alfa, beta, 0, fechaLimite);
-            if (resultado.valor < valorMin) { valorMin = resultado.valor; mejor = j; }
-            beta = Math.min(beta, valorMin);
-            if (Date.now() > fechaLimite) break;
-            if (alfa >= beta) break;
+            const resultado = minimax(j.tablero, j.enroqueRealizado, profundidad - 1, alfa, beta, 0, fechaLimite, ply + 1, null);
+            if (resultado.agotado) return { valor: mejorValor, jugada: mejor, agotado: true };
+            if (resultado.valor < mejorValor) { mejorValor = resultado.valor; mejor = j; }
+            beta = Math.min(beta, mejorValor);
+            if (Date.now() > fechaLimite) return { valor: mejorValor, jugada: mejor, agotado: true };
+            if (alfa >= beta) { huboCorte = true; registrarCorteOrden(j, profundidad, ply); break; }
         }
-        return { valor: valorMin, jugada: mejor };
     }
+
+    let tipoTT = 'EXACT';
+    if (mejorValor <= alfaEntrada) tipoTT = 'UPPER';
+    else if (mejorValor >= betaEntrada) tipoTT = 'LOWER';
+    guardarTT(claveTT, {
+        profundidad,
+        valor: mejorValor,
+        tipo: tipoTT,
+        mejorFirma: firmaJugadaIA(mejor)
+    });
+    return { valor: mejorValor, jugada: mejor };
 }
 
 function contarMaterial(tablero) {
@@ -244,14 +516,27 @@ function contarMaterial(tablero) {
     return total;
 }
 
+function contarMaterialJugador(tablero, jugador) {
+    let total = 0;
+    for (let i = 0; i < FILAS; i++)
+        for (let j = 0; j < COLUMNAS; j++) {
+            const p = tablero[i][j];
+            if (p && p.jugador === jugador) total += VALOR_PIEZA[p.tipo];
+        }
+    return total;
+}
+
 function serializarBoardIA(tab) {
-    return tab.map(fila => fila.map(c => c ? { tipo: c.tipo, jugador: c.jugador } : null));
+    return tab.map(fila => fila.map(c => c ? { tipo: c.tipo, jugador: c.jugador, haMovido: !!c.haMovido } : null));
 }
 function deserializarBoardIA(data) {
     return data.map(fila => fila.map(c => {
         if (!c) return null;
         const Clase = piezasRegistradas.get(c.tipo);
-        return Clase ? new Clase(c.jugador) : null;
+        if (!Clase) return null;
+        const pieza = new Clase(c.jugador);
+        pieza.haMovido = !!c.haMovido;
+        return pieza;
     }));
 }
 
@@ -266,12 +551,12 @@ function deserializarBoardIA(data) {
 // partida lo permite (clásico/infinito). En partidas rápidas (bala/blitz) se
 // recortan más abajo, en calcularPresupuestoReal, para no pensar 7-8s en una
 // partida de 1 minuto; y en partidas largas no se acelera de más.
-const PRESUPUESTO_MS = { 1: 1200, 2: 3000, 3: 7000 };
-const PROFUNDIDAD_MAX = { 1: 2, 2: 3, 3: 5 };
+const PRESUPUESTO_MS = { 1: 350, 2: 850, 3: 2200 };
+const PROFUNDIDAD_MAX = { 1: 2, 2: 3, 3: 4 };
 
 // Tiempo mínimo de pensada incluso en el modo más rápido, para que la IA no
 // se sienta "instantánea"/robótica ni siquiera en Bala.
-const PRESUPUESTO_MIN_MS = 250;
+const PRESUPUESTO_MIN_MS = 180;
 
 // Calcula cuánto puede pensar la IA esta jugada, combinando:
 // - El techo por dificultad (PRESUPUESTO_MS): lo más que querría pensar.
@@ -318,6 +603,7 @@ function calcularPresupuestoReal(dificultad, infoTiempo) {
 }
 
 function elegirMejorJugada(boardData, jugador, enroqueEstado, dificultad, infoTiempo) {
+    tablaTransposicion.clear();
     const tablero = deserializarBoardIA(boardData);
     const presupuesto = calcularPresupuestoReal(dificultad, infoTiempo);
     const profMax = PROFUNDIDAD_MAX[dificultad] || PROFUNDIDAD_MAX[1];
@@ -325,6 +611,7 @@ function elegirMejorJugada(boardData, jugador, enroqueEstado, dificultad, infoTi
 
     let mejorJugada = null;
     let mejorValor = jugador === 0 ? -Infinity : Infinity;
+    let preferidaRaiz = null;
 
     // En dificultad fácil añadimos algo de azar (no juega el movimiento
     // objetivamente óptimo siempre), para que sea vencible y no se sienta
@@ -332,14 +619,29 @@ function elegirMejorJugada(boardData, jugador, enroqueEstado, dificultad, infoTi
     // razonables, no necesariamente LA mejor.
     const margenAzarFacil = dificultad === 1 ? 1.0 : 0;
 
+    let duracionIteracionAnterior = null;
     for (let profundidad = 1; profundidad <= profMax; profundidad++) {
-        if (Date.now() > fechaLimite) break;
-        const resultado = minimax(tablero, enroqueEstado, profundidad, -Infinity, Infinity, jugador, fechaLimite);
+        const ahora = Date.now();
+        if (ahora > fechaLimite) break;
+
+        // No iniciar una profundidad que casi seguro no cabrá. Antes Difícil
+        // terminaba profundidad 3 y desperdiciaba ~5 s intentando una 4 que no
+        // llegaba a completar, por lo que esperaba mucho sin jugar mejor.
+        if (mejorJugada && duracionIteracionAnterior !== null && profundidad >= 3) {
+            const restante = fechaLimite - ahora;
+            const factorEstimado = profundidad >= 4 ? 3.5 : 3.0;
+            if (duracionIteracionAnterior * factorEstimado > restante) break;
+        }
+
+        const inicioIteracion = Date.now();
+        const resultado = minimax(tablero, enroqueEstado, profundidad, -Infinity, Infinity, jugador, fechaLimite, 0, preferidaRaiz);
+        duracionIteracionAnterior = Math.max(1, Date.now() - inicioIteracion);
+        if (resultado.agotado) break;
         if (resultado.jugada) {
             mejorJugada = resultado.jugada;
             mejorValor = resultado.valor;
+            preferidaRaiz = firmaJugadaIA(resultado.jugada);
         }
-        if (resultado.agotado) break;
     }
 
     if (!mejorJugada) {
@@ -349,18 +651,25 @@ function elegirMejorJugada(boardData, jugador, enroqueEstado, dificultad, infoTi
     }
 
     if (margenAzarFacil > 0) {
-        // Recalculamos las jugadas de raíz a profundidad 1 para elegir entre
-        // las "suficientemente buenas" en vez de siempre la mejor exacta.
+        // Fácil conserva variedad, pero ya no mezcla la puntuación profunda
+        // del minimax con evaluaciones estáticas de otra escala. Ordenamos las
+        // alternativas por una evaluación homogénea y sorteamos únicamente
+        // entre el pequeño grupo superior. Sigue siendo vencible sin regalar
+        // piezas por puro azar.
         const jugadasRaiz = generarJugadas(tablero, jugador, enroqueEstado);
         const evaluadas = jugadasRaiz.map(j => ({
             jugada: j,
-            valor: evaluarPosicion(j.tablero, j.enroqueRealizado)
+            valor: evaluarPosicion(j.tablero, j.enroqueRealizado, 1 - jugador, false)
         }));
-        const buenas = evaluadas.filter(e =>
-            jugador === 0 ? e.valor >= mejorValor - margenAzarFacil : e.valor <= mejorValor + margenAzarFacil
-        );
-        if (buenas.length > 0) {
-            mejorJugada = buenas[Math.floor(Math.random() * buenas.length)].jugada;
+        evaluadas.sort((a, b) => jugador === 0 ? b.valor - a.valor : a.valor - b.valor);
+        const cantidad = Math.min(4, Math.max(1, Math.ceil(evaluadas.length * 0.12)));
+        const candidatas = evaluadas.slice(0, cantidad);
+        if (candidatas.length > 0) {
+            // Sesgo suave hacia las primeras: la mejor sale más a menudo, pero
+            // no siempre, evitando que Fácil sea determinista.
+            const r = Math.random();
+            const idx = Math.min(candidatas.length - 1, Math.floor(r * r * candidatas.length));
+            mejorJugada = candidatas[idx].jugada;
         }
     }
 
@@ -368,7 +677,8 @@ function elegirMejorJugada(boardData, jugador, enroqueEstado, dificultad, infoTi
         tipo: mejorJugada.tipo,
         origen: mejorJugada.origen,
         destino: mejorJugada.destino,
-        camino: mejorJugada.camino || null
+        camino: mejorJugada.camino || null,
+        promocion: mejorJugada.promocion || null
     };
 }
 

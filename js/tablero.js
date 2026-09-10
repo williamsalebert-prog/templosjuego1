@@ -1,8 +1,17 @@
 console.log("✅ tablero.js cargado");
 const canvas = document.getElementById('tableroCanvas');
 const ctx = canvas.getContext('2d');
-canvas.width = COLUMNAS * CELL_SIZE;
-canvas.height = FILAS * CELL_SIZE;
+const ANCHO_LOGICO = COLUMNAS * CELL_SIZE;
+const ALTO_LOGICO = FILAS * CELL_SIZE;
+const PIXEL_RATIO = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+canvas.width = Math.round(ANCHO_LOGICO * PIXEL_RATIO);
+canvas.height = Math.round(ALTO_LOGICO * PIXEL_RATIO);
+ctx.setTransform(PIXEL_RATIO, 0, 0, PIXEL_RATIO, 0, 0);
+canvas.dataset.pixelRatio = String(PIXEL_RATIO);
+
+// Feedback visual de interacción. No forma parte del estado de reglas.
+let ultimaJugadaVisual = null;
+let casillaHover = null;
 
 // ============================================================================
 // TABLERO HORIZONTAL EN MÓVILES
@@ -24,7 +33,12 @@ function esPantallaMovil() {
 
 function calcularRotacionGrados() {
     if (!esPantallaMovil()) return 0;
-    let base = 90;
+    // En vertical rotamos para aprovechar la pantalla. Si el teléfono YA está
+    // horizontal, mantener 90° desperdicia el formato natural 15x10.
+    const vertical = window.innerHeight >= window.innerWidth;
+    let base = vertical ? 90 : 0;
+    // El invitado azul ve su lado orientado hacia sí tanto en vertical como en
+    // horizontal; en vertical esto convierte 90° en 270°.
     if (CONFIG_JUEGO.online && CONFIG_JUEGO.onlineSoyJugador === 1) base += 180;
     return base % 360;
 }
@@ -79,7 +93,9 @@ function traducirCoordenadaRotada(xRel, yRel, anchoVisual, altoVisual) {
         return { x: yRel, y: anchoVisual - xRel };
     }
     if (grados === 270) {
-        return { x: anchoVisual - yRel, y: xRel };
+        // En 270° el eje X interno depende del ALTO visual (que corresponde
+        // al ancho sin rotar). Usar anchoVisual aquí desplazaba los toques.
+        return { x: altoVisual - yRel, y: xRel };
     }
     if (grados === 180) {
         return { x: anchoVisual - xRel, y: altoVisual - yRel };
@@ -90,13 +106,54 @@ function traducirCoordenadaRotada(xRel, yRel, anchoVisual, altoVisual) {
 function copiarBoard() {
     return board.map(fila => fila.map(celda => {
         if (celda === null) return null;
-        const ClasePieza = piezasRegistradas.get(celda.tipo);
-        return ClasePieza ? new ClasePieza(celda.jugador) : null;
+        return clonarPieza(celda);
     }));
 }
 
+function capturarEstadoHistorial() {
+    return {
+        board: copiarBoard(),
+        turno,
+        enroqueRealizado: [...enroqueRealizado],
+        carcela: carcela.obtenerTodas().map(p => ({ tipo: p.tipo, jugador: p.jugador })),
+        contadorJugadas,
+        jugadasPorJugador: [...jugadasPorJugador],
+        tiempoRestante: (typeof tiempoRestante !== 'undefined') ? [...tiempoRestante] : null,
+        cronometro: (typeof cronometro !== 'undefined') ? [...cronometro] : null,
+        avisoBajoTiempoDado: (typeof avisoBajoTiempoDado !== 'undefined') ? [...avisoBajoTiempoDado] : null,
+        bonoJugadaAplicado: (typeof bonoJugadaAplicado !== 'undefined') ? [...bonoJugadaAplicado] : null
+    };
+}
+
+function restaurarEstadoHistorial(estado) {
+    if (!estado) return false;
+    board = estado.board;
+    turno = estado.turno;
+    enroqueRealizado = estado.enroqueRealizado || [false, false];
+
+    carcela.limpiar();
+    for (const dato of (estado.carcela || [])) {
+        const Clase = piezasRegistradas.get(dato.tipo);
+        if (Clase) carcela.agregar(new Clase(dato.jugador));
+    }
+    if (typeof estado.contadorJugadas === 'number') contadorJugadas = estado.contadorJugadas;
+    if (Array.isArray(estado.jugadasPorJugador)) jugadasPorJugador = [...estado.jugadasPorJugador];
+    if (Array.isArray(estado.tiempoRestante) && typeof tiempoRestante !== 'undefined') tiempoRestante = [...estado.tiempoRestante];
+    if (Array.isArray(estado.cronometro) && typeof cronometro !== 'undefined') cronometro = [...estado.cronometro];
+    if (Array.isArray(estado.avisoBajoTiempoDado) && typeof avisoBajoTiempoDado !== 'undefined') avisoBajoTiempoDado = [...estado.avisoBajoTiempoDado];
+    if (Array.isArray(estado.bonoJugadaAplicado) && typeof bonoJugadaAplicado !== 'undefined') bonoJugadaAplicado = [...estado.bonoJugadaAplicado];
+
+    selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
+    modoRuta = false; rutasAlternativas = []; destinoRuta = null;
+    ultimaJugadaVisual = null; casillaHover = null;
+    coronacionPendiente = null;
+    if (typeof menuCoronacion !== 'undefined' && menuCoronacion) menuCoronacion.style.display = 'none';
+    if (typeof pintarRelojes === 'function') pintarRelojes();
+    return true;
+}
+
 function guardarEstado() {
-    historial.guardar({ board: copiarBoard(), turno, enroqueRealizado: [...enroqueRealizado] });
+    historial.guardar(capturarEstadoHistorial());
 }
 
 function aplicarMovimiento(origen, destino, caminoElegido = null, remoto = false) {
@@ -112,11 +169,32 @@ function aplicarMovimiento(origen, destino, caminoElegido = null, remoto = false
         } else camino = info;
     }
     if (!Array.isArray(camino)) return false;
+    ultimaJugadaVisual = { origen: [...origen], destino: [...destino], tipo: 'mover' };
     guardarEstado();
     if (!remoto && typeof transmitirMovimientoSiOnline === 'function') {
         transmitirMovimientoSiOnline({ tipo: 'mover', origen, destino, camino });
     }
     iniciarAnimacion(origen, camino);
+    return true;
+}
+
+function intentarRecuperarPartidaLocalDesdeCache() {
+    if (CONFIG_JUEGO.online || CONFIG_JUEGO.modoPrueba) return false;
+    const id = parametrosURL.get('resume');
+    if (!id || typeof buscarPartidaEnCachePorId !== 'function') return false;
+    const guardada = buscarPartidaEnCachePorId(id);
+    if (!guardada || guardada.online || !guardada.estado || guardada.estado.juegoTerminado) return false;
+    // Evita abrir accidentalmente una partida de otro modo con una URL manipulada.
+    if (Number(guardada.modo) !== Number(CONFIG_JUEGO.modo)) return false;
+    if (CONFIG_JUEGO.modo === 1 && Number.isFinite(Number(guardada.dificultad))) {
+        CONFIG_JUEGO.dificultad = Number(guardada.dificultad);
+    }
+    const aplicado = (typeof aplicarEstadoRecibido === 'function')
+        ? aplicarEstadoRecibido(guardada.estado, true)
+        : false;
+    if (!aplicado) return false;
+    window._idPartidaActualCache = guardada.id;
+    if (typeof mostrarToastJuego === 'function') mostrarToastJuego('Partida recuperada. El reloj continuará tras la cuenta atrás.', 'ok');
     return true;
 }
 
@@ -133,6 +211,7 @@ function iniciarJuego() {
 
     turno = 0; selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
     modoRuta = false; rutasAlternativas = []; destinoRuta = null;
+    ultimaJugadaVisual = null; casillaHover = null;
     enroqueRealizado = [false, false]; coronacionPendiente = null;
     contadorJugadas = 0; jugadasPorJugador = [0, 0];
     menuCoronacion.style.display = 'none';
@@ -141,9 +220,10 @@ function iniciarJuego() {
 
     if (typeof actualizarInterfaz === 'function') actualizarInterfaz();
     if (typeof iniciarRelojes === 'function') iniciarRelojes();
-    dibujarTablero();
+    const partidaRecuperadaLocal = intentarRecuperarPartidaLocalDesdeCache();
+    if (!partidaRecuperadaLocal) dibujarTablero();
 
-    // Countdown de inicio (3s bloqueado + 2s preparación, luego arranca cronómetros)
+    // Countdown de inicio (3s bloqueado, luego arranca cronómetros)
     if (CONFIG_JUEGO.online) {
         // Modo online: hay que abrir/conectar la sala peer-to-peer. El countdown y los
         // relojes se disparan desde sync.js (lanzarInicioOnline) cuando ambos jugadores
@@ -155,15 +235,72 @@ function iniciarJuego() {
         if (typeof window.arrancarCountdown === 'function') {
             window.arrancarCountdown(() => {
                 if (typeof arrancarRelojes === 'function') arrancarRelojes();
+                if (typeof programarTurnoIASiCorresponde === 'function') programarTurnoIASiCorresponde();
             });
         } else {
             window.tableroHabilitado = true;
             if (typeof arrancarRelojes === 'function') arrancarRelojes();
+            if (typeof programarTurnoIASiCorresponde === 'function') programarTurnoIASiCorresponde();
         }
     }
-    // Para online: el countdown se lanza desde sync.js cuando los dos están conectados
+    // Para online: el countdown se lanza desde sync.js cuando los dos están conectados.
+}
 
-    if (typeof programarTurnoIASiCorresponde === 'function') programarTurnoIASiCorresponde();
+
+
+function prepararSelectoresRutas(rutas, destino) {
+    if (!Array.isArray(rutas)) return [];
+    const destinoClave = Array.isArray(destino) ? `${destino[0]},${destino[1]}` : null;
+    const puntosPorRuta = rutas.map(ruta => {
+        const vistos = new Set();
+        const puntos = [];
+        for (const paso of (ruta.pasos || [])) {
+            for (const punto of [paso.over, paso.to]) {
+                if (!Array.isArray(punto)) continue;
+                const clave = `${punto[0]},${punto[1]}`;
+                if (clave === destinoClave || vistos.has(clave)) continue;
+                vistos.add(clave);
+                puntos.push([punto[0], punto[1]]);
+            }
+        }
+        return puntos;
+    });
+
+    return rutas.map((ruta, idx) => {
+        let selector = null;
+        for (const punto of puntosPorRuta[idx]) {
+            const clave = `${punto[0]},${punto[1]}`;
+            let apareceEnOtra = false;
+            for (let j = 0; j < puntosPorRuta.length; j++) {
+                if (j === idx) continue;
+                if (puntosPorRuta[j].some(p => `${p[0]},${p[1]}` === clave)) {
+                    apareceEnOtra = true;
+                    break;
+                }
+            }
+            if (!apareceEnOtra) { selector = punto; break; }
+        }
+        if (!selector && Array.isArray(ruta.inter)) selector = ruta.inter;
+        if (!selector && puntosPorRuta[idx].length) selector = puntosPorRuta[idx][0];
+        return { ...ruta, inter: selector, indiceRuta: idx + 1 };
+    });
+}
+
+function obtenerCasillaDesdeCliente(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const xRel = clientX - rect.left;
+    const yRel = clientY - rect.top;
+    if (xRel < 0 || yRel < 0 || xRel > rect.width || yRel > rect.height) return null;
+    const punto = traducirCoordenadaRotada(xRel, yRel, rect.width, rect.height);
+    const rotado = parseInt(canvas.dataset.rotacion || '0', 10) % 180 === 90;
+    const anchoSinRotar = rotado ? rect.height : rect.width;
+    const altoSinRotar = rotado ? rect.width : rect.height;
+    const scaleX = ANCHO_LOGICO / anchoSinRotar;
+    const scaleY = ALTO_LOGICO / altoSinRotar;
+    const col = Math.floor((punto.x * scaleX) / CELL_SIZE);
+    const fila = Math.floor((punto.y * scaleY) / CELL_SIZE);
+    if (fila < 0 || fila >= FILAS || col < 0 || col >= COLUMNAS) return null;
+    return { fila, col };
 }
 
 function manejarClicTablero(clientX, clientY) {
@@ -173,32 +310,17 @@ function manejarClicTablero(clientX, clientY) {
     if (coronacionPendiente || animando || juegoTerminado) return;
     if (CONFIG_JUEGO.online && turno !== CONFIG_JUEGO.onlineSoyJugador) return;
     if (CONFIG_JUEGO.modo === 1 && turno === 1) return; // turno de la IA: el humano no puede mover
-    const rect = canvas.getBoundingClientRect();
-    // rect.width/height ya son las dimensiones VISUALES (tras la rotación CSS,
-    // el navegador devuelve el bounding box ya rotado, con ancho/alto
-    // intercambiados respecto al canvas "interno" cuando hay 90°/270°).
-    const xRel = clientX - rect.left;
-    const yRel = clientY - rect.top;
-    const punto = traducirCoordenadaRotada(xRel, yRel, rect.width, rect.height);
-
-    // punto.x/punto.y ya están en el espacio SIN ROTAR, con las mismas
-    // proporciones que canvas.style.width/height (no rect.width/height).
-    const anchoSinRotar = (parseInt(canvas.dataset.rotacion || '0', 10) % 180 === 90) ? rect.height : rect.width;
-    const altoSinRotar = (parseInt(canvas.dataset.rotacion || '0', 10) % 180 === 90) ? rect.width : rect.height;
-    const scaleX = canvas.width / anchoSinRotar;
-    const scaleY = canvas.height / altoSinRotar;
-    const col = Math.floor((punto.x * scaleX) / CELL_SIZE);
-    const fila = Math.floor((punto.y * scaleY) / CELL_SIZE);
-    if (fila < 0 || fila >= FILAS || col < 0 || col >= COLUMNAS) return;
+    const casilla = obtenerCasillaDesdeCliente(clientX, clientY);
+    if (!casilla) return;
+    const { fila, col } = casilla;
 
     if (modoRuta) {
-        for (let ruta of rutasAlternativas) {
-            let [if_, ic] = ruta.inter;
-            if (if_ === fila && ic === col) {
-                let caminoElegido = ruta.pasos;
-                aplicarMovimiento([selectedPiece.fila, selectedPiece.col], destinoRuta, caminoElegido);
-                return;
-            }
+        const candidatas = rutasAlternativas.filter(ruta =>
+            Array.isArray(ruta.inter) && ruta.inter[0] === fila && ruta.inter[1] === col
+        );
+        if (candidatas.length === 1) {
+            aplicarMovimiento([selectedPiece.fila, selectedPiece.col], destinoRuta, candidatas[0].pasos);
+            return;
         }
         let fichaClicRuta = board[fila][col];
         if (fichaClicRuta && fichaClicRuta.jugador === turno) {
@@ -219,9 +341,14 @@ function manejarClicTablero(clientX, clientY) {
     let movEnroque = posiblesMovimientos.find(m => m.tipoMov === 'enroque' && m.f === fila && m.c === col);
     if (movEnroque) {
         const jugadorEnroque = turno;
-        ejecutarEnroque(selectedPiece.fila, selectedPiece.col, fila, col, turno);
+        ultimaJugadaVisual = { origen: [selectedPiece.fila, selectedPiece.col], destino: [fila, col], tipo: 'enroque' };
+        // El hash de sincronización debe describir el tablero ANTES de mover el
+        // rey. ejecutarEnroque modifica el board inmediatamente.
+        const hashAntesEnroque = (CONFIG_JUEGO.online && typeof hashEstadoLogico === 'function') ? hashEstadoLogico() : null;
+        const enroqueAplicado = ejecutarEnroque(selectedPiece.fila, selectedPiece.col, fila, col, turno);
+        if (!enroqueAplicado) { seleccionarNuevaPieza(selectedPiece.fila, selectedPiece.col); return; }
         if (typeof transmitirMovimientoSiOnline === 'function') {
-            transmitirMovimientoSiOnline({ tipo: 'enroque', reyFila: selectedPiece.fila, reyCol: selectedPiece.col, piezaFila: fila, piezaCol: col, jugador: turno });
+            transmitirMovimientoSiOnline({ tipo: 'enroque', reyFila: selectedPiece.fila, reyCol: selectedPiece.col, piezaFila: fila, piezaCol: col, jugador: turno }, hashAntesEnroque);
         }
         if (typeof generarNotacionEnroque === 'function') {
             let notacion = generarNotacionEnroque();
@@ -246,7 +373,9 @@ function manejarClicTablero(clientX, clientY) {
             if (info.length > 1) {
                 let algunaConEnemigo = info.some(ruta => ruta.tieneEnemigo);
                 if (algunaConEnemigo) {
-                    rutasAlternativas = info; destinoRuta = [fila, col]; modoRuta = true;
+                    rutasAlternativas = prepararSelectoresRutas(info, [fila, col]);
+                    destinoRuta = [fila, col]; modoRuta = true;
+                    if (typeof actualizarHUDContexto === 'function') actualizarHUDContexto();
                     dibujarTablero(); return;
                 } else {
                     aplicarMovimiento([selectedPiece.fila, selectedPiece.col], [fila, col], info[0].pasos);
@@ -278,6 +407,24 @@ canvas.addEventListener('click', (e) => {
     if (Date.now() - ultimoToqueProcesado < 500) e.stopImmediatePropagation();
 }, true);
 
+canvas.addEventListener('mousemove', (e) => {
+    if (esPantallaMovil() || animando) return;
+    const cas = obtenerCasillaDesdeCliente(e.clientX, e.clientY);
+    const nueva = cas ? `${cas.fila},${cas.col}` : null;
+    const previa = casillaHover ? `${casillaHover.fila},${casillaHover.col}` : null;
+    if (nueva === previa) return;
+    casillaHover = cas;
+    if (cas) {
+        const p = board[cas.fila][cas.col];
+        const esDestino = posiblesMovimientos.some(m => Array.isArray(m) ? (m[0]===cas.fila && m[1]===cas.col) : (m.f===cas.fila && m.c===cas.col));
+        canvas.style.cursor = (esDestino || (p && p.jugador === turno)) ? 'pointer' : 'default';
+    } else canvas.style.cursor = 'default';
+    dibujarTablero();
+});
+canvas.addEventListener('mouseleave', () => {
+    if (casillaHover) { casillaHover = null; canvas.style.cursor = 'default'; dibujarTablero(); }
+});
+
 function seleccionarNuevaPieza(fila, col) {
     let ficha = board[fila][col];
     if (ficha && ficha.jugador === turno) {
@@ -287,61 +434,57 @@ function seleccionarNuevaPieza(fila, col) {
         caminosDestino = res.caminos;
         piezasAmenazadas = res.piezasAmenazadas || [];
 
-        if (ficha.tipo === 'F6' && !enroqueRealizado[turno]) {
-            for (let i = 0; i < FILAS; i++)
-                for (let j = 0; j < COLUMNAS; j++) {
-                    let piezaObj = board[i][j];
-                    if (!piezaObj || piezaObj.jugador !== turno) continue;
-                    if (!['F0','F3','F5'].includes(piezaObj.tipo)) continue;
-                    if (validarEnroque(selectedPiece.fila, selectedPiece.col, i, j, turno))
-                        posiblesMovimientos.push({ f: i, c: j, tipoMov: 'enroque' });
-                }
+        if (ficha.tipo === 'F6' && typeof obtenerEnroquesLegales === 'function') {
+            posiblesMovimientos.push(...obtenerEnroquesLegales(
+                selectedPiece.fila, selectedPiece.col, turno, board, enroqueRealizado
+            ));
         }
 
         let filtrado = filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDestino);
         posiblesMovimientos = filtrado.posiblesMovimientos;
         caminosDestino = filtrado.caminosDestino;
+        if (typeof actualizarHUDContexto === 'function') actualizarHUDContexto();
         dibujarTablero();
     } else {
         selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
-        modoRuta = false; dibujarTablero();
+        modoRuta = false;
+        if (typeof actualizarHUDContexto === 'function') actualizarHUDContexto();
+        dibujarTablero();
     }
 }
 
 document.addEventListener('keydown', (e) => {
-    if (!CONFIG_JUEGO.modoPrueba) return; // Ctrl+Z / Ctrl+Y solo disponibles en Modo Prueba
-    if (e.ctrlKey && e.key === 'z') {
+    if (!CONFIG_JUEGO.modoPrueba) return; // Deshacer/rehacer solo disponibles en Modo Prueba
+    const modificador = e.ctrlKey || e.metaKey;
+    const tecla = String(e.key || '').toLowerCase();
+    const quiereDeshacer = modificador && tecla === 'z' && !e.shiftKey;
+    const quiereRehacer = modificador && (tecla === 'y' || (tecla === 'z' && e.shiftKey));
+    if (quiereDeshacer) {
         e.preventDefault();
         if (animando || coronacionPendiente) return;
         if (!historial.puedeDeshacer()) return;
-        let estadoActual = { board: copiarBoard(), turno, enroqueRealizado: [...enroqueRealizado] };
+        let estadoActual = capturarEstadoHistorial();
         let estado = historial.deshacer(estadoActual);
         if (typeof notacionDeshacer === 'function') notacionDeshacer();
-        board = estado.board; turno = estado.turno;
-        enroqueRealizado = estado.enroqueRealizado || [false, false];
-        selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
-        modoRuta = false; rutasAlternativas = []; destinoRuta = null;
-        coronacionPendiente = null; menuCoronacion.style.display = 'none';
+        restaurarEstadoHistorial(estado);
         if (typeof reiniciarFinJuego === 'function') reiniciarFinJuego();
         if (typeof actualizarInterfaz === 'function') actualizarInterfaz();
         if (typeof actualizarPanelAnalisis === 'function') actualizarPanelAnalisis();
         dibujarTablero();
-    } else if (e.ctrlKey && e.key === 'y') {
+    } else if (quiereRehacer) {
         e.preventDefault();
         if (animando || coronacionPendiente) return;
         if (!historial.puedeRehacer()) return;
-        let estadoActual = { board: copiarBoard(), turno, enroqueRealizado: [...enroqueRealizado] };
+        let estadoActual = capturarEstadoHistorial();
         let estado = historial.rehacer(estadoActual);
         if (typeof notacionRehacer === 'function') notacionRehacer();
-        board = estado.board; turno = estado.turno;
-        enroqueRealizado = estado.enroqueRealizado || [false, false];
-        selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
-        modoRuta = false; rutasAlternativas = []; destinoRuta = null;
-        coronacionPendiente = null; menuCoronacion.style.display = 'none';
+        restaurarEstadoHistorial(estado);
         if (typeof reiniciarFinJuego === 'function') reiniciarFinJuego();
-        if (esJaqueMate(turno)) { juegoTerminado = true; mostrarFinJuego('jaquemate', turno); }
-        else if (esAhogado(turno)) { juegoTerminado = true; mostrarFinJuego('tablas', turno); }
-        if (typeof actualizarInterfaz === 'function') actualizarInterfaz();
+        const analisisRehecho = analizarEstadoTurno(turno, board);
+        if (typeof fijarCacheJaqueVisual === 'function') fijarCacheJaqueVisual(analisisRehecho, turno);
+        if (analisisRehecho.jaqueMate) { juegoTerminado = true; mostrarFinJuego('jaquemate', turno); }
+        else if (analisisRehecho.ahogado) { juegoTerminado = true; mostrarFinJuego('tablas', turno); }
+        if (typeof actualizarInterfaz === 'function') actualizarInterfaz(analisisRehecho);
         if (typeof actualizarPanelAnalisis === 'function') actualizarPanelAnalisis();
         dibujarTablero();
     }

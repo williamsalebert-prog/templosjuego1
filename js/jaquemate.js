@@ -1,38 +1,88 @@
 console.log("✅ jaquemate.js cargado");
 
-// Recorre TODAS las piezas de "jugador" y, para cada una, filtra sus movimientos
-// con la misma lógica de seguridad que ya usa la interfaz (filtrarMovimientosJaque
-// de jaque.js), de forma que un movimiento solo cuenta como "legal" si después de
-// hacerlo el propio rey no queda en jaque.
+// Recorre todas las piezas y devuelve sus movimientos ya filtrados por
+// seguridad. También conserva los caminos filtrados para que otros sistemas
+// (especialmente la IA) no tengan que generarlos por segunda vez.
 function obtenerTodosMovimientosLegales(jugador, tablero = board) {
-    let resultado = [];
-    const turnoOriginal = turno;
-    turno = jugador; // filtrarMovimientosJaque/simularMovimiento usan la variable global "turno"
+    const resultado = [];
 
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
-            let pieza = tablero[i][j];
+            const pieza = tablero[i][j];
             if (!pieza || pieza.jugador !== jugador) continue;
 
-            let res = pieza.obtenerMovimientos(i, j, tablero);
-            let seleccionTemp = { fila: i, col: j };
-            let filtrado = filtrarMovimientosJaque(seleccionTemp, res.destinos, res.caminos);
+            const res = pieza.obtenerMovimientos(i, j, tablero);
+            const movimientosBase = [...res.destinos];
+            if (pieza.tipo === 'F6' && typeof obtenerEnroquesLegales === 'function') {
+                movimientosBase.push(...obtenerEnroquesLegales(i, j, jugador, tablero, enroqueRealizado));
+            }
+            const seleccionTemp = { fila: i, col: j };
+            const filtrado = filtrarMovimientosJaque(
+                seleccionTemp,
+                movimientosBase,
+                res.caminos,
+                tablero,
+                jugador
+            );
 
             if (filtrado.posiblesMovimientos.length > 0) {
-                resultado.push({ fila: i, col: j, movimientos: filtrado.posiblesMovimientos });
+                resultado.push({
+                    fila: i,
+                    col: j,
+                    movimientos: filtrado.posiblesMovimientos,
+                    caminos: filtrado.caminosDestino
+                });
             }
         }
     }
-
-    turno = turnoOriginal;
     return resultado;
 }
 
+// Para mate/ahogado solo necesitamos saber si EXISTE una jugada. Antes se
+// construía la lista completa de todas las jugadas para luego preguntar si
+// length > 0; ahora se detiene en cuanto encuentra la primera legal.
 function tieneMovimientosLegales(jugador, tablero = board) {
-    return obtenerTodosMovimientosLegales(jugador, tablero).length > 0;
+    for (let i = 0; i < FILAS; i++) {
+        for (let j = 0; j < COLUMNAS; j++) {
+            const pieza = tablero[i][j];
+            if (!pieza || pieza.jugador !== jugador) continue;
+            const res = pieza.obtenerMovimientos(i, j, tablero);
+            const movimientosBase = [...res.destinos];
+            if (pieza.tipo === 'F6' && typeof obtenerEnroquesLegales === 'function') {
+                movimientosBase.push(...obtenerEnroquesLegales(i, j, jugador, tablero, enroqueRealizado));
+            }
+            const filtrado = filtrarMovimientosJaque(
+                { fila: i, col: j },
+                movimientosBase,
+                res.caminos,
+                tablero,
+                jugador
+            );
+            if (filtrado.posiblesMovimientos.length > 0) return true;
+        }
+    }
+    return false;
 }
 
-// Jaque mate: el jugador está en jaque y no tiene ningún movimiento legal que lo libre.
 function esJaqueMate(jugador, tablero = board) {
     return esJaque(jugador, tablero) && !tieneMovimientosLegales(jugador, tablero);
+}
+
+// Analiza una sola vez el estado del jugador al que le toca mover. La UI y el
+// cierre de partida antes preguntaban por mate, luego ahogado y luego jaque,
+// repitiendo varias veces la misma generación de amenazas/movimientos.
+function analizarEstadoTurno(jugador, tablero = board) {
+    const atacantes = (typeof obtenerPiezasQueDanJaque === 'function')
+        ? obtenerPiezasQueDanJaque(jugador, tablero)
+        : [];
+    const enJaque = atacantes.length > 0;
+    const hayMovimientos = tieneMovimientosLegales(jugador, tablero);
+    return {
+        jugador,
+        enJaque,
+        atacantes,
+        hayMovimientos,
+        jaqueMate: enJaque && !hayMovimientos,
+        ahogado: !enJaque && !hayMovimientos
+    };
 }

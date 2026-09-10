@@ -13,11 +13,14 @@ class F6 extends Pieza {
     }
 
     casillaAmenazada(f, c, jugador, tablero) {
-        let enemigo = 1 - jugador;
+        const enemigo = 1 - jugador;
         for (let i = 0; i < FILAS; i++) {
             for (let j = 0; j < COLUMNAS; j++) {
-                let pieza = tablero[i][j];
-                if (pieza && pieza.jugador === enemigo && pieza.puedeAtacarRey(i, j, f, c, tablero)) {
+                const pieza = tablero[i][j];
+                if (!pieza || pieza.jugador !== enemigo) continue;
+                if (typeof piezaAmenazaCasillaPorCaminos === 'function') {
+                    if (piezaAmenazaCasillaPorCaminos(pieza, i, j, f, c, tablero)) return true;
+                } else if (pieza.puedeAtacarRey(i, j, f, c, tablero)) {
                     return true;
                 }
             }
@@ -37,26 +40,26 @@ class F6 extends Pieza {
                 for (let [df, dc] of dirs) {
                     let nf = f + df, nc = c + dc;
                     if (nf >= 0 && nf < FILAS && nc >= 0 && nc < COLUMNAS && esJugable(nf, nc)) {
-                        if (this.casillaAmenazada(nf, nc, jugador, tablero)) continue;
+                        if (typeof esCasillaSeguraParaRey === 'function') {
+                            if (!esCasillaSeguraParaRey(jugador, f, c, nf, nc, tablero)) continue;
+                        } else if (this.casillaAmenazada(nf, nc, jugador, tablero)) continue;
 
                         let contenido = tablero[nf][nc];
                         if (contenido === null) {
                             let clave = `${nf},${nc}`;
                             if (!visitados.has(clave)) {
-                                visitados.add(clave);
                                 let nuevoCamino = [...camino, { tipo: 'move', to: [nf, nc] }];
                                 destinos.add(clave);
-                                if (!caminos[clave]) caminos[clave] = nuevoCamino;
+                                agregarRutaAlternativa(caminos, clave, nuevoCamino, board, jugador);
                             }
                         } else if (contenido.jugador !== jugador && capturaPermitida(this.tipo, contenido)) {
                             let detrasF = nf + df, detrasC = nc + dc;
                             if (!(detrasF >= 0 && detrasF < FILAS && detrasC >= 0 && detrasC < COLUMNAS && esJugable(detrasF, detrasC))) {
                                 let clave = `${nf},${nc}`;
                                 if (!visitados.has(clave)) {
-                                    visitados.add(clave);
                                     let nuevoCamino = [...camino, { tipo: 'captureDirect', over: [nf, nc], to: [nf, nc] }];
                                     destinos.add(clave);
-                                    if (!caminos[clave]) caminos[clave] = nuevoCamino;
+                                    agregarRutaAlternativa(caminos, clave, nuevoCamino, board, jugador);
                                     amenazas.push([nf, nc]);
                                 }
                             }
@@ -73,12 +76,9 @@ class F6 extends Pieza {
                     if (piezaInter.jugador === jugador || capturaPermitida(this.tipo, piezaInter)) {
                         let clave = `${jf},${jc}`;
                         if (!visitados.has(clave)) {
-                            visitados.add(clave);
-                            let nuevoTab = tablero.map(fila => fila.map(celda => {
-                                if (celda === null) return null;
-                                const ClasePieza = piezasRegistradas.get(celda.tipo);
-                                return ClasePieza ? new ClasePieza(celda.jugador) : null;
-                            }));
+                            const visitadosRama = new Set(visitados);
+                            visitadosRama.add(clave);
+                            let nuevoTab = tablero.map(fila => fila.slice());
                             let ficha = nuevoTab[f][c];
                             nuevoTab[f][c] = null;
                             if (piezaInter && piezaInter.jugador !== jugador && capturaPermitida(this.tipo, piezaInter)) {
@@ -86,10 +86,14 @@ class F6 extends Pieza {
                                 amenazas.push([nf, nc]);
                             }
                             nuevoTab[jf][jc] = ficha;
+                            // El rey ocupa cada aterrizaje de una cadena. No puede
+                            // atravesar una posición en jaque para terminar seguro
+                            // varias casillas después.
+                            if (typeof esJaque === 'function' && esJaque(jugador, nuevoTab)) continue;
                             let nuevoCamino = [...camino, { tipo: 'jump', over: [nf, nc], to: [jf, jc] }];
                             destinos.add(clave);
-                            if (!caminos[clave]) caminos[clave] = nuevoCamino;
-                            explorar(jf, jc, nuevoTab, nuevoCamino, visitados, true);
+                            agregarRutaAlternativa(caminos, clave, nuevoCamino, board, jugador);
+                            explorar(jf, jc, nuevoTab, nuevoCamino, visitadosRama, true);
                         }
                     }
                 }

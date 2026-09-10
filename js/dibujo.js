@@ -45,29 +45,113 @@ function dibujarVetaMadera(ctx, x, y, w, h, colorBase, semilla) {
     ctx.restore();
 }
 
-function dibujarTablero() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+let fondoTableroCache = null;
+
+// El estado de jaque no cambia al seleccionar una pieza o abrir un selector de
+// ruta. Cachearlo evita regenerar todos los caminos enemigos en cada clic.
+let cacheJaqueVisual = { firma: null, turno: null, enJaque: false, atacantes: [] };
+
+function firmaLigeraTableroVisual() {
+    let h = 2166136261 >>> 0;
+    for (let f = 0; f < FILAS; f++) {
+        for (let c = 0; c < COLUMNAS; c++) {
+            const p = board[f][c];
+            let n = 0;
+            if (p) n = ((parseInt(p.tipo.slice(1), 10) + 1) * 3) + p.jugador + 1;
+            h ^= n; h = Math.imul(h, 16777619) >>> 0;
+        }
+    }
+    return h;
+}
+
+function fijarCacheJaqueVisual(analisis, jugador = turno) {
+    if (!analisis) return;
+    cacheJaqueVisual = {
+        firma: firmaLigeraTableroVisual(),
+        turno: jugador,
+        enJaque: !!analisis.enJaque,
+        atacantes: Array.isArray(analisis.atacantes) ? analisis.atacantes.map(p => [...p]) : []
+    };
+}
+
+function obtenerEstadoJaqueVisual() {
+    if (animando) return { enJaque: false, atacantes: [] };
+    const firma = firmaLigeraTableroVisual();
+    if (cacheJaqueVisual.firma === firma && cacheJaqueVisual.turno === turno) return cacheJaqueVisual;
+    const atacantes = (typeof obtenerPiezasQueDanJaque === 'function') ? obtenerPiezasQueDanJaque(turno, board) : [];
+    cacheJaqueVisual = { firma, turno, enJaque: atacantes.length > 0, atacantes };
+    return cacheJaqueVisual;
+}
+
+function obtenerFondoTableroCache() {
+    const ratio = (typeof PIXEL_RATIO !== 'undefined') ? PIXEL_RATIO : 1;
+    const ancho = (typeof ANCHO_LOGICO !== 'undefined') ? ANCHO_LOGICO : COLUMNAS * CELL_SIZE;
+    const alto = (typeof ALTO_LOGICO !== 'undefined') ? ALTO_LOGICO : FILAS * CELL_SIZE;
+    if (fondoTableroCache && fondoTableroCache._templosRatio === ratio &&
+        fondoTableroCache.width === Math.round(ancho * ratio) && fondoTableroCache.height === Math.round(alto * ratio)) {
+        return fondoTableroCache;
+    }
+    const fondo = document.createElement('canvas');
+    fondo.width = Math.round(ancho * ratio); fondo.height = Math.round(alto * ratio);
+    fondo._templosRatio = ratio;
+    const fctx = fondo.getContext('2d');
+    fctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
-            let x = j * CELL_SIZE, y = i * CELL_SIZE;
+            const x = j * CELL_SIZE, y = i * CELL_SIZE;
             if (esNoJugable(i, j)) {
-                // Zona no jugable: madera oscura lisa, no negro plano
-                ctx.fillStyle = '#120c08'; ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                fctx.fillStyle = '#120c08'; fctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
                 continue;
             }
-            let zona = getZona(i, j);
-            let par = (i + j) % 2 === 0;
-            let color = zona === 'vacio' ? colores.vacio.par : (par ? colores[zona].par : colores[zona].impar);
-            dibujarVetaMadera(ctx, x, y, CELL_SIZE - 1, CELL_SIZE - 1, color, i * 31 + j * 17 + 1);
+            const zona = getZona(i, j);
+            const par = (i + j) % 2 === 0;
+            const color = zona === 'vacio' ? colores.vacio.par : (par ? colores[zona].par : colores[zona].impar);
+            dibujarVetaMadera(fctx, x, y, CELL_SIZE - 1, CELL_SIZE - 1, color, i * 31 + j * 17 + 1);
 
-            // Biselado sutil (luz arriba-izquierda, sombra abajo-derecha) para dar
-            // sensación de talla en madera en vez de casillas planas
-            ctx.strokeStyle = 'rgba(255,235,200,0.18)';
-            ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(x, y + CELL_SIZE - 1); ctx.lineTo(x, y); ctx.lineTo(x + CELL_SIZE - 1, y); ctx.stroke();
-            ctx.strokeStyle = 'rgba(0,0,0,0.22)';
-            ctx.beginPath(); ctx.moveTo(x + CELL_SIZE - 1, y); ctx.lineTo(x + CELL_SIZE - 1, y + CELL_SIZE - 1); ctx.lineTo(x, y + CELL_SIZE - 1); ctx.stroke();
+            fctx.strokeStyle = 'rgba(255,235,200,0.18)';
+            fctx.lineWidth = 1;
+            fctx.beginPath(); fctx.moveTo(x, y + CELL_SIZE - 1); fctx.lineTo(x, y); fctx.lineTo(x + CELL_SIZE - 1, y); fctx.stroke();
+            fctx.strokeStyle = 'rgba(0,0,0,0.22)';
+            fctx.beginPath(); fctx.moveTo(x + CELL_SIZE - 1, y); fctx.lineTo(x + CELL_SIZE - 1, y + CELL_SIZE - 1); fctx.lineTo(x, y + CELL_SIZE - 1); fctx.stroke();
+        }
+    }
+    fondoTableroCache = fondo;
+    return fondoTableroCache;
+}
+
+function dibujarTablero() {
+    const ancho = (typeof ANCHO_LOGICO !== 'undefined') ? ANCHO_LOGICO : COLUMNAS * CELL_SIZE;
+    const alto = (typeof ALTO_LOGICO !== 'undefined') ? ALTO_LOGICO : FILAS * CELL_SIZE;
+    ctx.clearRect(0, 0, ancho, alto);
+    // La madera y las zonas son estáticas: se generan una sola vez y se reutilizan.
+    // El cache se genera a la densidad del dispositivo para que no se vea borroso
+    // en pantallas HiDPI/Retina, manteniendo las coordenadas lógicas del motor.
+    const fondo = obtenerFondoTableroCache();
+    ctx.drawImage(fondo, 0, 0, fondo.width, fondo.height, 0, 0, ancho, alto);
+
+    // Última jugada: dos marcas suaves ayudan a reconstruir visualmente qué
+    // acaba de ocurrir sin competir con los destinos disponibles actuales.
+    if (typeof ultimaJugadaVisual !== 'undefined' && ultimaJugadaVisual) {
+        const puntos = [ultimaJugadaVisual.origen, ultimaJugadaVisual.destino];
+        puntos.forEach((p, idx) => {
+            if (!Array.isArray(p)) return;
+            const [f, c] = p;
+            ctx.fillStyle = idx === 0 ? 'rgba(228,194,105,0.16)' : 'rgba(228,194,105,0.25)';
+            ctx.fillRect(c * CELL_SIZE + 2, f * CELL_SIZE + 2, CELL_SIZE - 5, CELL_SIZE - 5);
+            ctx.strokeStyle = idx === 0 ? 'rgba(238,208,127,0.28)' : 'rgba(238,208,127,0.48)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(c * CELL_SIZE + 3, f * CELL_SIZE + 3, CELL_SIZE - 7, CELL_SIZE - 7);
+        });
+    }
+
+    // Hover de escritorio: solo contorno, nunca cambia reglas ni selección.
+    if (!animando && typeof casillaHover !== 'undefined' && casillaHover) {
+        const { fila, col } = casillaHover;
+        if (!esNoJugable(fila, col)) {
+            ctx.strokeStyle = 'rgba(245,231,199,0.32)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(col * CELL_SIZE + 4, fila * CELL_SIZE + 4, CELL_SIZE - 9, CELL_SIZE - 9);
         }
     }
 
@@ -84,18 +168,16 @@ function dibujarTablero() {
     ctx.globalAlpha = 1.0;
 
     let reyPos = obtenerPosicionRey(turno);
-    let enJaqueAhora = reyPos && esJaque(turno);
-    if (enJaqueAhora) {
+    // Un único cálculo (y normalmente cacheado) sirve tanto para saber si hay
+    // jaque como para resaltar al/los atacantes. Antes se recorría el motor dos veces.
+    const estadoJaqueVisual = reyPos ? obtenerEstadoJaqueVisual() : { enJaque: false, atacantes: [] };
+    if (estadoJaqueVisual.enJaque) {
         ctx.fillStyle = 'rgba(255, 50, 50, 0.5)';
         ctx.fillRect(reyPos[1]*CELL_SIZE, reyPos[0]*CELL_SIZE, CELL_SIZE-1, CELL_SIZE-1);
 
-        // Resaltar de naranja la(s) pieza(s) que están dando jaque
-        if (typeof obtenerPiezasQueDanJaque === 'function') {
-            let atacantes = obtenerPiezasQueDanJaque(turno);
-            for (let [af, ac] of atacantes) {
-                ctx.fillStyle = 'rgba(255,140,0,0.55)';
-                ctx.fillRect(ac*CELL_SIZE, af*CELL_SIZE, CELL_SIZE-1, CELL_SIZE-1);
-            }
+        for (let [af, ac] of estadoJaqueVisual.atacantes) {
+            ctx.fillStyle = 'rgba(255,140,0,0.55)';
+            ctx.fillRect(ac*CELL_SIZE, af*CELL_SIZE, CELL_SIZE-1, CELL_SIZE-1);
         }
     }
 
@@ -129,10 +211,35 @@ function dibujarTablero() {
             else ctx.fill();
         }
         if (modoRuta && rutasAlternativas.length > 0) {
+            // Vista previa completa de las rutas: antes solo aparecía una
+            // casilla azul con un número y era difícil saber por dónde pasaría
+            // realmente la pieza en una cadena larga.
+            rutasAlternativas.forEach((ruta, idx) => {
+                if (!selectedPiece || !Array.isArray(ruta.pasos)) return;
+                const tono = (210 + idx * 47) % 360;
+                ctx.save();
+                ctx.strokeStyle = `hsla(${tono},78%,66%,0.72)`;
+                ctx.lineWidth = Math.max(2, CELL_SIZE * 0.055);
+                ctx.setLineDash([CELL_SIZE * 0.16, CELL_SIZE * 0.10]);
+                ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+                ctx.beginPath();
+                ctx.moveTo(selectedPiece.col * CELL_SIZE + CELL_SIZE/2, selectedPiece.fila * CELL_SIZE + CELL_SIZE/2);
+                for (const paso of ruta.pasos) {
+                    if (!Array.isArray(paso.to)) continue;
+                    ctx.lineTo(paso.to[1] * CELL_SIZE + CELL_SIZE/2, paso.to[0] * CELL_SIZE + CELL_SIZE/2);
+                }
+                ctx.stroke();
+                ctx.restore();
+            });
             for (let ruta of rutasAlternativas) {
+                if (!Array.isArray(ruta.inter)) continue;
                 let [fInter, cInter] = ruta.inter;
                 ctx.fillStyle = 'rgba(0,100,200,0.5)';
                 ctx.fillRect(cInter*CELL_SIZE, fInter*CELL_SIZE, CELL_SIZE-1, CELL_SIZE-1);
+                ctx.fillStyle = 'rgba(255,255,255,0.95)';
+                ctx.font = `bold ${Math.max(12, CELL_SIZE*0.24)}px sans-serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(String(ruta.indiceRuta || ''), cInter*CELL_SIZE + CELL_SIZE/2, fInter*CELL_SIZE + CELL_SIZE/2);
             }
             let [df, dc] = destinoRuta;
             ctx.strokeStyle = '#FFFF00'; ctx.lineWidth = 3;
@@ -141,9 +248,45 @@ function dibujarTablero() {
     }
 }
 
-// Dibuja una pieza con aspecto de ficha de madera tallada: gradiente radial,
-// sombra proyectada, anillo de equipo grabado y resalte si está seleccionada.
-function dibujarPiezaTallada(ctx, cx, cy, radio, pieza, estaSeleccionada) {
+// Dibuja una pieza con aspecto de ficha de madera tallada. Como todas las
+// fichas del tablero usan el mismo tamaño, guardamos sprites por tipo/equipo/
+// selección/orientación. Durante una animación esto evita crear docenas de
+// gradientes radiales y sombras en cada frame.
+const cacheSpritesPiezas = new Map();
+
+function dibujarPiezaTallada(ctxDestino, cx, cy, radio, pieza, estaSeleccionada) {
+    if (!pieza) return;
+    const radioNormal = CELL_SIZE * 0.4;
+    const gradosCanvas = (typeof canvas !== 'undefined' && canvas.dataset)
+        ? parseInt(canvas.dataset.rotacion || '0', 10)
+        : 0;
+
+    // Fuera del tamaño normal conservamos el dibujo directo por seguridad.
+    if (Math.abs(radio - radioNormal) > 0.01 || typeof document === 'undefined') {
+        dibujarPiezaTalladaDirecta(ctxDestino, cx, cy, radio, pieza, estaSeleccionada, gradosCanvas);
+        return;
+    }
+
+    const ratio = (typeof PIXEL_RATIO !== 'undefined') ? PIXEL_RATIO : 1;
+    const clave = `${pieza.tipo}|${pieza.jugador}|${estaSeleccionada ? 1 : 0}|${gradosCanvas}|${ratio}`;
+    let sprite = cacheSpritesPiezas.get(clave);
+    if (!sprite) {
+        const margen = 12;
+        const tamLogico = CELL_SIZE + margen * 2;
+        sprite = document.createElement('canvas');
+        sprite.width = Math.round(tamLogico * ratio);
+        sprite.height = Math.round(tamLogico * ratio);
+        sprite._tamLogico = tamLogico;
+        const sctx = sprite.getContext('2d');
+        sctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        dibujarPiezaTalladaDirecta(sctx, tamLogico / 2, tamLogico / 2, radioNormal, pieza, estaSeleccionada, gradosCanvas);
+        cacheSpritesPiezas.set(clave, sprite);
+    }
+    const tamLogico = sprite._tamLogico || CELL_SIZE + 24;
+    ctxDestino.drawImage(sprite, 0, 0, sprite.width, sprite.height, cx - tamLogico / 2, cy - tamLogico / 2, tamLogico, tamLogico);
+}
+
+function dibujarPiezaTalladaDirecta(ctx, cx, cy, radio, pieza, estaSeleccionada, gradosCanvas = 0) {
     ctx.save();
 
     // Sombra proyectada (da volumen, como si la ficha estuviera sobre el tablero)
@@ -172,10 +315,6 @@ function dibujarPiezaTallada(ctx, cx, cy, radio, pieza, estaSeleccionada) {
     ctx.fillStyle = 'rgba(0,0,0,0.75)';
     ctx.font = `bold ${radio*0.78}px Georgia, serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    // Si el canvas está rotado visualmente (móvil en horizontal), el
-    // símbolo se contra-rota para que el jugador siempre lo vea "derecho"
-    // en su pantalla, en vez de tumbado de costado.
-    const gradosCanvas = (typeof canvas !== 'undefined' && canvas.dataset) ? parseInt(canvas.dataset.rotacion || '0', 10) : 0;
     if (gradosCanvas !== 0) {
         ctx.save();
         ctx.translate(cx, cy);

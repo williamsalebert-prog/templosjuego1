@@ -10,6 +10,15 @@ console.log("✅ coloronline.js cargado");
 // ============================================================================
 
 function mostrarConfirmacionColorJ2(colorJ1, timerMode, timerActivo) {
+    window._colorFinalEnviadoOnline = false;
+    // En online la configuración del anfitrión es la fuente de verdad.
+    // Antes J2 solo veía el modo de reloj en pantalla, pero conservaba su valor local.
+    CONFIG_JUEGO.timer = !!timerActivo;
+    if (typeof MODOS_TIEMPO !== 'undefined' && MODOS_TIEMPO[timerMode]) {
+        CONFIG_JUEGO.timerMode = timerMode;
+    }
+    if (typeof iniciarRelojes === 'function') iniciarRelojes();
+
     const panel = document.getElementById('panelEsperaOnline');
     const box = document.getElementById('espeiraContenido');
     if (!box) return;
@@ -67,10 +76,22 @@ function sortearColorConMoneda(colorJ1Propuesto) {
 }
 
 function confirmarColorFinal(colorFinalJ1) {
+    if (colorFinalJ1 !== 0 && colorFinalJ1 !== 1) return;
+    if (window._colorFinalEnviadoOnline) return;
+    window._colorFinalEnviadoOnline = true;
+    const btnSi = document.getElementById('btnAceptarColorJ2');
+    const btnNo = document.getElementById('btnRechazarColorJ2');
+    if (btnSi) btnSi.disabled = true;
+    if (btnNo) btnNo.disabled = true;
     if (canalDatos && onlineConectado) {
-        try { canalDatos.send({ tipo: 'respuesta-color', colorJ1: colorFinalJ1 }); } catch(e) {}
+        try { canalDatos.send({ tipo: 'respuesta-color', colorJ1: colorFinalJ1 }); } catch(e) { window._colorFinalEnviadoOnline = false; return; }
+    } else {
+        window._colorFinalEnviadoOnline = false;
+        return;
     }
     // J2 ya puede calcular su propio rol con esto; el anfitrión (J1) hace lo
     // mismo al recibir 'respuesta-color' y desde ahí manda 'iniciar' a ambos.
     CONFIG_JUEGO.onlineSoyJugador = onlineRolAnfitrion ? colorFinalJ1 : (1 - colorFinalJ1);
+    // El color final puede cambiar la orientación del tablero en móvil.
+    if (typeof ajustarCanvas === 'function') ajustarCanvas();
 }

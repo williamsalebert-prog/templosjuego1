@@ -18,6 +18,25 @@ window.partidaPausadaPorPropuesta = false;
 let propuestaPendienteTipo = null; // 'tablas' | 'rendicion'
 let propuestaLaHiceYo = false;
 
+
+// Una propuesta de tablas no debe sobrevivir a una caída de conexión: un
+// cliente podría quedar esperando una respuesta que el otro nunca llegó a
+// recibir. La reconexión cancela silenciosamente ese estado y luego la partida
+// continúa desde una posición sincronizada.
+function cancelarPropuestasPorDesconexion() {
+    propuestaPendienteTipo = null;
+    propuestaLaHiceYo = false;
+    const esperando = document.getElementById('modalEsperandoRespuesta');
+    const recibida = document.getElementById('modalPropuestaRecibida');
+    const confirmar = document.getElementById('modalConfirmarRendicion');
+    if (esperando) esperando.classList.remove('mostrar');
+    if (recibida) recibida.classList.remove('mostrar');
+    if (confirmar) confirmar.classList.remove('mostrar');
+    // No reanudamos aquí: sync.js mantiene la partida pausada hasta confirmar
+    // que ambos dispositivos volvieron al mismo estado.
+}
+window.cancelarPropuestasPorDesconexion = cancelarPropuestasPorDesconexion;
+
 function pausarPorPropuesta() {
     window.partidaPausadaPorPropuesta = true;
 }
@@ -112,9 +131,12 @@ function aplicarResultadoPropuesta(acepta) {
     if (acepta) {
         finalizarPorTablasAcordadas();
     } else {
-        if (typeof mostrarAvisoRapido === 'function') mostrarAvisoRapido('El otro jugador rechazó las tablas.');
+        if (typeof mostrarAvisoRapido === 'function') {
+            mostrarAvisoRapido(propuestaLaHiceYo ? 'El otro jugador rechazó las tablas.' : 'Rechazaste la propuesta de tablas.');
+        }
     }
     propuestaPendienteTipo = null;
+    propuestaLaHiceYo = false;
 }
 
 function cancelarPropuestaEnviada() {
@@ -149,6 +171,7 @@ function resolverPropuestaIA(tipo) {
 function finalizarPorTablasAcordadas() {
     if (juegoTerminado) return;
     juegoTerminado = true;
+    if (typeof actualizarInterfaz === 'function') actualizarInterfaz();
     if (typeof detenerRelojes === 'function') detenerRelojes();
     if (typeof quitarPartidaActualDelCache === 'function') quitarPartidaActualDelCache();
     casillaFinJuego = null;
@@ -159,20 +182,23 @@ function finalizarPorTablasAcordadas() {
     if (r1) casillasFinJuego.push({ f: r1[0], c: r1[1] });
     dibujarTablero();
 
-    setTimeout(() => {
+    if (typeof registrarResultadoEloUnaVez === 'function') registrarResultadoEloUnaVez(null);
+    const presentar = () => {
         const banner = document.getElementById('bannerFin');
         const texto = document.getElementById('bannerFinTexto');
-        if (typeof registrarResultadoElo === 'function') registrarResultadoElo(null);
         if (texto) texto.textContent = '🤝 ¡Tablas acordadas entre los jugadores!';
         if (banner) banner.className = 'banner-fin mostrar tablas';
         if (typeof reproducirTablas === 'function') reproducirTablas();
         if (typeof iniciarPanelFinPartida === 'function') iniciarPanelFinPartida();
-    }, 3000);
+    };
+    if (typeof programarPresentacionFinJuego === 'function') programarPresentacionFinJuego(presentar);
+    else setTimeout(presentar, 1500);
 }
 
 function finalizarPorRendicion(ganador) {
     if (juegoTerminado) return;
     juegoTerminado = true;
+    if (typeof actualizarInterfaz === 'function') actualizarInterfaz();
     if (typeof detenerRelojes === 'function') detenerRelojes();
     if (typeof quitarPartidaActualDelCache === 'function') quitarPartidaActualDelCache();
     casillaFinJuego = null;
@@ -181,25 +207,27 @@ function finalizarPorRendicion(ganador) {
     if (reyPerdedor) casillaFinJuego = { f: reyPerdedor[0], c: reyPerdedor[1] };
     dibujarTablero();
 
-    setTimeout(() => {
+    const cambioElo = (typeof registrarResultadoEloUnaVez === 'function') ? registrarResultadoEloUnaVez(ganador) : null;
+    const presentar = () => {
         const banner = document.getElementById('bannerFin');
         const texto = document.getElementById('bannerFinTexto');
         const nombreGanador = ganador === 0 ? 'Jugador 1 (Rojo)' : 'Jugador 2 (Azul)';
-        const cambioElo = (typeof registrarResultadoElo === 'function') ? registrarResultadoElo(ganador) : null;
         const sufijoElo = cambioElo ? textoCambioElo(cambioElo, ganador === 0 ? 'rojo' : 'azul') : '';
         if (texto) texto.textContent = `🏳️ Rendición. Gana ${nombreGanador}${sufijoElo}`;
         if (banner) banner.className = 'banner-fin mostrar victoria jugador' + ganador;
         if (typeof reproducirSonidoResultado === 'function') reproducirSonidoResultado(ganador);
         else if (typeof reproducirVictoria === 'function') reproducirVictoria();
         if (typeof iniciarPanelFinPartida === 'function') iniciarPanelFinPartida();
-    }, 3000);
+    };
+    if (typeof programarPresentacionFinJuego === 'function') programarPresentacionFinJuego(presentar);
+    else setTimeout(presentar, 1500);
 }
 
 // --- Aviso corto no intrusivo (reutiliza el indicador de estado de la barra) ---
 function mostrarAvisoRapido(msg) {
+    if (typeof mostrarToastJuego === 'function') { mostrarToastJuego(msg); return; }
     const estado = document.getElementById('estadoJuego');
     if (!estado) return;
-    const previo = estado.textContent;
     estado.textContent = msg;
     setTimeout(() => { if (typeof actualizarInterfaz === 'function') actualizarInterfaz(); }, 2500);
 }

@@ -63,6 +63,8 @@ function guardarPartidaEnCache() {
         online: !!CONFIG_JUEGO.online,
         sala: CONFIG_JUEGO.online ? (new URLSearchParams(window.location.search).get('sala') || null) : null,
         onlineSoyJugador: CONFIG_JUEGO.onlineSoyJugador,
+        onlineEsAnfitrion: !!CONFIG_JUEGO.onlineEsAnfitrion,
+        onlinePartidaIniciada: !!window.onlinePartidaIniciada,
         dificultad: CONFIG_JUEGO.dificultad,
         timer: CONFIG_JUEGO.timer,
         timerMode: CONFIG_JUEGO.timerMode,
@@ -87,10 +89,24 @@ function quitarPartidaActualDelCache() {
 
 // Busca en el caché la partida más reciente que coincida con esta sala
 // online (para recuperar tras una desconexión/recarga en esa sala concreta).
-function buscarPartidaEnCachePorSala(sala) {
+function buscarPartidaEnCachePorSala(sala, esAnfitrion = null) {
     if (!sala) return null;
     const lista = _leerCachePartidas();
-    return lista.find(p => p.online && p.sala === sala) || null;
+    return lista.find(p => {
+        if (!p.online || p.sala !== sala) return false;
+        // Dos pestañas del mismo navegador pueden jugar entre sí y comparten
+        // localStorage. Filtrar también por rol evita que una pestaña recupere
+        // accidentalmente el snapshot del rival de esa misma sala. Para cachés
+        // de Pulido 05 todavía podemos inferir el rol desde ?jugador=0/1.
+        if (typeof esAnfitrion === 'boolean') {
+            let rolGuardado = (typeof p.onlineEsAnfitrion === 'boolean') ? p.onlineEsAnfitrion : null;
+            if (rolGuardado === null && typeof p.urlParams === 'string') {
+                try { rolGuardado = new URLSearchParams(p.urlParams).get('jugador') !== '1'; } catch (e) {}
+            }
+            if (rolGuardado !== null) return rolGuardado === esAnfitrion;
+        }
+        return true;
+    }) || null;
 }
 
 // Devuelve el snapshot más reciente de todo el caché (independientemente del
@@ -103,3 +119,22 @@ function obtenerUltimaPartidaEnCache() {
 function listarPartidasEnCache() {
     return _leerCachePartidas();
 }
+
+// Recupera una partida concreta desde el menú. El ID es local al navegador y
+// se usa solo para retomar exactamente el snapshot elegido, sin confundirlo
+// con otra partida reciente del mismo modo.
+function buscarPartidaEnCachePorId(id) {
+    if (!id) return null;
+    return _leerCachePartidas().find(p => p && p.id === id) || null;
+}
+
+
+// Última red de seguridad: una recarga/cierre accidental puede ocurrir entre
+// dos jugadas. Guardar en pagehide conserva además el reloj más reciente. No
+// reinsertamos partidas terminadas en el caché.
+window.addEventListener('pagehide', () => {
+    try {
+        if (typeof juegoTerminado !== 'undefined' && juegoTerminado) return;
+        if (typeof CONFIG_JUEGO !== 'undefined' && !CONFIG_JUEGO.modoPrueba) guardarPartidaEnCache();
+    } catch (e) {}
+});

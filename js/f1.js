@@ -44,10 +44,9 @@ class F1 extends Pieza {
                         tablero[nf][nc] === null && esJugable(nf, nc)) {
                         let clave = `${nf},${nc}`;
                         if (!visitados.has(clave)) {
-                            visitados.add(clave);
                             let nuevoCamino = [...camino, { tipo: 'move', to: [nf, nc] }];
                             destinos.add(clave);
-                            if (!caminos[clave]) caminos[clave] = nuevoCamino;
+                            agregarRutaAlternativa(caminos, clave, nuevoCamino, board, jugador);
                         }
                     }
                 }
@@ -63,12 +62,9 @@ class F1 extends Pieza {
                     if (piezaInter.jugador === jugador || capturaPermitida(this.tipo, piezaInter)) {
                         let clave = `${jf},${jc}`;
                         if (!visitados.has(clave)) {
-                            visitados.add(clave);
-                            let nuevoTab = tablero.map(fila => fila.map(celda => {
-                                if (celda === null) return null;
-                                const ClasePieza = piezasRegistradas.get(celda.tipo);
-                                return ClasePieza ? new ClasePieza(celda.jugador) : null;
-                            }));
+                            const visitadosRama = new Set(visitados);
+                            visitadosRama.add(clave);
+                            let nuevoTab = tablero.map(fila => fila.slice());
                             let ficha = nuevoTab[f][c];
                             nuevoTab[f][c] = null;
                             if (piezaInter && piezaInter.jugador !== jugador && capturaPermitida(this.tipo, piezaInter)) {
@@ -82,9 +78,9 @@ class F1 extends Pieza {
                             let avance = (jugador === 0) ? (colFinal > colInicial) : (colFinal < colInicial);
                             if (avance) {
                                 destinos.add(clave);
-                                if (!caminos[clave]) caminos[clave] = nuevoCamino;
+                                agregarRutaAlternativa(caminos, clave, nuevoCamino, board, jugador);
                             }
-                            explorar(jf, jc, nuevoTab, nuevoCamino, visitados, true);
+                            explorar(jf, jc, nuevoTab, nuevoCamino, visitadosRama, true);
                         }
                     }
                 }
@@ -104,7 +100,7 @@ class F1 extends Pieza {
                         if (!(detrasF >= 0 && detrasF < FILAS && detrasC >= 0 && detrasC < COLUMNAS && esJugable(detrasF, detrasC))) {
                             let clave = `${nf},${nc}`;
                             destinos.add(clave);
-                            if (!caminos[clave]) caminos[clave] = [{ tipo: 'captureDirect', over: [nf, nc], to: [nf, nc] }];
+                            agregarRutaAlternativa(caminos, clave, [{ tipo: 'captureDirect', over: [nf, nc], to: [nf, nc] }], board, jugador);
                             amenazas.push([nf, nc]);
                         }
                     }

@@ -34,7 +34,7 @@ const MODOS_TIEMPO = {
     blitz32:   { nombre: 'Blitz 3+2',                segundos: 3 * 60,    incremento: 2,  bonoJugada: null },
     rapidoA:   { nombre: 'Rápido A (10+10)',         segundos: 10 * 60,   incremento: 10, bonoJugada: null },
     rapidoB:   { nombre: 'Rápido B (15+10)',         segundos: 15 * 60,   incremento: 10, bonoJugada: null },
-    clasico:   { nombre: 'Clásico (90+30)',          segundos: 90 * 60,   incremento: 30, bonoJugada: { jugada: 40, segundos: 30 * 60 } },
+    clasico:   { nombre: 'Clásico (90 min +30 s; bono en j.40)', segundos: 90 * 60, incremento: 30, bonoJugada: { jugada: 40, segundos: 30 * 60 } },
     infinito:  { nombre: 'Infinito (cronómetro)',    segundos: null,      incremento: 0,  bonoJugada: null }
 };
 
@@ -46,6 +46,13 @@ const CONFIG_JUEGO = {
     timer: parametrosURL.get('timer') === '1',
     timerMode: MODOS_TIEMPO[parametrosURL.get('timerMode')] ? parametrosURL.get('timerMode') : 'blitz5',
     online: parametrosURL.get('online') === '1',
+    // Rol de conexión estable: anfitrión/invitado. NO cambia aunque el sorteo
+    // intercambie qué color controla este dispositivo. Antes se reutilizaba
+    // `onlineSoyJugador` para ambas cosas y una recarga podía confundir el rol.
+    onlineEsAnfitrion: parametrosURL.get('jugador') !== '1',
+    // Color/jugador que controla ESTE dispositivo. Durante la negociación
+    // inicial coincide provisionalmente con el rol de conexión y después puede
+    // cambiar por elección/sorteo de color.
     onlineSoyJugador: parametrosURL.get('jugador') === '1' ? 1 : 0,
     // Modo Prueba: 2 jugadores, contador infinito, Ctrl+Z/Ctrl+Y habilitados,
     // y los archivos exportados quedan "marcados" para no mezclarse con

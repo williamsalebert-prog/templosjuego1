@@ -1,14 +1,21 @@
 console.log("✅ partida.js cargado");
 
 function serializarBoard(tab) {
-    return tab.map(fila => fila.map(c => c ? { tipo: c.tipo, jugador: c.jugador } : null));
+    return tab.map(fila => fila.map(c => c ? { tipo: c.tipo, jugador: c.jugador, haMovido: !!c.haMovido } : null));
 }
 
 function deserializarBoard(data) {
+    if (!Array.isArray(data) || data.length !== FILAS || data.some(fila => !Array.isArray(fila) || fila.length !== COLUMNAS)) {
+        throw new Error('Dimensiones de tablero inválidas');
+    }
     return data.map(fila => fila.map(c => {
         if (!c) return null;
+        if (typeof c !== 'object' || (c.jugador !== 0 && c.jugador !== 1)) throw new Error('Pieza inválida');
         const Clase = piezasRegistradas.get(c.tipo);
-        return Clase ? new Clase(c.jugador) : null;
+        if (!Clase) throw new Error('Tipo de pieza desconocido');
+        const pieza = new Clase(c.jugador);
+        pieza.haMovido = !!c.haMovido;
+        return pieza;
     }));
 }
 
@@ -16,7 +23,14 @@ function serializarEstadoHistorial(estado) {
     return {
         board: serializarBoard(estado.board),
         turno: estado.turno,
-        enroqueRealizado: [...estado.enroqueRealizado]
+        enroqueRealizado: [...(estado.enroqueRealizado || [false, false])],
+        carcela: (estado.carcela || []).map(p => ({ tipo: p.tipo, jugador: p.jugador })),
+        contadorJugadas: estado.contadorJugadas ?? 0,
+        jugadasPorJugador: [...(estado.jugadasPorJugador || [0, 0])],
+        tiempoRestante: Array.isArray(estado.tiempoRestante) ? [...estado.tiempoRestante] : null,
+        cronometro: Array.isArray(estado.cronometro) ? [...estado.cronometro] : null,
+        avisoBajoTiempoDado: Array.isArray(estado.avisoBajoTiempoDado) ? [...estado.avisoBajoTiempoDado] : null,
+        bonoJugadaAplicado: Array.isArray(estado.bonoJugadaAplicado) ? [...estado.bonoJugadaAplicado] : null
     };
 }
 
@@ -24,13 +38,20 @@ function deserializarEstadoHistorial(estado) {
     return {
         board: deserializarBoard(estado.board),
         turno: estado.turno,
-        enroqueRealizado: estado.enroqueRealizado || [false, false]
+        enroqueRealizado: estado.enroqueRealizado || [false, false],
+        carcela: estado.carcela || [],
+        contadorJugadas: estado.contadorJugadas ?? 0,
+        jugadasPorJugador: estado.jugadasPorJugador || [0, 0],
+        tiempoRestante: estado.tiempoRestante || null,
+        cronometro: estado.cronometro || null,
+        avisoBajoTiempoDado: estado.avisoBajoTiempoDado || null,
+        bonoJugadaAplicado: estado.bonoJugadaAplicado || null
     };
 }
 
 function exportarPartida() {
     const datos = {
-        version: 2,
+        version: 5,
         // Marca de origen: evita que un archivo de Modo Prueba se abra en una
         // partida normal (mezclaría reglas distintas), aunque al revés sí se
         // permite (el Modo Prueba puede abrir partidas normales para practicar).
@@ -50,6 +71,10 @@ function exportarPartida() {
         // lista como en texto ya formateado, para quien quiera leerla fuera
         // del propio juego.
         notacion: (typeof listaNotacionPartida !== 'undefined') ? [...listaNotacionPartida] : [],
+        // Si se exporta Modo Prueba después de deshacer, conservar también la
+        // rama de rehacer. Antes el tablero podía rehacerse tras importar, pero
+        // las notaciones de esas jugadas se habían perdido.
+        notacionFuturos: (typeof notacionFuturos !== 'undefined') ? [...notacionFuturos] : [],
         notacionTexto: (typeof notacionCompletaComoTexto === 'function') ? notacionCompletaComoTexto() : '',
 
         // --- Metadatos de partida pedidos: contadores/relojes de ambos
@@ -78,6 +103,7 @@ function exportarPartida() {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+    if (typeof mostrarToastJuego === 'function') mostrarToastJuego('Partida exportada correctamente.', 'ok');
 }
 
 function importarPartida(archivo) {
@@ -93,7 +119,7 @@ function importarPartida(archivo) {
             // que no aplican fuera de Prueba). Al revés sí se permite: el Modo
             // Prueba puede importar partidas normales para practicar con ellas.
             if (datos.modoPrueba && !CONFIG_JUEGO.modoPrueba) {
-                alert('Este archivo se exportó desde el Modo Prueba y solo puede abrirse ahí.');
+                if (typeof mostrarToastJuego === 'function') mostrarToastJuego('Este archivo pertenece al Modo Prueba y solo puede abrirse ahí.', 'error'); else alert('Este archivo se exportó desde el Modo Prueba y solo puede abrirse ahí.');
                 return; // El tablero actual no se modifica.
             }
 
@@ -131,6 +157,9 @@ function importarPartida(archivo) {
 
             if (typeof reiniciarNotacionPartida === 'function') {
                 reiniciarNotacionPartida(datos.notacion || []);
+                if (typeof notacionFuturos !== 'undefined' && Array.isArray(datos.notacionFuturos)) {
+                    notacionFuturos = [...datos.notacionFuturos];
+                }
             }
 
             // Restaurar relojes/cronómetro si el archivo los trae (partidas con
@@ -147,15 +176,16 @@ function importarPartida(archivo) {
             if (typeof menuCoronacion !== 'undefined' && menuCoronacion) menuCoronacion.style.display = 'none';
 
             reiniciarFinJuego();
-            // Si la partida importada ya estaba en jaque mate / tablas, lo recalculamos
-            // en vez de fiarnos solo del flag guardado, para que sea coherente con las reglas actuales.
-            if (esJaqueMate(turno)) { juegoTerminado = true; mostrarFinJuego('jaquemate', turno); }
-            else if (esAhogado(turno)) { juegoTerminado = true; mostrarFinJuego('tablas', turno); }
+            // Recalcular una sola vez el estado con las reglas actuales.
+            const analisisImportado = analizarEstadoTurno(turno, board);
+            if (typeof fijarCacheJaqueVisual === 'function') fijarCacheJaqueVisual(analisisImportado, turno);
+            if (analisisImportado.jaqueMate) { juegoTerminado = true; mostrarFinJuego('jaquemate', turno); }
+            else if (analisisImportado.ahogado) { juegoTerminado = true; mostrarFinJuego('tablas', turno); }
 
-            actualizarInterfaz();
+            actualizarInterfaz(analisisImportado);
             dibujarTablero();
         } catch (err) {
-            alert('No se pudo importar la partida: el archivo no es válido. La partida actual no se modificó.');
+            if (typeof mostrarToastJuego === 'function') mostrarToastJuego('Archivo no válido. La partida actual no se modificó.', 'error'); else alert('No se pudo importar la partida: el archivo no es válido. La partida actual no se modificó.');
         }
     };
     lector.readAsText(archivo);

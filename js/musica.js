@@ -1,5 +1,19 @@
 console.log("✅ musica.js cargado");
 
+let volumenMusica = (() => {
+    try {
+        const v = Number(localStorage.getItem('templos_vol_musica'));
+        return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.45;
+    } catch (e) { return 0.45; }
+})();
+function establecerVolumenMusica(valor) {
+    volumenMusica = Math.max(0, Math.min(1, Number(valor)));
+    try { localStorage.setItem('templos_vol_musica', String(volumenMusica)); } catch (e) {}
+}
+function obtenerVolumenMusica() { return volumenMusica; }
+window.establecerVolumenMusica = establecerVolumenMusica;
+window.obtenerVolumenMusica = obtenerVolumenMusica;
+
 // 🎵 Música de fondo tranquila y continua durante toda la partida.
 // Generada de forma procedural con Web Audio API (no hay archivos de audio en el repo),
 // con el mismo estilo de osciladores que sonido.js. Reutiliza su AudioContext si existe.
@@ -7,7 +21,7 @@ console.log("✅ musica.js cargado");
 // aunque se superpongan varias notas a la vez.
 
 let musicaIniciada = false;
-let musicaActiva = true;
+let musicaActiva = (() => { try { return localStorage.getItem('templos_musica_off') !== '1'; } catch (e) { return true; } })();
 let acordeIndex = 0;
 let nodoCompresorMusica = null;
 
@@ -47,6 +61,8 @@ const ACORDES_PAD = [
 
 function tocarNotaPad(frec, duracion, vol) {
     try {
+        vol *= volumenMusica;
+        if (vol <= 0.0005) return;
         const ctx = obtenerContextoMusica();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -65,6 +81,8 @@ function tocarNotaPad(frec, duracion, vol) {
 
 function tocarNotaMelodia(frec, duracion, vol) {
     try {
+        vol *= volumenMusica;
+        if (vol <= 0.0005) return;
         const ctx = obtenerContextoMusica();
         const t0 = ctx.currentTime;
         const salida = obtenerSalidaMusica();
@@ -105,19 +123,19 @@ function reproducirCicloMusical() {
     if (musicaActiva) {
         const acorde = ACORDES_PAD[acordeIndex % ACORDES_PAD.length];
         acorde.forEach((frec, i) => {
-            setTimeout(() => { if (musicaActiva) tocarNotaPad(frec, 3.5, 0.05); }, i * 180);
+            setTimeout(() => { if (musicaActiva) tocarNotaPad(frec * 0.75, 7.2, 0.015); }, i * 420);
         });
         acordeIndex++;
 
-        const numNotas = 3 + Math.floor(Math.random() * 2); // 3-4 notas por ciclo: más vivo
-        let demora = 200;
+        const numNotas = Math.random() < 0.68 ? 1 : 2; // casi siempre una sola nota: ambiente discreto
+        let demora = 1200;
         for (let i = 0; i < numNotas; i++) {
-            demora += 700 + Math.random() * 600;
+            demora += 1600 + Math.random() * 1400;
             const nota = ESCALA_CALMA[Math.floor(Math.random() * ESCALA_CALMA.length)];
-            setTimeout(() => { if (musicaActiva) tocarNotaMelodia(nota, 1.2, 0.06); }, demora);
+            setTimeout(() => { if (musicaActiva) tocarNotaMelodia(nota * 0.75, 2.6, 0.018); }, demora);
         }
     }
-    setTimeout(reproducirCicloMusical, 5000);
+    setTimeout(reproducirCicloMusical, 11000);
 }
 
 function iniciarMusica() {
@@ -129,13 +147,14 @@ function iniciarMusica() {
 
 // El usuario puede pausar la música manualmente con el botón; esto es independiente
 // de la pausa "de sistema" que se usa al terminar la partida (jaque mate / tablas).
-let musicaPausadaPorUsuario = false;
+let musicaPausadaPorUsuario = (() => { try { return localStorage.getItem('templos_musica_off') === '1'; } catch (e) { return false; } })();
 let musicaPausadaPorSistema = false;
 
 function alternarMusica() {
     if (!musicaIniciada) { iniciarMusica(); musicaPausadaPorUsuario = false; }
     else musicaPausadaPorUsuario = !musicaPausadaPorUsuario;
     musicaActiva = !musicaPausadaPorUsuario && !musicaPausadaPorSistema;
+    try { localStorage.setItem('templos_musica_off', musicaPausadaPorUsuario ? '1' : '0'); } catch (e) {}
     const btn = document.getElementById('btnMusica');
     if (btn) btn.textContent = musicaActiva ? '🎵 Música' : '🔇 Música';
 
@@ -143,7 +162,9 @@ function alternarMusica() {
     const menuBtn = document.getElementById('menuMusica');
     if (menuBtn) {
         const icono = menuBtn.querySelector('.mi-icon');
+        const estado = document.getElementById('menuMusicaEstado');
         if (icono) icono.textContent = musicaActiva ? '🎵' : '🔇';
+        if (estado) estado.textContent = musicaActiva ? 'Activa' : 'Silenciada';
     }
 }
 

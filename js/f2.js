@@ -4,10 +4,23 @@ class F2 extends Pieza {
     constructor(jugador) { super('F2', jugador); }
 
     puedeAtacarRey(fila, col, reyF, reyC, board) {
-        const saltosL = [[-2,-1],[-2,1],[2,-1],[2,1],[-1,-2],[-1,2],[1,-2],[1,2]];
-        for (let [df, dc] of saltosL) {
-            let nf = fila + df, nc = col + dc;
-            if (nf === reyF && nc === reyC) return true;
+        // El caballo de Templos no amenaza simplemente por geometría en L:
+        // importa cuál de sus dos rutas puede recorrer y qué captura en ella.
+        // Usamos sus caminos reales para no bloquear casillas del rey que en
+        // realidad no están atacadas.
+        const res = this.obtenerMovimientos(fila, col, board);
+        for (const clave in res.caminos) {
+            const info = res.caminos[clave];
+            const rutas = (Array.isArray(info) && info.length > 0 && info[0] &&
+                Object.prototype.hasOwnProperty.call(info[0], 'pasos')) ? info.map(r => r.pasos) : [info];
+            for (const pasos of rutas) {
+                if (!Array.isArray(pasos)) continue;
+                for (const paso of pasos) {
+                    if (Array.isArray(paso.over) &&
+                        (paso.tipo === 'removePiece' || paso.tipo === 'captureDirect' || paso.tipo === 'jump') &&
+                        paso.over[0] === reyF && paso.over[1] === reyC) return true;
+                }
+            }
         }
         return false;
     }

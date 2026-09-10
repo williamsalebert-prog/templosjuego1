@@ -4,8 +4,14 @@ console.log("✅ finjuego.js cargado");
 // ya pasó al siguiente jugador. Centraliza: contador de jugadas, detección de
 // jaque/jaque mate/ahogado, refresco de interfaz y disparo del turno de la IA.
 function despuesDeJugada() {
+    // Si una resincronización llegó mientras una animación estaba en curso,
+    // el estado autoritativo se aplica ahora y la jugada antigua deja de cerrar
+    // sobre él (evita que finalizarAnimacion vuelva a corromper el tablero).
+    if (typeof aplicarEstadoRemotoPendienteSiExiste === 'function' && aplicarEstadoRemotoPendienteSiExiste()) return;
+
     registrarJugadaRealizada();
     comprobarFinJuego();
+    if (typeof responderSolicitudEstadoPendienteSiExiste === 'function') responderSolicitudEstadoPendienteSiExiste();
     // NOTA: el movimiento en sí ya se transmitió ANTES de animarlo (ver
     // transmitirMovimientoSiOnline en tablero.js/coronacion.js/enroque.js),
     // para que el rival reproduzca la misma animación y sonido. Aquí solo
@@ -26,34 +32,55 @@ function comprobarFinJuego() {
         return;
     }
 
-    if (esJaqueMate(turno)) {
+    const analisis = (typeof analizarEstadoTurno === 'function')
+        ? analizarEstadoTurno(turno, board)
+        : { enJaque: esJaque(turno), jaqueMate: esJaqueMate(turno), ahogado: esAhogado(turno), atacantes: [] };
+
+    if (typeof fijarCacheJaqueVisual === 'function') fijarCacheJaqueVisual(analisis, turno);
+
+    if (analisis.jaqueMate) {
         juegoTerminado = true;
         mostrarFinJuego('jaquemate', turno);
-    } else if (esAhogado(turno)) {
+    } else if (analisis.ahogado) {
         juegoTerminado = true;
         mostrarFinJuego('tablas', turno);
-    } else if (esJaque(turno)) {
+    } else if (analisis.enJaque) {
         if (typeof sonidoJaque === 'function') sonidoJaque();
     }
 
-    if (typeof actualizarInterfaz === 'function') actualizarInterfaz();
+    if (typeof actualizarInterfaz === 'function') actualizarInterfaz(analisis);
     dibujarTablero();
 }
 
-// --- Estado del panel de fin de partida (contador de 8s, límite de exportaciones) ---
+// --- Estado del panel de fin de partida ---
+// El resultado permanece visible hasta que el jugador decida volver al menú.
+// No hay contador automático ni límite artificial de exportaciones.
 let finJuegoIntervalo = null;
-let finJuegoSegundosRestantes = 8;
-let finJuegoExportacionesUsadas = 0;
-const FIN_JUEGO_MAX_EXPORTACIONES = 3;
-const FIN_JUEGO_SEGUNDOS_TOTAL = 8;
+let finJuegoTimeout = null;
+let cambioEloFinActual = null;
+let eloFinRegistrado = false;
+
+function registrarResultadoEloUnaVez(ganador) {
+    if (eloFinRegistrado) return cambioEloFinActual;
+    eloFinRegistrado = true;
+    cambioEloFinActual = (typeof registrarResultadoElo === 'function') ? registrarResultadoElo(ganador) : null;
+    return cambioEloFinActual;
+}
+
+function programarPresentacionFinJuego(callback, demora = 1500) {
+    if (finJuegoTimeout) clearTimeout(finJuegoTimeout);
+    finJuegoTimeout = setTimeout(() => {
+        finJuegoTimeout = null;
+        callback();
+    }, demora);
+}
 
 function mostrarFinJuego(tipo, jugadorEnTurno) {
     if (typeof detenerRelojes === 'function') detenerRelojes();
     if (typeof quitarPartidaActualDelCache === 'function') quitarPartidaActualDelCache();
 
-    // Dejamos ver el tablero 3 segundos (la jugada/posición final) antes de
-    // tapar la pantalla con el aviso de fin de partida, para que los jugadores
-    // entiendan por qué ganaron, perdieron o empataron.
+    // Dejamos ver brevemente la posición final antes de mostrar el resultado.
+    // El panel ya no expulsa automáticamente al jugador: puede quedarse a revisar.
     casillaFinJuego = null;
     casillasFinJuego = [];
     selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
@@ -70,9 +97,11 @@ function mostrarFinJuego(tipo, jugadorEnTurno) {
     }
     dibujarTablero();
 
-    setTimeout(() => {
-        mostrarBannerFinJuego(tipo, jugadorEnTurno);
-    }, 3000);
+    // El resultado lógico se registra AHORA, no cuando termine la animación
+    // del banner. Así salir rápido no evita una derrota y un aviso duplicado
+    // tampoco puede registrar dos veces la misma partida.
+    registrarResultadoEloUnaVez((tipo === 'jaquemate' || tipo === 'tiempo') ? (1 - jugadorEnTurno) : null);
+    programarPresentacionFinJuego(() => mostrarBannerFinJuego(tipo, jugadorEnTurno));
 }
 
 function mostrarBannerFinJuego(tipo, jugadorEnTurno) {
@@ -83,14 +112,13 @@ function mostrarBannerFinJuego(tipo, jugadorEnTurno) {
         const ganador = 1 - jugadorEnTurno;
         const nombreGanador = ganador === 0 ? 'Jugador 1 (Rojo)' : 'Jugador 2 (Azul)';
         const motivo = tipo === 'jaquemate' ? '♛ ¡Jaque mate!' : '⏱️ ¡Tiempo agotado!';
-        const cambioElo = (typeof registrarResultadoElo === 'function') ? registrarResultadoElo(ganador) : null;
+        const cambioElo = cambioEloFinActual;
         const sufijoElo = cambioElo ? textoCambioElo(cambioElo, ganador === 0 ? 'rojo' : 'azul') : '';
         if (texto) texto.textContent = `${motivo} Gana ${nombreGanador}${sufijoElo}`;
         if (banner) { banner.className = 'banner-fin mostrar victoria jugador' + ganador; }
 
         reproducirSonidoResultado(ganador);
     } else {
-        if (typeof registrarResultadoElo === 'function') registrarResultadoElo(null);
         if (texto) texto.textContent = '🤝 ¡Tablas! Partida terminada en empate (ahogado)';
         if (banner) { banner.className = 'banner-fin mostrar tablas'; }
 
@@ -118,83 +146,56 @@ function reproducirSonidoResultado(ganador) {
     }
 }
 
-// Configura y arranca el contador de 8 segundos del panel de fin de partida.
-// Si no se pulsa "Listo" ni "Exportar partida" dentro de ese tiempo, regresa
-// automáticamente al menú principal.
+// Configura el panel de fin de partida. Permanece abierto hasta que el
+// jugador elija volver al menú; exportar no cierra ni limita el panel.
 function iniciarPanelFinPartida() {
-    finJuegoExportacionesUsadas = 0;
-    finJuegoSegundosRestantes = FIN_JUEGO_SEGUNDOS_TOTAL;
+    detenerPanelFinPartida();
 
     const btnListo = document.getElementById('btnFinListo');
     const btnExportar = document.getElementById('btnFinExportar');
+    const btnRevisar = document.getElementById('btnFinRevisar');
     const contadorEl = document.getElementById('finJuegoContador');
 
+    if (contadorEl) contadorEl.textContent = 'La partida terminó. Puedes inspeccionar la posición final o guardar el registro antes de salir.';
+    if (btnRevisar) {
+        btnRevisar.disabled = false;
+        btnRevisar.onclick = () => {
+            const banner = document.getElementById('bannerFin');
+            if (banner) banner.classList.remove('mostrar');
+        };
+    }
     if (btnExportar) {
         btnExportar.disabled = false;
-        btnExportar.textContent = `💾 Exportar partida (3 disponibles)`;
+        btnExportar.textContent = '💾 Guardar';
+        btnExportar.onclick = () => {
+            if (typeof exportarPartida === 'function') exportarPartida();
+        };
     }
-    actualizarContadorFinPartida();
-
-    if (finJuegoIntervalo) clearInterval(finJuegoIntervalo);
-    finJuegoIntervalo = setInterval(() => {
-        finJuegoSegundosRestantes--;
-        actualizarContadorFinPartida();
-        if (finJuegoSegundosRestantes <= 0) {
-            detenerPanelFinPartida();
-            window.location.href = 'index.html';
-        }
-    }, 1000);
-
     if (btnListo) {
+        btnListo.textContent = 'Menú principal →';
         btnListo.onclick = () => {
             detenerPanelFinPartida();
             window.location.href = 'index.html';
         };
     }
-    if (btnExportar) {
-        btnExportar.onclick = () => {
-            if (finJuegoExportacionesUsadas >= FIN_JUEGO_MAX_EXPORTACIONES) return;
-            if (typeof exportarPartida === 'function') exportarPartida();
-            finJuegoExportacionesUsadas++;
-            // Pulsar exportar pausa el contador automático de regreso al menú
-            pausarContadorFinPartida();
-            const restantes = FIN_JUEGO_MAX_EXPORTACIONES - finJuegoExportacionesUsadas;
-            if (restantes <= 0) {
-                btnExportar.disabled = true;
-                btnExportar.textContent = '💾 Exportar (límite alcanzado)';
-            } else {
-                btnExportar.textContent = `💾 Exportar partida (${restantes} disponibles)`;
-            }
-        };
-    }
-}
-
-function actualizarContadorFinPartida() {
-    const contadorEl = document.getElementById('finJuegoContador');
-    if (contadorEl) {
-        contadorEl.textContent = finJuegoSegundosRestantes > 0
-            ? `Volviendo al menú en ${finJuegoSegundosRestantes}s...`
-            : '';
-    }
-}
-
-function pausarContadorFinPartida() {
-    if (finJuegoIntervalo) { clearInterval(finJuegoIntervalo); finJuegoIntervalo = null; }
-    const contadorEl = document.getElementById('finJuegoContador');
-    if (contadorEl) contadorEl.textContent = 'Partida exportada. Pulsa "Listo" cuando quieras volver al menú.';
 }
 
 function detenerPanelFinPartida() {
     if (finJuegoIntervalo) { clearInterval(finJuegoIntervalo); finJuegoIntervalo = null; }
+    if (finJuegoTimeout) { clearTimeout(finJuegoTimeout); finJuegoTimeout = null; }
 }
 
 // Llamado al iniciar una partida nueva o al importar/deshacer, para limpiar cualquier
 // estado de "fin de partida" previo y dejar la partida jugable de nuevo.
-function reiniciarFinJuego() {
+function reiniciarFinJuego(preservarRegistroElo = false) {
     juegoTerminado = false;
     casillaFinJuego = null;
     casillasFinJuego = [];
     detenerPanelFinPartida();
+    if (!preservarRegistroElo) {
+        cambioEloFinActual = null;
+        eloFinRegistrado = false;
+    }
     const banner = document.getElementById('bannerFin');
     if (banner) { banner.className = 'banner-fin'; }
     if (typeof reanudarMusicaNormal === 'function') reanudarMusicaNormal();

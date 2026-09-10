@@ -61,10 +61,16 @@ function iniciarRelojes() {
 
 function arrancarRelojes() {
     if (!CONFIG_JUEGO.timer || !modoTiempoActual) return;
+    // Idempotente: si por un mensaje duplicado/countdown repetido se intenta
+    // arrancar dos veces, nunca dejamos dos setInterval descontando a la vez.
+    if (relojIntervalo) { clearInterval(relojIntervalo); relojIntervalo = null; }
     relojesActivos = true;
     let ultimo = performance.now();
     relojIntervalo = setInterval(() => {
-        if (!relojesActivos || juegoTerminado || animando || coronacionPendiente || window.partidaPausadaPorPropuesta) { ultimo = performance.now(); return; }
+        // La elección de coronación SÍ forma parte del tiempo de la jugada.
+        // Antes coronacionPendiente pausaba el reloj y permitía quedarse
+        // indefinidamente en el menú de promoción sin consumir tiempo.
+        if (!relojesActivos || juegoTerminado || animando || window.partidaPausadaPorPropuesta) { ultimo = performance.now(); return; }
         const ahora = performance.now();
         const delta = (ahora - ultimo) / 1000;
         ultimo = ahora;
@@ -84,6 +90,12 @@ function arrancarRelojes() {
             tiempoRestante[turno] = 0;
             pintarRelojes();
             relojesActivos = false;
+            // En online el fin por tiempo también viaja al rival. Antes cada
+            // navegador terminaba por su cuenta y unas décimas de deriva podían
+            // dejar a uno en pantalla final mientras el otro seguía jugando.
+            if (CONFIG_JUEGO.online && typeof transmitirFinTiempoOnline === 'function') {
+                transmitirFinTiempoOnline(turno);
+            }
             if (typeof mostrarFinJuego === 'function') {
                 juegoTerminado = true;
                 mostrarFinJuego('tiempo', turno);

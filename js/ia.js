@@ -17,6 +17,7 @@ const JUGADOR_IA = 1;
 let iaWorker = null;
 let iaPeticionContador = 0;
 let iaPensando = false;
+let iaPromocionElegida = null;
 
 function obtenerIAWorker() {
     if (!iaWorker) {
@@ -26,10 +27,26 @@ function obtenerIAWorker() {
             iaPensando = false;
             ocultarIndicadorPensandoIA();
             if (peticionId !== iaPeticionEsperada) return; // respuesta obsoleta (la partida cambió mientras pensaba)
-            if (error) { console.error('Error en IA:', error); return; }
+            if (error) {
+                console.error('Error en IA:', error);
+                if (typeof mostrarToastJuego === 'function') mostrarToastJuego('La IA tuvo un error de cálculo. Se reinició el motor.', 'error');
+                try { iaWorker.terminate(); } catch(e) {}
+                iaWorker = null;
+                setTimeout(programarTurnoIASiCorresponde, 120);
+                return;
+            }
             if (!esTurnoDeIA()) return; // la partida cambió mientras la IA pensaba
             if (!resultado) return; // sin jugadas (no debería pasar; mate/ahogado ya se detectan antes)
             ejecutarJugadaIA(resultado);
+        };
+        iaWorker.onerror = (ev) => {
+            console.error('Worker de IA detenido:', ev?.message || ev);
+            iaPensando = false;
+            ocultarIndicadorPensandoIA();
+            try { iaWorker.terminate(); } catch(e) {}
+            iaWorker = null;
+            if (typeof mostrarToastJuego === 'function') mostrarToastJuego('La IA se reinició tras un error interno.', 'error');
+            if (esTurnoDeIA()) setTimeout(programarTurnoIASiCorresponde, 120);
         };
     }
     return iaWorker;
@@ -37,7 +54,7 @@ function obtenerIAWorker() {
 let iaPeticionEsperada = -1;
 
 function esTurnoDeIA() {
-    return CONFIG_JUEGO.modo === 1 && turno === JUGADOR_IA && !juegoTerminado && !animando && !coronacionPendiente && !window.partidaPausadaPorPropuesta;
+    return CONFIG_JUEGO.modo === 1 && turno === JUGADOR_IA && window.tableroHabilitado !== false && !juegoTerminado && !animando && !coronacionPendiente && !window.partidaPausadaPorPropuesta;
 }
 
 function mostrarIndicadorPensandoIA() {
@@ -84,27 +101,33 @@ function construirInfoTiempoParaIA() {
 }
 
 function ejecutarJugadaIA(resultado) {
+    iaPromocionElegida = resultado.promocion || null;
     if (resultado.tipo === 'enroque') {
         const [reyFila, reyCol] = resultado.origen;
         const [piezaFila, piezaCol] = resultado.destino;
-        ejecutarEnroque(reyFila, reyCol, piezaFila, piezaCol, JUGADOR_IA);
+        if (!ejecutarEnroque(reyFila, reyCol, piezaFila, piezaCol, JUGADOR_IA)) {
+            // Si la posición cambió mientras el worker pensaba, no forzamos un
+            // enroque que ya dejó de ser legal: se recalcula el turno de IA.
+            programarTurnoIASiCorresponde();
+            return;
+        }
         turno = 1 - turno;
         selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
         dibujarTablero();
-        registrarJugadaRealizada();
-        comprobarFinJuego();
-        if (typeof programarTurnoIASiCorresponde === 'function') programarTurnoIASiCorresponde();
+        if (typeof despuesDeJugada === 'function') despuesDeJugada();
         return;
     }
     aplicarMovimiento(resultado.origen, resultado.destino, resultado.camino);
 }
 
-// La IA, al coronar un peón, siempre elige Reina (la pieza más fuerte): es la
-// decisión objetivamente mejor y evita tener que volver a llamar al worker
-// solo para esa elección.
+// La promoción ya fue evaluada dentro del árbol de búsqueda. Así la IA puede
+// usar una pieza distinta de Reina cuando una posición concreta lo justifique.
 function elegirCoronacionIASiCorresponde() {
     if (CONFIG_JUEGO.modo === 1 && coronacionPendiente && coronacionPendiente.jugador === JUGADOR_IA) {
-        coronar('F3');
+        const permitidas = new Set(['F0', 'F2', 'F3', 'F4', 'F5']);
+        const tipo = permitidas.has(iaPromocionElegida) ? iaPromocionElegida : 'F3';
+        iaPromocionElegida = null;
+        coronar(tipo);
     }
 }
 
@@ -112,7 +135,7 @@ function elegirCoronacionIASiCorresponde() {
 function programarTurnoIASiCorresponde() {
     if (coronacionPendiente) { elegirCoronacionIASiCorresponde(); return; }
     if (!esTurnoDeIA()) return;
-    // Pequeño retardo "humano" antes de que el worker arranque a pensar, para
-    // que no se sienta instantáneo/robótico incluso en Fácil.
-    setTimeout(jugarTurnoIA, 350);
+    // Retardo mínimo solo para permitir que la interfaz pinte el cambio de turno.
+    // La IA ya consume tiempo real pensando; añadir 350 ms hacía que pareciera más lenta.
+    setTimeout(jugarTurnoIA, 60);
 }

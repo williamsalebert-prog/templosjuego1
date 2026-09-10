@@ -32,18 +32,28 @@ function generarNotacionJugada(tableroAntes, origen, destino, camino, tipoPieza,
     const letra = LETRA_PIEZA_NOTACION[tipoPieza] || '';
     const destinoStr = casillaANotacion(destino[0], destino[1]);
 
-    // ¿Hubo alguna captura en el camino? (salto sobre pieza enemiga, o
-    // captura directa al llegar al destino)
+    // ¿Hubo alguna captura real en el camino? Saltar una pieza propia NO cuenta
+    // como captura. Antes cualquier paso 'jump' añadía una 'x' a la notación.
     let hayCaptura = false;
+    const piezaMovida = tableroAntes?.[origen[0]]?.[origen[1]] || null;
+    const jugadorQueMueve = piezaMovida ? piezaMovida.jugador : null;
     if (Array.isArray(camino)) {
         for (const paso of camino) {
-            if (paso.tipo === 'jump' || paso.tipo === 'captureDirect' || paso.tipo === 'removePiece') {
+            if (paso.tipo === 'captureDirect' || paso.tipo === 'removePiece') {
                 hayCaptura = true;
                 break;
             }
+            if (paso.tipo === 'jump' && Array.isArray(paso.over)) {
+                const sobre = tableroAntes?.[paso.over[0]]?.[paso.over[1]] || null;
+                if (sobre && jugadorQueMueve !== null && sobre.jugador !== jugadorQueMueve) {
+                    hayCaptura = true;
+                    break;
+                }
+            }
         }
     }
-    if (!hayCaptura && tableroAntes[destino[0]] && tableroAntes[destino[0]][destino[1]]) hayCaptura = true;
+    const piezaDestinoAntes = tableroAntes?.[destino[0]]?.[destino[1]] || null;
+    if (!hayCaptura && piezaDestinoAntes && (jugadorQueMueve === null || piezaDestinoAntes.jugador !== jugadorQueMueve)) hayCaptura = true;
 
     let notacion = letra + (hayCaptura ? 'x' : '') + destinoStr;
     if (esCoronacion && tipoCoronacion) {

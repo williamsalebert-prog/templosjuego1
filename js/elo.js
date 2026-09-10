@@ -104,5 +104,5 @@ function textoCambioElo(cambioElo, color) {
     if (!cambioElo || !cambioElo[color]) return '';
     const diff = cambioElo[color].diferencia;
     if (diff === 0) return '';
-    return diff > 0 ? ` (+${diff} ELO)` : ` (${diff} ELO)`;
+    return diff > 0 ? ` (+${diff} pts locales)` : ` (${diff} pts locales)`;
 }

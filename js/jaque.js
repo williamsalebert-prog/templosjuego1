@@ -12,11 +12,11 @@ function obtenerPosicionRey(jugador, tablero = board) {
 }
 
 function clonarTablero(tablero) {
-    return tablero.map(fila => fila.map(celda => {
-        if (celda === null) return null;
-        const ClasePieza = piezasRegistradas.get(celda.tipo);
-        return ClasePieza ? new ClasePieza(celda.jugador) : null;
-    }));
+    // Las simulaciones de legalidad nunca modifican propiedades internas de
+    // las piezas: solo cambian referencias entre casillas. Copiar los 150
+    // objetos Pieza en CADA candidato era uno de los costes principales del
+    // motor. Basta clonar las filas y compartir piezas inmutables.
+    return tablero.map(fila => fila.slice());
 }
 
 // Simula un movimiento completo sobre un tablero clonado (respeta capturas reales, amigas no se eliminan)
@@ -67,47 +67,48 @@ function simularMovimiento(tablero, fromF, fromC, destino, camino) {
     return copia;
 }
 
-// ✅ DETECCIÓN DE JAQUE: recorre TODOS los caminos registrados de cada pieza enemiga
-// (incluyendo cadenas de saltos completas de F1 y F6) y comprueba si en CUALQUIER
-// paso del camino se captura la casilla del rey, sea o no el destino final del
-// movimiento. Esto es imprescindible para F1 y F6, ya que al encadenar saltos el
-// rey puede ser "comido" en mitad de la cadena mientras la pieza atacante sigue
-// saltando y termina su turno varias casillas más allá.
-function esJaque(jugador, tablero = board) {
-    let reyPos = obtenerPosicionRey(jugador, tablero);
-    if (!reyPos) return false;
-    let [reyF, reyC] = reyPos;
-    let enemigo = 1 - jugador;
+// Comprueba si una pieza enemiga puede capturar una casilla concreta mediante
+// alguno de sus caminos REALES. Se usa tanto para detectar jaque como para
+// resaltar al atacante, evitando dos definiciones distintas de "amenaza".
+function piezaAmenazaCasillaPorCaminos(pieza, fila, col, objetivoF, objetivoC, tablero) {
+    // Rey contra Rey es una amenaza adyacente directa. No generamos aquí los
+    // movimientos completos del rey porque estos, a su vez, preguntan qué
+    // casillas están amenazadas y crearíamos una recursión circular.
+    if (pieza.tipo === 'F6') {
+        return Math.max(Math.abs(fila - objetivoF), Math.abs(col - objetivoC)) === 1;
+    }
 
-    for (let i = 0; i < FILAS; i++) {
-        for (let j = 0; j < COLUMNAS; j++) {
-            let pieza = tablero[i][j];
-            if (!pieza || pieza.jugador !== enemigo) continue;
+    // Torre/Reina/Alfil no tienen cadenas: su método directo comprueba la
+    // misma línea de captura y la casilla de aterrizaje tras el rey, pero sin
+    // construir TODOS sus destinos/caminos. El Trampero nunca ataca al rey.
+    // Este atajo se ejecuta miles de veces dentro de la búsqueda de la IA.
+    if (pieza.tipo === 'F4') return false;
+    if (pieza.tipo === 'F0' || pieza.tipo === 'F3' || pieza.tipo === 'F5') {
+        return pieza.puedeAtacarRey(fila, col, objetivoF, objetivoC, tablero);
+    }
 
-            // Obtener todos los movimientos (y caminos) de esta pieza enemiga
-            let movimientos = pieza.obtenerMovimientos(i, j, tablero);
+    const movimientos = pieza.obtenerMovimientos(fila, col, tablero);
+    if (!movimientos || !movimientos.caminos) return false;
 
-            for (let clave in movimientos.caminos) {
-                let infoCamino = movimientos.caminos[clave];
-                if (!infoCamino) continue;
+    for (const clave in movimientos.caminos) {
+        const infoCamino = movimientos.caminos[clave];
+        if (!infoCamino) continue;
 
-                // El caballo (F2) puede tener múltiples rutas para un mismo destino
-                let rutas;
-                if (Array.isArray(infoCamino) && infoCamino.length > 0 && infoCamino[0].hasOwnProperty('pasos')) {
-                    rutas = infoCamino.map(r => r.pasos);
-                } else {
-                    rutas = [infoCamino];
-                }
+        let rutas;
+        if (Array.isArray(infoCamino) && infoCamino.length > 0 &&
+            infoCamino[0] && Object.prototype.hasOwnProperty.call(infoCamino[0], 'pasos')) {
+            rutas = infoCamino.map(r => r.pasos);
+        } else {
+            rutas = [infoCamino];
+        }
 
-                for (let caminoReal of rutas) {
-                    if (!Array.isArray(caminoReal)) continue;
-                    for (let paso of caminoReal) {
-                        if (!paso.over) continue;
-                        if ((paso.tipo === 'jump' || paso.tipo === 'captureDirect' || paso.tipo === 'removePiece') &&
-                            paso.over[0] === reyF && paso.over[1] === reyC) {
-                            return true; // El rey es capturado en algún punto de un camino legal
-                        }
-                    }
+        for (const caminoReal of rutas) {
+            if (!Array.isArray(caminoReal)) continue;
+            for (const paso of caminoReal) {
+                if (!Array.isArray(paso.over)) continue;
+                if ((paso.tipo === 'jump' || paso.tipo === 'captureDirect' || paso.tipo === 'removePiece') &&
+                    paso.over[0] === objetivoF && paso.over[1] === objetivoC) {
+                    return true;
                 }
             }
         }
@@ -115,21 +116,58 @@ function esJaque(jugador, tablero = board) {
     return false;
 }
 
-// Devuelve la lista [[fila,col], ...] de todas las piezas enemigas que actualmente
-// están dando jaque al rey de "jugador" (usado para resaltarlas en naranja en el tablero).
-function obtenerPiezasQueDanJaque(jugador, tablero = board) {
-    let reyPos = obtenerPosicionRey(jugador, tablero);
-    if (!reyPos) return [];
-    let [reyF, reyC] = reyPos;
-    let enemigo = 1 - jugador;
-    let atacantes = [];
+
+// Evalúa una casilla VACÍA (o capturada) como destino del rey colocando una
+// copia del rey allí antes de preguntar por jaque. Esto es distinto de mirar
+// los caminos enemigos sobre el tablero original: una pieza de salto solo
+// puede "ver" al rey si el rey existe realmente en la casilla candidata.
+function esCasillaSeguraParaRey(jugador, origenF, origenC, destinoF, destinoC, tablero = board) {
+    const copia = clonarTablero(tablero);
+    let rey = copia[origenF]?.[origenC];
+    if (!rey || rey.tipo !== 'F6' || rey.jugador !== jugador) {
+        const pos = obtenerPosicionRey(jugador, copia);
+        if (!pos) return false;
+        [origenF, origenC] = pos;
+        rey = copia[origenF][origenC];
+    }
+    copia[origenF][origenC] = null;
+    copia[destinoF][destinoC] = rey;
+    return !esJaque(jugador, copia);
+}
+
+// DETECCIÓN DE JAQUE: una sola fuente de verdad basada en los caminos reales
+// que genera cada pieza, incluidos saltos encadenados y rutas del caballo.
+function esJaque(jugador, tablero = board) {
+    const reyPos = obtenerPosicionRey(jugador, tablero);
+    if (!reyPos) return false;
+    const [reyF, reyC] = reyPos;
+    const enemigo = 1 - jugador;
+
     for (let i = 0; i < FILAS; i++) {
         for (let j = 0; j < COLUMNAS; j++) {
-            let pieza = tablero[i][j];
+            const pieza = tablero[i][j];
             if (!pieza || pieza.jugador !== enemigo) continue;
-            if (typeof pieza.puedeAtacarRey === 'function' && pieza.puedeAtacarRey(i, j, reyF, reyC, tablero)) {
-                atacantes.push([i, j]);
-            }
+            if (piezaAmenazaCasillaPorCaminos(pieza, i, j, reyF, reyC, tablero)) return true;
+        }
+    }
+    return false;
+}
+
+// Devuelve las piezas que dan jaque usando EXACTAMENTE el mismo criterio que
+// esJaque(). Antes esta función usaba puedeAtacarRey(), lo que podía hacer que
+// el juego detectara un jaque pero resaltara otra cosa (o ninguna).
+function obtenerPiezasQueDanJaque(jugador, tablero = board) {
+    const reyPos = obtenerPosicionRey(jugador, tablero);
+    if (!reyPos) return [];
+    const [reyF, reyC] = reyPos;
+    const enemigo = 1 - jugador;
+    const atacantes = [];
+
+    for (let i = 0; i < FILAS; i++) {
+        for (let j = 0; j < COLUMNAS; j++) {
+            const pieza = tablero[i][j];
+            if (!pieza || pieza.jugador !== enemigo) continue;
+            if (piezaAmenazaCasillaPorCaminos(pieza, i, j, reyF, reyC, tablero)) atacantes.push([i, j]);
         }
     }
     return atacantes;
@@ -138,67 +176,60 @@ function obtenerPiezasQueDanJaque(jugador, tablero = board) {
 // ----------------------------------------------------------
 // FILTRO DE SEGURIDAD (SE APLICA SIEMPRE)
 // ----------------------------------------------------------
-function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDestino) {
-    let movsSeguros = [];
-    let nuevosCaminos = {};
+function filtrarMovimientosJaque(selectedPiece, posiblesMovimientos, caminosDestino, tablero = board, jugador = turno) {
+    const movsSeguros = [];
+    const nuevosCaminos = {};
 
-    for (let mov of posiblesMovimientos) {
+    for (const mov of posiblesMovimientos) {
         let fDest, cDest;
-        if (mov.hasOwnProperty('f')) { fDest = mov.f; cDest = mov.c; }
+        if (Object.prototype.hasOwnProperty.call(mov, 'f')) { fDest = mov.f; cDest = mov.c; }
         else { fDest = mov[0]; cDest = mov[1]; }
 
-        // Enroque
+        // Enroque: por ahora conserva la validación final existente. La
+        // validación histórica/recorrido completo se abordará en una tanda
+        // posterior junto con los derechos de enroque.
         if (mov.tipoMov === 'enroque') {
-            let copia = clonarTablero(board);
-            let [reyF, reyC] = [selectedPiece.fila, selectedPiece.col];
+            const copia = clonarTablero(tablero);
+            const [reyF, reyC] = [selectedPiece.fila, selectedPiece.col];
             copia[fDest][cDest] = copia[reyF][reyC];
             copia[reyF][reyC] = null;
-            if (!esJaque(turno, copia)) {
+            if (!esJaque(jugador, copia)) {
                 movsSeguros.push(mov);
-                if (!nuevosCaminos[`${fDest},${cDest}`]) nuevosCaminos[`${fDest},${cDest}`] = null;
+                nuevosCaminos[`${fDest},${cDest}`] = null;
             }
             continue;
         }
 
-        let claveMov = `${fDest},${cDest}`;
-        let infoCamino = mov.caminos || caminosDestino[claveMov];
+        const claveMov = `${fDest},${cDest}`;
+        const infoCamino = mov.caminos || caminosDestino[claveMov];
         if (!infoCamino) continue;
 
-        let rutas = [];
-        if (Array.isArray(infoCamino) && infoCamino.length > 0 && infoCamino[0].hasOwnProperty('pasos')) {
-            rutas = infoCamino; // múltiples rutas (caballo)
-        } else {
-            if (Array.isArray(infoCamino)) rutas = [{ pasos: infoCamino }];
-            else rutas = [{ pasos: infoCamino }];
+        const esMultiRuta = Array.isArray(infoCamino) && infoCamino.length > 0 &&
+            infoCamino[0] && Object.prototype.hasOwnProperty.call(infoCamino[0], 'pasos');
+        const rutas = esMultiRuta ? infoCamino : [{ pasos: infoCamino }];
+        const rutasSeguras = [];
+
+        for (const ruta of rutas) {
+            const caminoReal = ruta.pasos;
+            if (!Array.isArray(caminoReal)) continue;
+            const nuevoTab = simularMovimiento(tablero, selectedPiece.fila, selectedPiece.col, [fDest, cDest], caminoReal);
+            if (nuevoTab && !esJaque(jugador, nuevoTab)) rutasSeguras.push(ruta);
         }
 
-        let movimientoSeguro = false;
-        for (let ruta of rutas) {
-            let caminoReal = ruta.pasos;
-            if (!Array.isArray(caminoReal)) continue;
-            let nuevoTab = simularMovimiento(board, selectedPiece.fila, selectedPiece.col, [fDest, cDest], caminoReal);
-            if (nuevoTab && !esJaque(turno, nuevoTab)) {
-                movimientoSeguro = true;
-                nuevosCaminos[claveMov] = infoCamino;
-                break;
-            }
-        }
-        if (movimientoSeguro) {
-            movsSeguros.push(mov);
-        }
+        if (rutasSeguras.length === 0) continue;
+        movsSeguros.push(mov);
+        // Punto importante para el caballo: si dos rutas llegan al mismo
+        // destino pero una deja al rey en jaque, SOLO sobrevive la ruta legal.
+        nuevosCaminos[claveMov] = esMultiRuta ? rutasSeguras : infoCamino;
     }
 
-    let tempCaminos = {};
-    for (let mov of movsSeguros) {
+    const tempCaminos = {};
+    for (const mov of movsSeguros) {
         let fDest, cDest;
-        if (mov.hasOwnProperty('f')) { fDest = mov.f; cDest = mov.c; }
+        if (Object.prototype.hasOwnProperty.call(mov, 'f')) { fDest = mov.f; cDest = mov.c; }
         else { fDest = mov[0]; cDest = mov[1]; }
-        let claveMov = `${fDest},${cDest}`;
-        if (mov.tipoMov === 'enroque') {
-            tempCaminos[claveMov] = null;
-        } else if (nuevosCaminos[claveMov]) {
-            tempCaminos[claveMov] = nuevosCaminos[claveMov];
-        }
+        const claveMov = `${fDest},${cDest}`;
+        tempCaminos[claveMov] = mov.tipoMov === 'enroque' ? null : nuevosCaminos[claveMov];
     }
 
     return { posiblesMovimientos: movsSeguros, caminosDestino: tempCaminos };

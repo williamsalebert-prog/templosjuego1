@@ -1,5 +1,19 @@
 console.log("✅ sonido.js cargado");
 
+let volumenEfectos = (() => {
+    try {
+        const v = Number(localStorage.getItem('templos_vol_efectos'));
+        return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.70;
+    } catch (e) { return 0.70; }
+})();
+function establecerVolumenEfectos(valor) {
+    volumenEfectos = Math.max(0, Math.min(1, Number(valor)));
+    try { localStorage.setItem('templos_vol_efectos', String(volumenEfectos)); } catch (e) {}
+}
+function obtenerVolumenEfectos() { return volumenEfectos; }
+window.establecerVolumenEfectos = establecerVolumenEfectos;
+window.obtenerVolumenEfectos = obtenerVolumenEfectos;
+
 // Vibración háptica corta en dispositivos táctiles (móvil), acompañando los
 // sonidos clave del juego. navigator.vibrate no existe en iOS Safari ni en
 // desktop, así que se comprueba antes de usarlo y simplemente no hace nada
@@ -22,6 +36,8 @@ function getAudioContext() {
 // golpe/clic con textura, sin necesitar archivos de audio externos.
 function playTone(frec, dur, tipo = 'triangle', vol = 0.1) {
     try {
+        vol *= volumenEfectos;
+        if (vol <= 0.0005) return;
         const ctx = getAudioContext();
         const t0 = ctx.currentTime;
 
@@ -52,14 +68,14 @@ function playTone(frec, dur, tipo = 'triangle', vol = 0.1) {
     } catch(e) {}
 }
 
-function sonidoMovimiento() { playTone(300, 0.1, 'triangle', 0.08); vibrar(12); }
-function sonidoSalto() { playTone(300, 0.1, 'triangle', 0.08); vibrar(12); }
+function sonidoMovimiento() { playTone(285, 0.09, 'triangle', 0.055); vibrar(10); }
+function sonidoSalto() { playTone(345, 0.11, 'triangle', 0.06); vibrar(11); }
 function sonidoEnroque() { playTone(400, 0.2, 'sine', 0.12); playTone(600, 0.2, 'sine', 0.12); vibrar([15,30,15]); }
 
 // Aviso corto de jaque (dos tonos cortos y agudos)
 function sonidoJaque() {
-    playTone(880, 0.12, 'square', 0.1);
-    setTimeout(() => playTone(988, 0.15, 'square', 0.1), 130);
+    playTone(740, 0.12, 'triangle', 0.075);
+    setTimeout(() => playTone(880, 0.16, 'sine', 0.075), 125);
     vibrar([20,40,20]);
 }
 
@@ -71,7 +87,7 @@ function sonidoCoronacion() {
 }
 
 // Aviso de poco tiempo en el reloj
-function sonidoTiempoBajo() { playTone(220, 0.18, 'sawtooth', 0.08); }
+function sonidoTiempoBajo() { playTone(260, 0.16, 'triangle', 0.055); }
 
 // Pitido de inicio de partida (suena después del countdown)
 function sonidoInicio() {
@@ -83,8 +99,8 @@ function sonidoInicio() {
 // Pitido corto en cada número del conteo 3,2,1, para llamar la atención de
 // ambos jugadores. El último (n=0, "¡Ya!") suena un poco más agudo y largo.
 function sonidoCountdown(n) {
-    if (n > 0) playTone(700, 0.15, 'square', 0.11);
-    else playTone(950, 0.22, 'square', 0.13);
+    if (n > 0) playTone(620, 0.12, 'triangle', 0.07);
+    else playTone(820, 0.18, 'sine', 0.09);
 }
 
 // Sonido de moneda lanzada al aire (sorteo de color): varios tintineos

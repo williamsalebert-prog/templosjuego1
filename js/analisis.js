@@ -28,7 +28,7 @@ function jugadaActualHistorial() {
 // Avanza una jugada (equivalente a "rehacer"/redo)
 function analisisAvanzar() {
     if (!historial.puedeRehacer()) { pausarReproduccionAnalisis(); return false; }
-    const estadoActual = { board: copiarBoard(), turno, enroqueRealizado: [...enroqueRealizado] };
+    const estadoActual = capturarEstadoHistorial();
     const siguiente = historial.rehacer(estadoActual);
     if (!siguiente) return false;
     if (typeof notacionRehacer === 'function') notacionRehacer();
@@ -39,7 +39,7 @@ function analisisAvanzar() {
 // Retrocede una jugada (equivalente a "deshacer"/undo)
 function analisisRetroceder() {
     if (!historial.puedeDeshacer()) return false;
-    const estadoActual = { board: copiarBoard(), turno, enroqueRealizado: [...enroqueRealizado] };
+    const estadoActual = capturarEstadoHistorial();
     const anterior = historial.deshacer(estadoActual);
     if (!anterior) return false;
     if (typeof notacionDeshacer === 'function') notacionDeshacer();
@@ -48,24 +48,38 @@ function analisisRetroceder() {
 }
 
 function aplicarEstadoDeHistorial(estado) {
-    board = estado.board;
-    turno = estado.turno;
-    enroqueRealizado = estado.enroqueRealizado;
-    selectedPiece = null; posiblesMovimientos = []; caminosDestino = {}; piezasAmenazadas = [];
-    modoRuta = false; rutasAlternativas = [];
-    coronacionPendiente = null;
-    if (typeof menuCoronacion !== 'undefined' && menuCoronacion) menuCoronacion.style.display = 'none';
+    // Al navegar a una posición anterior, el tablero debe volver a ser interactivo
+    // en Modo Prueba aunque la posición desde la que veníamos fuera final de partida.
+    if (typeof reiniciarFinJuego === 'function') reiniciarFinJuego();
+    restaurarEstadoHistorial(estado);
     dibujarTablero();
+    actualizarInterfaz();
     actualizarPanelAnalisis();
 }
 
 function analisisIrAlInicio() {
     pausarReproduccionAnalisis();
-    while (historial.puedeDeshacer()) analisisRetroceder();
+    if (!historial.puedeDeshacer()) return;
+    let estadoDestino = capturarEstadoHistorial();
+    while (historial.puedeDeshacer()) {
+        const anterior = historial.deshacer(estadoDestino);
+        if (!anterior) break;
+        if (typeof notacionDeshacer === 'function') notacionDeshacer();
+        estadoDestino = anterior;
+    }
+    aplicarEstadoDeHistorial(estadoDestino);
 }
 function analisisIrAlFinal() {
     pausarReproduccionAnalisis();
-    while (historial.puedeRehacer()) analisisAvanzar();
+    if (!historial.puedeRehacer()) return;
+    let estadoDestino = capturarEstadoHistorial();
+    while (historial.puedeRehacer()) {
+        const siguiente = historial.rehacer(estadoDestino);
+        if (!siguiente) break;
+        if (typeof notacionRehacer === 'function') notacionRehacer();
+        estadoDestino = siguiente;
+    }
+    aplicarEstadoDeHistorial(estadoDestino);
 }
 
 function alternarReproduccionAnalisis() {
